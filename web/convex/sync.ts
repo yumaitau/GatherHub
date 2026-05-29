@@ -144,3 +144,37 @@ export const currentContext = query({
     };
   },
 });
+
+/**
+ * All organisations the signed-in user belongs to, with role. Used by the
+ * profile page so the user can see every membership at a glance, independent
+ * of which org is currently active in Clerk.
+ */
+export const myMemberships = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("by_clerk_user", (q) => q.eq("clerkUserId", identity.subject))
+      .collect();
+    return await Promise.all(
+      memberships.map(async (m) => {
+        const org = await ctx.db.get(m.orgId);
+        return {
+          membershipId: m._id,
+          role: m.role,
+          org: org
+            ? {
+                id: org._id,
+                name: org.name,
+                slug: org.slug,
+                clerkOrgId: org.clerkOrgId,
+              }
+            : null,
+        };
+      }),
+    );
+  },
+});

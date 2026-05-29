@@ -122,6 +122,7 @@ export default defineSchema({
   })
     .index("by_org", ["orgId"])
     .index("by_user", ["userId"])
+    .index("by_clerk_user", ["clerkUserId"])
     .index("by_org_and_clerk_user", ["orgId", "clerkUserId"]),
 
   // People in a club. A member may or may not be a Clerk user (e.g. a child).

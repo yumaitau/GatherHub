@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { useGatherHub } from "@/lib/gatherhub";
 import { cn } from "@/lib/utils";
-import { LoadingState, EmptyState } from "@/components/shared";
+import { LoadingState } from "@/components/shared";
+import { NoOrganisation, AuthErrorBoundary } from "@/components/AccessDenied";
 import type { Role } from "@/lib/roles";
 
 interface NavItem {
@@ -116,24 +117,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {isLoading ? (
             <LoadingState label="Loading your club…" />
           ) : !isSignedInToOrg || !org ? (
-            <NoOrgState />
+            <NoOrganisation />
           ) : (
-            <div className="mx-auto max-w-6xl">{children}</div>
+            <div className="mx-auto max-w-6xl">
+              <AuthErrorBoundary>{children}</AuthErrorBoundary>
+            </div>
           )}
         </main>
       </div>
-    </div>
-  );
-}
-
-function NoOrgState() {
-  return (
-    <div className="mx-auto max-w-xl pt-10">
-      <EmptyState
-        icon={Building2}
-        title="Select or create a club"
-        description="GatherHub organises everything by club. Use the organisation switcher in the top bar to create a new club or select an existing one to get started."
-      />
     </div>
   );
 }

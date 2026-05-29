@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ES2021", "DOM"],
+    "allowJs": true,
+
+    "rootDir": ".",
+    "baseUrl": ".",
+
+    "jsx": "react-jsx",
+    "module": "ESNext"
+  },
+  "include": ["./**/*"],
+  "exclude": ["./_generated"]
+}

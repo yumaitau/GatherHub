@@ -1,9 +1,36 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
-import { Infer } from "convex/values";
+import { ConvexError, Infer } from "convex/values";
 import { roleValidator } from "../schema";
 
 export type Role = Infer<typeof roleValidator>;
+
+/**
+ * Typed error codes thrown by the auth guards. The frontend pattern-matches on
+ * `code` (via `ConvexError.data`) to render the right UI (sign-in screen vs.
+ * access-denied screen vs. empty-org state) without leaking record existence.
+ *
+ * See web/src/lib/errors.ts for the matching client helper.
+ */
+export type AuthErrorCode =
+  | "unauthenticated" // no Clerk session at all
+  | "no_active_org" // signed in, but no active org selected
+  | "not_member" // signed in, active org exists, but caller is not a member
+  | "forbidden" // signed in, member, but missing the required role
+  | "not_found"; // record absent OR belongs to another org (do not distinguish)
+
+export type AuthErrorData = {
+  code: AuthErrorCode;
+  message: string;
+  [key: string]: string;
+};
+
+function authError(
+  code: AuthErrorCode,
+  message: string,
+): ConvexError<AuthErrorData> {
+  return new ConvexError<AuthErrorData>({ code, message });
+}
 
 /**
  * Role precedence — higher number == more privilege. Used by `hasAtLeastRole`.
@@ -76,13 +103,55 @@ export async function getAuthContext(
   return { user, org, membership, role: membership.role };
 }
 
-/** Throw if the request is not authenticated and a member of an org. */
+/**
+ * Return the authenticated Convex user record, or throw a typed
+ * `unauthenticated` error. Use when an operation needs *some* signed-in user
+ * but does not require an active organisation (e.g. accepting an invite).
+ */
+export async function requireUser(
+  ctx: QueryCtx | MutationCtx,
+): Promise<Doc<"users">> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw authError("unauthenticated", "Sign in to continue.");
+  }
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
+    .unique();
+  if (!user) {
+    throw authError(
+      "unauthenticated",
+      "Your account is still being created — refresh in a moment.",
+    );
+  }
+  return user;
+}
+
+/**
+ * Throw a typed error unless the caller is authenticated AND a member of an
+ * active organisation. Distinguishes unauthenticated / no_active_org /
+ * not_member so the UI can render the correct screen.
+ */
 export async function requireOrgMember(
   ctx: QueryCtx | MutationCtx,
 ): Promise<AuthContext> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw authError("unauthenticated", "Sign in to continue.");
+  }
+  const clerkOrgId =
+    (identity.orgId as string | undefined) ??
+    (identity as unknown as { org_id?: string }).org_id;
+  if (!clerkOrgId) {
+    throw authError(
+      "no_active_org",
+      "Select or create an organisation to continue.",
+    );
+  }
   const auth = await getAuthContext(ctx);
   if (!auth) {
-    throw new Error("Not authenticated or not a member of an organisation.");
+    throw authError("not_member", "You are not a member of this organisation.");
   }
   return auth;
 }
@@ -98,8 +167,9 @@ export async function requireRole(
 ): Promise<AuthContext> {
   const auth = await requireOrgMember(ctx);
   if (!hasAtLeastRole(auth.role, minimum)) {
-    throw new Error(
-      `Insufficient permissions: requires ${minimum} or higher (you are ${auth.role}).`,
+    throw authError(
+      "forbidden",
+      `Insufficient permission: requires ${minimum} or higher (you are ${auth.role}).`,
     );
   }
   return auth;
@@ -112,8 +182,9 @@ export async function requireAnyRole(
 ): Promise<AuthContext> {
   const auth = await requireOrgMember(ctx);
   if (!allowed.includes(auth.role)) {
-    throw new Error(
-      `Insufficient permissions: requires one of [${allowed.join(", ")}].`,
+    throw authError(
+      "forbidden",
+      `Insufficient permission: requires one of [${allowed.join(", ")}] (you are ${auth.role}).`,
     );
   }
   return auth;
@@ -128,7 +199,9 @@ export function assertSameOrg(
   doc: { orgId: Id<"organizations"> } | null,
 ): void {
   if (!doc || doc.orgId !== auth.org._id) {
-    throw new Error("Not found.");
+    // Deliberately collapse "absent" and "cross-org" into the same error so a
+    // valid id from another tenant cannot be probed for existence.
+    throw authError("not_found", "Not found.");
   }
 }
 

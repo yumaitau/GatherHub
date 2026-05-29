@@ -1,4 +1,5 @@
 import * as React from "react";
+import { OrganizationProfile } from "@clerk/clerk-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -28,7 +29,8 @@ import { ALL_ROLES, type Role } from "@/lib/roles";
 import { humanise } from "@/lib/utils";
 
 export default function SettingsPage() {
-  const { org } = useGatherHub();
+  const { org, can } = useGatherHub();
+  const isAdmin = can("admin");
   return (
     <div>
       <PageHeader
@@ -38,16 +40,47 @@ export default function SettingsPage() {
       <Tabs defaultValue="roles">
         <TabsList>
           <TabsTrigger value="roles">Members & roles</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="invitations">Invitations</TabsTrigger>
+          )}
           <TabsTrigger value="public">Public website</TabsTrigger>
         </TabsList>
         <TabsContent value="roles">
           <RolesTab />
         </TabsContent>
+        {isAdmin && (
+          <TabsContent value="invitations">
+            <InvitationsTab />
+          </TabsContent>
+        )}
         <TabsContent value="public">
           <PublicSiteTab />
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+/**
+ * Invitations & members managed by Clerk. Clerk handles sending invites,
+ * listing pending ones, and revocation; the role chosen at invite time maps
+ * to a GatherHub role on acceptance via the webhook in convex/http.ts → the
+ * `mapClerkRole` function in convex/clerk.ts. Non-admins do not see this tab
+ * because the trigger is hidden above, and Clerk also enforces server-side.
+ */
+function InvitationsTab() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Invite members</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <OrganizationProfile
+          routing="hash"
+          appearance={{ elements: { rootBox: "w-full" } }}
+        />
+      </CardContent>
+    </Card>
   );
 }
 

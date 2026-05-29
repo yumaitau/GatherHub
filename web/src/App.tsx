@@ -1,7 +1,10 @@
-import { Routes, Route } from "react-router-dom";
-import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import { GatherHubProvider } from "@/lib/gatherhub";
 import { AppLayout } from "@/components/layout/AppLayout";
+import SignInPage from "@/pages/auth/SignInPage";
+import SignUpPage from "@/pages/auth/SignUpPage";
+import ProfilePage from "@/pages/auth/ProfilePage";
 
 import DashboardPage from "@/pages/DashboardPage";
 import MembersPage from "@/pages/members/MembersPage";
@@ -36,6 +39,10 @@ export default function App() {
         element={<PublicNewsPage />}
       />
 
+      {/* Clerk auth routes — wildcard so Clerk's sub-routes (verify, sso, etc.) work */}
+      <Route path="/sign-in/*" element={<SignInPage />} />
+      <Route path="/sign-up/*" element={<SignUpPage />} />
+
       {/* Authenticated app */}
       <Route path="/*" element={<AuthedApp />} />
     </Routes>
@@ -67,6 +74,7 @@ function AuthedApp() {
                 element={<SponsorDetailPage />}
               />
               <Route path="/news" element={<NewsAdminPage />} />
+              <Route path="/profile/*" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
@@ -74,7 +82,7 @@ function AuthedApp() {
         </GatherHubProvider>
       </SignedIn>
       <SignedOut>
-        <RedirectToSignIn />
+        <Navigate to="/sign-in" replace />
       </SignedOut>
     </>
   );
