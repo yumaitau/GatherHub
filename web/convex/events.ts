@@ -62,7 +62,10 @@ export const get = query({
       .collect();
 
     const rsvpRows = await Promise.all(
-      rsvps.map(async (r) => ({ rsvp: r, member: await ctx.db.get(r.memberId) })),
+      rsvps.map(async (r) => ({
+        rsvp: r,
+        member: await ctx.db.get(r.memberId),
+      })),
     );
     const attendanceRows = await Promise.all(
       attendance.map(async (a) => ({

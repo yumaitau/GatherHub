@@ -84,9 +84,7 @@ export const publicProfile = query({
         q.eq("orgId", org._id).eq("published", true),
       )
       .collect();
-    publishedNews.sort(
-      (a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0),
-    );
+    publishedNews.sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
 
     return {
       org: { name: org.name, slug: org.slug, imageUrl: org.imageUrl },

@@ -66,8 +66,7 @@ export const ensureFromClient = mutation({
     }
 
     // --- organisation (only if an org is active) ---
-    const clerkOrgId =
-      (identity.orgId as string | undefined) ?? claims.org_id;
+    const clerkOrgId = (identity.orgId as string | undefined) ?? claims.org_id;
     if (!clerkOrgId) {
       return { userId, orgId: null as Id<"organizations"> | null };
     }

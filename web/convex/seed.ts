@@ -242,14 +242,58 @@ export const run = mutation({
       custodianIdx?: number;
       sponsored?: boolean;
     }> = [
-      { name: "Senior Home Kit Set", category: "uniform", status: "available", value: 800, sponsored: true },
-      { name: "Match Ball Bag", category: "kit_bag", status: "checked_out", value: 120, custodianIdx: 0 },
-      { name: "Training Cones (x20)", category: "training_equipment", status: "available", value: 60 },
-      { name: "Portable Goal", category: "goal", status: "maintenance", value: 450 },
-      { name: "Club Gazebo 3x3", category: "gazebo", status: "available", value: 300 },
-      { name: "First Aid Kit", category: "first_aid", status: "in_use", value: 80, custodianIdx: 11 },
-      { name: "Clubhouse Key", category: "key", status: "checked_out", value: 0, custodianIdx: 1 },
-      { name: "Match Recording Tablet", category: "device", status: "available", value: 500 },
+      {
+        name: "Senior Home Kit Set",
+        category: "uniform",
+        status: "available",
+        value: 800,
+        sponsored: true,
+      },
+      {
+        name: "Match Ball Bag",
+        category: "kit_bag",
+        status: "checked_out",
+        value: 120,
+        custodianIdx: 0,
+      },
+      {
+        name: "Training Cones (x20)",
+        category: "training_equipment",
+        status: "available",
+        value: 60,
+      },
+      {
+        name: "Portable Goal",
+        category: "goal",
+        status: "maintenance",
+        value: 450,
+      },
+      {
+        name: "Club Gazebo 3x3",
+        category: "gazebo",
+        status: "available",
+        value: 300,
+      },
+      {
+        name: "First Aid Kit",
+        category: "first_aid",
+        status: "in_use",
+        value: 80,
+        custodianIdx: 11,
+      },
+      {
+        name: "Clubhouse Key",
+        category: "key",
+        status: "checked_out",
+        value: 0,
+        custodianIdx: 1,
+      },
+      {
+        name: "Match Recording Tablet",
+        category: "device",
+        status: "available",
+        value: 500,
+      },
     ];
 
     for (const def of assetDefs) {
@@ -262,11 +306,12 @@ export const run = mutation({
         condition: "good",
         replacementValue: def.value,
         custodianMemberId:
-          def.custodianIdx !== undefined ? memberIds[def.custodianIdx] : undefined,
+          def.custodianIdx !== undefined
+            ? memberIds[def.custodianIdx]
+            : undefined,
         sponsorId: def.sponsored ? sponsorId : undefined,
         qrTagId,
-        dueBack:
-          def.status === "checked_out" ? now - 2 * day : undefined, // some overdue
+        dueBack: def.status === "checked_out" ? now - 2 * day : undefined, // some overdue
       });
       await ctx.db.insert("assetTags", {
         orgId,

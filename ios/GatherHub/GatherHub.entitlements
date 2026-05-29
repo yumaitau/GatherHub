@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Core NFC reader formats. "NDEF" is required to start an
+	  NFCNDEFReaderSession (used in ScanView). "TAG" enables raw tag sessions
+	  if you later switch to NFCTagReaderSession.
+
+	  This entitlement only takes effect once "Near Field Communication Tag
+	  Reading" is enabled for the App ID in the Apple Developer portal /
+	  Signing & Capabilities. See README.md.
+	-->
+	<key>com.apple.developer.nfc.readersession.formats</key>
+	<array>
+		<string>NDEF</string>
+		<string>TAG</string>
+	</array>
+</dict>
+</plist>

@@ -63,9 +63,7 @@ export const get = query({
           .collect(),
         ctx.db
           .query("guardians")
-          .withIndex("by_guardian", (q) =>
-            q.eq("guardianMemberId", member._id),
-          )
+          .withIndex("by_guardian", (q) => q.eq("guardianMemberId", member._id))
           .collect(),
         ctx.db
           .query("emergencyContacts")
@@ -98,7 +96,7 @@ export const get = query({
 
     // Medical notes — restricted visibility.
     let medicalNotes: string | null = null;
-    let canSeeMedical = canViewRestricted(auth.role);
+    const canSeeMedical = canViewRestricted(auth.role);
     if (canSeeMedical) {
       const note = await ctx.db
         .query("medicalNotes")

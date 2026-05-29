@@ -121,9 +121,7 @@ type ClerkEvent =
       };
     }
   | {
-      type:
-        | "organizationMembership.created"
-        | "organizationMembership.updated";
+      type: "organizationMembership.created" | "organizationMembership.updated";
       data: {
         role?: string;
         organization: { id: string };

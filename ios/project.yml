@@ -1,0 +1,60 @@
+# XcodeGen project specification for GatherHub iOS.
+#
+# Generate the Xcode project with:
+#   brew install xcodegen        # one-time
+#   cd ios && xcodegen generate  # produces GatherHub.xcodeproj
+#
+# After generating, open GatherHub.xcodeproj and add the Swift Package
+# dependencies (Clerk + Convex) via File > Add Package Dependencies. They are
+# referenced below as `packages`, but XcodeGen only wires them if the resolved
+# versions are available; see README.md for the manual fallback.
+name: GatherHub
+
+options:
+  bundleIdPrefix: au.gatherhub
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+# Swift Package dependencies. If `xcodegen generate` cannot resolve these
+# offline, remove this block and add the packages in Xcode instead (README).
+packages:
+  Clerk:
+    url: https://github.com/clerk/clerk-ios
+    from: "0.1.0"
+  ConvexMobile:
+    url: https://github.com/get-convex/convex-swift
+    from: "0.4.0"
+
+targets:
+  GatherHub:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: GatherHub
+    dependencies:
+      # Product names may differ per SDK version — adjust if Xcode reports an
+      # unknown product. Common product names are "Clerk" / "ClerkSDK" and
+      # "ConvexMobile".
+      - package: Clerk
+        product: Clerk
+      - package: ConvexMobile
+        product: ConvexMobile
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: au.gatherhub.app
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1,2" # iPhone + iPad
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: GatherHub/Info.plist
+        CODE_SIGN_ENTITLEMENTS: GatherHub/GatherHub.entitlements
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: YES
+    # NOTE: We ship an explicit, hand-authored Info.plist (GatherHub/Info.plist,
+    # referenced by INFOPLIST_FILE above) rather than letting XcodeGen generate
+    # one, so the camera/NFC usage strings and entitlement are visible and
+    # editable in source control. Do not add an `info:` block here or XcodeGen
+    # will overwrite that file on every `generate`.

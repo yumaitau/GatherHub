@@ -89,10 +89,7 @@ export const assetActionValidator = v.union(
   v.literal("tag_reassigned"),
 );
 
-export const tagTypeValidator = v.union(
-  v.literal("qr"),
-  v.literal("nfc"),
-);
+export const tagTypeValidator = v.union(v.literal("qr"), v.literal("nfc"));
 
 // --- Schema --------------------------------------------------------------
 
@@ -243,7 +240,8 @@ export default defineSchema({
   })
     .index("by_org", ["orgId"])
     .index("by_event", ["eventId"])
-    .index("by_event_and_member", ["eventId", "memberId"]),
+    .index("by_event_and_member", ["eventId", "memberId"])
+    .index("by_member", ["memberId"]),
 
   announcements: defineTable({
     orgId: v.id("organizations"),

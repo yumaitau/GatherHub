@@ -46,7 +46,9 @@ export const expiringCertifications = query({
     const expiring = certs.filter(
       (c) => c.expiryDate !== undefined && c.expiryDate <= horizon,
     );
-    expiring.sort((a, b) => (a.expiryDate ?? "").localeCompare(b.expiryDate ?? ""));
+    expiring.sort((a, b) =>
+      (a.expiryDate ?? "").localeCompare(b.expiryDate ?? ""),
+    );
 
     return await Promise.all(
       expiring.map(async (c) => ({
