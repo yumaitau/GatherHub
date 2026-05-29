@@ -1,0 +1,25 @@
+{
+  "name": "gatherhub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GatherHub — a modern operating system for community sports clubs and volunteer-run organisations.",
+  "license": "MIT",
+  "workspaces": [
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace web",
+    "build": "npm run build --workspace web",
+    "lint": "npm run lint --workspace web",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "convex:dev": "npm run convex:dev --workspace web",
+    "seed": "npm run seed --workspace web"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,385 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+/**
+ * GatherHub data model.
+ *
+ * Every tenant-scoped table carries an `orgId` (the Convex `_id` of the owning
+ * organisation). Server-side queries and mutations ALWAYS derive the orgId from
+ * the authenticated Clerk session — the client orgId is never trusted. See
+ * `convex/lib/auth.ts` and `/docs/security-model.md`.
+ */
+
+// --- Shared enums --------------------------------------------------------
+
+export const roleValidator = v.union(
+  v.literal("owner"),
+  v.literal("admin"),
+  v.literal("committee"),
+  v.literal("coach"),
+  v.literal("volunteer"),
+  v.literal("parent"),
+  v.literal("player"),
+);
+
+export const memberStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("inactive"),
+);
+
+export const teamRoleValidator = v.union(
+  v.literal("player"),
+  v.literal("coach"),
+  v.literal("manager"),
+);
+
+export const eventTypeValidator = v.union(
+  v.literal("training"),
+  v.literal("match"),
+  v.literal("meeting"),
+);
+
+export const rsvpStatusValidator = v.union(
+  v.literal("going"),
+  v.literal("not_going"),
+  v.literal("maybe"),
+);
+
+export const assetCategoryValidator = v.union(
+  v.literal("uniform"),
+  v.literal("kit_bag"),
+  v.literal("ball"),
+  v.literal("training_equipment"),
+  v.literal("goal"),
+  v.literal("gazebo"),
+  v.literal("first_aid"),
+  v.literal("key"),
+  v.literal("device"),
+  v.literal("vehicle"),
+  v.literal("other"),
+);
+
+export const assetStatusValidator = v.union(
+  v.literal("available"),
+  v.literal("checked_out"),
+  v.literal("in_use"),
+  v.literal("maintenance"),
+  v.literal("lost"),
+  v.literal("retired"),
+);
+
+export const assetConditionValidator = v.union(
+  v.literal("new"),
+  v.literal("good"),
+  v.literal("fair"),
+  v.literal("poor"),
+  v.literal("damaged"),
+);
+
+export const assetActionValidator = v.union(
+  v.literal("created"),
+  v.literal("updated"),
+  v.literal("checked_out"),
+  v.literal("checked_in"),
+  v.literal("transferred"),
+  v.literal("reported_lost"),
+  v.literal("maintenance"),
+  v.literal("retired"),
+  v.literal("tag_registered"),
+  v.literal("tag_reassigned"),
+);
+
+export const tagTypeValidator = v.union(
+  v.literal("qr"),
+  v.literal("nfc"),
+);
+
+// --- Schema --------------------------------------------------------------
+
+export default defineSchema({
+  // Mirror of Clerk users, synced via webhook (convex/clerk.ts).
+  users: defineTable({
+    clerkUserId: v.string(),
+    email: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+  }).index("by_clerk_id", ["clerkUserId"]),
+
+  // Mirror of Clerk organisations. One org == one club/tenant.
+  organizations: defineTable({
+    clerkOrgId: v.string(),
+    name: v.string(),
+    slug: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+  })
+    .index("by_clerk_id", ["clerkOrgId"])
+    .index("by_slug", ["slug"]),
+
+  // User ↔ organisation link with role. Mirrors Clerk org membership.
+  memberships: defineTable({
+    orgId: v.id("organizations"),
+    userId: v.id("users"),
+    clerkUserId: v.string(),
+    role: roleValidator,
+  })
+    .index("by_org", ["orgId"])
+    .index("by_user", ["userId"])
+    .index("by_org_and_clerk_user", ["orgId", "clerkUserId"]),
+
+  // People in a club. A member may or may not be a Clerk user (e.g. a child).
+  members: defineTable({
+    orgId: v.id("organizations"),
+    userId: v.optional(v.id("users")),
+    firstName: v.string(),
+    lastName: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    dateOfBirth: v.optional(v.string()), // ISO yyyy-mm-dd
+    status: memberStatusValidator,
+    notes: v.optional(v.string()),
+    // Volunteer fields (Epic 9)
+    isVolunteer: v.boolean(),
+    volunteerSkills: v.optional(v.array(v.string())),
+    volunteerAvailability: v.optional(v.string()),
+    volunteerNotes: v.optional(v.string()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_status", ["orgId", "status"])
+    .index("by_org_and_volunteer", ["orgId", "isVolunteer"])
+    .index("by_user", ["userId"]),
+
+  // Parent / guardian relationships between members.
+  guardians: defineTable({
+    orgId: v.id("organizations"),
+    memberId: v.id("members"), // the child / dependent
+    guardianMemberId: v.id("members"), // the parent / guardian
+    relationship: v.optional(v.string()), // e.g. "Mother", "Guardian"
+  })
+    .index("by_org", ["orgId"])
+    .index("by_member", ["memberId"])
+    .index("by_guardian", ["guardianMemberId"]),
+
+  emergencyContacts: defineTable({
+    orgId: v.id("organizations"),
+    memberId: v.id("members"),
+    name: v.string(),
+    relationship: v.optional(v.string()),
+    phone: v.string(),
+    email: v.optional(v.string()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_member", ["memberId"]),
+
+  // Restricted-visibility medical notes (separate table so reads can be gated).
+  medicalNotes: defineTable({
+    orgId: v.id("organizations"),
+    memberId: v.id("members"),
+    notes: v.string(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_member", ["memberId"]),
+
+  teams: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    ageGroup: v.optional(v.string()),
+    season: v.optional(v.string()),
+    description: v.optional(v.string()),
+    isActive: v.boolean(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_active", ["orgId", "isActive"]),
+
+  teamMembers: defineTable({
+    orgId: v.id("organizations"),
+    teamId: v.id("teams"),
+    memberId: v.id("members"),
+    role: teamRoleValidator,
+  })
+    .index("by_org", ["orgId"])
+    .index("by_team", ["teamId"])
+    .index("by_member", ["memberId"])
+    .index("by_team_and_member", ["teamId", "memberId"]),
+
+  events: defineTable({
+    orgId: v.id("organizations"),
+    type: eventTypeValidator,
+    title: v.string(),
+    description: v.optional(v.string()),
+    location: v.optional(v.string()),
+    startTime: v.number(), // epoch ms
+    endTime: v.optional(v.number()),
+    teamId: v.optional(v.id("teams")), // undefined == org-wide
+    opponent: v.optional(v.string()),
+    createdBy: v.id("users"),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_start", ["orgId", "startTime"])
+    .index("by_team", ["teamId"]),
+
+  rsvps: defineTable({
+    orgId: v.id("organizations"),
+    eventId: v.id("events"),
+    memberId: v.id("members"),
+    status: rsvpStatusValidator,
+    respondedBy: v.id("users"),
+    respondedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_event", ["eventId"])
+    .index("by_event_and_member", ["eventId", "memberId"])
+    .index("by_member", ["memberId"]),
+
+  attendance: defineTable({
+    orgId: v.id("organizations"),
+    eventId: v.id("events"),
+    memberId: v.id("members"),
+    present: v.boolean(),
+    recordedBy: v.id("users"),
+    recordedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_event", ["eventId"])
+    .index("by_event_and_member", ["eventId", "memberId"]),
+
+  announcements: defineTable({
+    orgId: v.id("organizations"),
+    title: v.string(),
+    body: v.string(),
+    teamId: v.optional(v.id("teams")), // undefined == org-wide
+    pinned: v.boolean(),
+    createdBy: v.id("users"),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_pinned", ["orgId", "pinned"])
+    .index("by_team", ["teamId"]),
+
+  announcementReads: defineTable({
+    orgId: v.id("organizations"),
+    announcementId: v.id("announcements"),
+    userId: v.id("users"),
+    readAt: v.number(),
+  })
+    .index("by_announcement_and_user", ["announcementId", "userId"])
+    .index("by_user", ["userId"]),
+
+  // KitTrace assets (Epic 6).
+  assets: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    category: assetCategoryValidator,
+    description: v.optional(v.string()),
+    serialNumber: v.optional(v.string()),
+    purchaseDate: v.optional(v.string()), // ISO yyyy-mm-dd
+    replacementValue: v.optional(v.number()), // minor units? stored as number (currency major)
+    condition: assetConditionValidator,
+    status: assetStatusValidator,
+    custodianMemberId: v.optional(v.id("members")),
+    location: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    sponsorId: v.optional(v.id("sponsors")),
+    // Convenience denormalised tag fields; canonical mapping is in assetTags.
+    qrTagId: v.optional(v.string()),
+    nfcTagId: v.optional(v.string()),
+    // For overdue tracking on check-out.
+    dueBack: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_status", ["orgId", "status"])
+    .index("by_org_and_category", ["orgId", "category"])
+    .index("by_custodian", ["custodianMemberId"])
+    .index("by_sponsor", ["sponsorId"]),
+
+  // Opaque tag → asset mapping for QR / NFC lookups (public-safe).
+  assetTags: defineTable({
+    orgId: v.id("organizations"),
+    tagId: v.string(), // opaque, e.g. "tag_ab12cd34"
+    assetId: v.id("assets"),
+    type: tagTypeValidator,
+    active: v.boolean(),
+  })
+    .index("by_tag", ["tagId"])
+    .index("by_asset", ["assetId"])
+    .index("by_org", ["orgId"]),
+
+  // Immutable, append-only audit log for asset operations (Epic 7).
+  assetAuditLog: defineTable({
+    orgId: v.id("organizations"),
+    assetId: v.id("assets"),
+    action: assetActionValidator,
+    fromStatus: v.optional(assetStatusValidator),
+    toStatus: v.optional(assetStatusValidator),
+    fromCustodianMemberId: v.optional(v.id("members")),
+    toCustodianMemberId: v.optional(v.id("members")),
+    fromLocation: v.optional(v.string()),
+    toLocation: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    performedBy: v.id("users"),
+    performedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_asset", ["assetId"])
+    .index("by_org_and_action", ["orgId", "action"]),
+
+  volunteerCertifications: defineTable({
+    orgId: v.id("organizations"),
+    memberId: v.id("members"),
+    name: v.string(),
+    issuer: v.optional(v.string()),
+    issuedDate: v.optional(v.string()),
+    expiryDate: v.optional(v.string()), // ISO yyyy-mm-dd
+    notes: v.optional(v.string()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_member", ["memberId"])
+    .index("by_org_and_expiry", ["orgId", "expiryDate"]),
+
+  sponsors: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    contactName: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    website: v.optional(v.string()),
+    logoStorageId: v.optional(v.id("_storage")),
+    sponsorshipValue: v.optional(v.number()),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+    visibleOnPublicSite: v.boolean(),
+    notes: v.optional(v.string()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_public", ["orgId", "visibleOnPublicSite"]),
+
+  news: defineTable({
+    orgId: v.id("organizations"),
+    title: v.string(),
+    slug: v.string(),
+    body: v.string(),
+    excerpt: v.optional(v.string()),
+    coverImageStorageId: v.optional(v.id("_storage")),
+    published: v.boolean(),
+    publishedAt: v.optional(v.number()),
+    authorUserId: v.id("users"),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_published", ["orgId", "published"])
+    .index("by_org_and_slug", ["orgId", "slug"]),
+
+  publicSiteSettings: defineTable({
+    orgId: v.id("organizations"),
+    enabled: v.boolean(),
+    tagline: v.optional(v.string()),
+    about: v.optional(v.string()),
+    primaryColor: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    address: v.optional(v.string()),
+    facebookUrl: v.optional(v.string()),
+    instagramUrl: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
+  }).index("by_org", ["orgId"]),
+});
