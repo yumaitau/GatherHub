@@ -127,7 +127,7 @@ export default function EventDetailPage() {
             {event.location}
           </span>
         )}
-        <span>{teamName ?? "Club-wide"}</span>
+        <span>{teamName ?? "Org-wide"}</span>
         {event.opponent && <span>vs {event.opponent}</span>}
         {event.endTime && <span>Ends {formatDateTime(event.endTime)}</span>}
       </div>

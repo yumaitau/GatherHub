@@ -27,7 +27,7 @@ export default function PublicNewsPage() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-2">
         <h1 className="text-2xl font-bold">Article not found</h1>
         <Link to={`/club/${slug}`} className="text-primary hover:underline">
-          Back to club
+          Back to home
         </Link>
       </div>
     );

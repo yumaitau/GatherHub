@@ -5,7 +5,8 @@ is intentionally focused: scan kit, look up assets, check things out and back in
 view your events, and RSVP. It is **not** a full admin tool — member/team/sponsor
 administration lives on the web.
 
-- **Stack:** SwiftUI, Clerk iOS SDK (auth + organisations), Convex Swift client.
+- **Stack:** SwiftUI, Clerk iOS SDK (auth / identity only), Convex Swift client.
+  Clubs and memberships are Convex-native and queried directly from the device.
 - **Backend:** talks directly to Convex with a Clerk-authenticated session
   (same model as the web app — see `architecture.md`).
 - **Hardware:** QR scanning via AVFoundation, NFC scanning via Core NFC.
@@ -21,7 +22,7 @@ ios/GatherHub/
 │   ├── RootView.swift            # routes between Auth / OrgPicker / Main tabs
 │   └── AppEnvironment.swift      # shared services container
 ├── Services/
-│   ├── ClerkService.swift        # Clerk session, active org, JWT for Convex
+│   ├── ClerkService.swift        # Clerk session + JWT for Convex (identity only)
 │   ├── ConvexService.swift       # ConvexClient configured with Clerk auth
 │   ├── ScannerService.swift      # AVFoundation QR capture
 │   └── NFCService.swift          # Core NFC read sessions
@@ -47,11 +48,12 @@ Convex subscriptions surfaced as `@Published`/observable streams.
 - The Clerk iOS SDK is configured with the production publishable key at launch.
 - Sign-in supports the methods enabled in Clerk (email + password, OAuth, magic
   link / OTP) — the SDK provides the flows.
-- After sign-in, `ClerkService` exposes the current user and the list of
-  organisations the user belongs to.
+- After sign-in, `ClerkService` exposes the current user. The list of clubs and
+  the active club come from Convex (`sync.myMemberships` / `sync.currentContext`),
+  not Clerk.
 - For Convex, `ClerkService` mints a session JWT using the `convex` JWT template
-  and provides a token-fetch closure to the Convex client. The token carries the
-  **active org** claim.
+  and provides a token-fetch closure to the Convex client. The token carries
+  identity only — switching clubs is a Convex mutation (`organizations.setActive`).
 
 ```swift
 // ClerkService provides the auth callback Convex uses for every request.
@@ -70,30 +72,33 @@ let convex = ConvexClient(
 - Queries: `convex.subscribe(to: "events:list")` for reactive lists, or one-shot
   reads for detail screens.
 - Mutations: `convex.mutation("assetOps:checkOut", with: [...])`.
-- Because the org id is derived server-side from the JWT, the app **never** sends
-  an org id. Switching the active org (below) changes the token, which changes
-  what the backend returns — no client-side org filtering.
+- Because the org id is derived server-side from the authenticated user's
+  Convex record (`users.activeOrgId`), the app **never** sends an org id.
+  Switching the active club (below) calls a Convex mutation that updates that
+  field; subscriptions immediately re-fetch with the new scope.
 
 ---
 
-## 4. Organisation selection
+## 4. Club selection
 
 ```mermaid
 flowchart TD
     A[Launch] --> B{Signed in?}
     B -- No --> C[SignInView]
     C --> B
-    B -- Yes --> D{Active org set?}
-    D -- No / multiple --> E[OrgPickerView]
+    B -- Yes --> D{users.activeOrgId set?}
+    D -- No / multiple memberships --> E[OrgPickerView]
     D -- Single / chosen --> F[Main Tabs]
     E --> F
-    F --> G[Switch org from menu] --> E
+    F --> G[Switch club from menu] --> E
 ```
 
-- If the user belongs to one org, it is selected automatically.
-- If multiple, `OrgPickerView` lets them choose; the choice sets Clerk's active
-  organisation, so the next minted JWT carries the new `org_id`.
-- An org switcher is reachable from the main screen for users in several clubs.
+- `OrgPickerView` reads `sync.myMemberships` and shows the user's clubs.
+- Picking a club calls the Convex mutation `organizations.setActive`, which
+  validates membership and patches `users.activeOrgId`. Subsequent Convex
+  subscriptions re-fetch with the new scope automatically.
+- Users with one club land in the main tabs immediately. Users with none see
+  Create / Join-by-code actions (mirroring the web's `<OrgSwitcher>`).
 
 ---
 
@@ -217,16 +222,17 @@ The MVP is **online-first** but degrades gracefully:
 | ReportIssueView | Report lost / needs maintenance | check-out roles |
 | EventListView | Upcoming events | all |
 | EventDetailView | Event detail + RSVP (+ attendance) | all / coach for attendance |
-| ProfileView | User, active org, sign out | all |
+| ProfileView | User, active club, sign out | all |
 
 ---
 
 ## 12. Data-flow note
 
 The iOS app uses **the same direct-to-Convex model as the web app**: Clerk
-manages identity and the active organisation; the Clerk JWT is attached to every
-Convex call; Convex verifies the token, derives the `orgId` and role server-side,
-enforces permissions, and (for asset ops) writes the immutable audit log. The
+manages identity only; clubs and memberships live in Convex; the Clerk JWT is
+attached to every Convex call; Convex verifies the token, looks up the user,
+resolves `users.activeOrgId`, derives the `orgId` and role server-side, enforces
+permissions, and (for asset ops) writes the immutable audit log. The
 app sends opaque tag ids and minimal inputs and trusts the server for
 authorisation and state transitions. There is no separate mobile API; the only
 unauthenticated surface the app may touch is the public QR landing route, which

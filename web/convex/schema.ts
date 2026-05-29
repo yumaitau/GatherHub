@@ -5,9 +5,10 @@ import { v } from "convex/values";
  * GatherHub data model.
  *
  * Every tenant-scoped table carries an `orgId` (the Convex `_id` of the owning
- * organisation). Server-side queries and mutations ALWAYS derive the orgId from
- * the authenticated Clerk session — the client orgId is never trusted. See
- * `convex/lib/auth.ts` and `/docs/security-model.md`.
+ * organisation). Organisations live entirely in Convex — Clerk is used only
+ * for user identity. The active org is selected per-user (`users.activeOrgId`)
+ * and validated against a Convex `memberships` row on every authed request.
+ * See `convex/lib/auth.ts` and `/docs/security-model.md`.
  */
 
 // --- Shared enums --------------------------------------------------------
@@ -94,36 +95,58 @@ export const tagTypeValidator = v.union(v.literal("qr"), v.literal("nfc"));
 // --- Schema --------------------------------------------------------------
 
 export default defineSchema({
-  // Mirror of Clerk users, synced via webhook (convex/clerk.ts).
+  // Identity mirror. `clerkUserId` is the Clerk subject — used only to bind a
+  // signed-in session to the Convex user. `activeOrgId` is the org the user is
+  // currently working in; switched in-app via `organizations.setActive`.
   users: defineTable({
     clerkUserId: v.string(),
     email: v.optional(v.string()),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
+    activeOrgId: v.optional(v.id("organizations")),
   }).index("by_clerk_id", ["clerkUserId"]),
 
-  // Mirror of Clerk organisations. One org == one club/tenant.
+  // Clubs. Created and owned entirely in Convex. `inviteCode` is an opaque
+  // short string used by `organizations.joinByCode`; null/absent disables it.
   organizations: defineTable({
-    clerkOrgId: v.string(),
     name: v.string(),
     slug: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
+    createdBy: v.id("users"),
+    inviteCode: v.optional(v.string()),
   })
-    .index("by_clerk_id", ["clerkOrgId"])
-    .index("by_slug", ["slug"]),
+    .index("by_slug", ["slug"])
+    .index("by_invite_code", ["inviteCode"]),
 
-  // User ↔ organisation link with role. Mirrors Clerk org membership.
+  // User ↔ organisation link with role. Convex-native; not synced from Clerk.
   memberships: defineTable({
     orgId: v.id("organizations"),
     userId: v.id("users"),
-    clerkUserId: v.string(),
     role: roleValidator,
   })
     .index("by_org", ["orgId"])
     .index("by_user", ["userId"])
-    .index("by_clerk_user", ["clerkUserId"])
-    .index("by_org_and_clerk_user", ["orgId", "clerkUserId"]),
+    .index("by_org_and_user", ["orgId", "userId"])
+    .index("by_user_and_org", ["userId", "orgId"]),
+
+  // Email-based org invitations. Admin sends to an email + role; recipient
+  // clicks the emailed link, signs in/up via Clerk, and accepts. Codes are
+  // opaque, single-use, and expire.
+  invitations: defineTable({
+    orgId: v.id("organizations"),
+    email: v.string(), // lowercased
+    role: roleValidator,
+    code: v.string(),
+    invitedByUserId: v.id("users"),
+    expiresAt: v.number(),
+    acceptedAt: v.optional(v.number()),
+    acceptedByUserId: v.optional(v.id("users")),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_code", ["code"])
+    .index("by_org", ["orgId"])
+    .index("by_org_and_email", ["orgId", "email"]),
 
   // People in a club. A member may or may not be a Clerk user (e.g. a child).
   members: defineTable({

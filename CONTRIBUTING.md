@@ -16,8 +16,10 @@ and Convex backend running locally.
   live in Convex (`web/convex/lib/auth.ts`). The client never decides what a
   user is allowed to do — it only hides UI affordances for a better experience.
 - **Org scoping:** every tenant-scoped query/mutation derives `orgId` from the
-  authenticated session and validates that any document it touches belongs to
-  that org (`assertSameOrg`). Never accept an `orgId` from the client.
+  authenticated user's Convex record (`users.activeOrgId`, validated against
+  `memberships`) and re-checks that any document it touches belongs to that org
+  (`assertSameOrg`). Never accept an `orgId` from the client, and never rely on
+  a Clerk JWT claim for tenancy — clubs live in Convex.
 - **Audit log is immutable:** asset operations append to `assetAuditLog`. There
   is no update/delete path for audit rows — keep it that way.
 - **UI:** reuse the primitives in `web/src/components/ui/` and the shared

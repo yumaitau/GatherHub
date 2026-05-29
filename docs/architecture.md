@@ -17,9 +17,9 @@ authoritative backend:
 
 | Surface | Path | Stack | Talks to |
 | --- | --- | --- | --- |
-| Web app | `/web` | Vite + React 18 + TypeScript + React Router v6 + Tailwind CSS + shadcn-style components on Radix | Convex (directly) + Clerk |
-| Backend | `/web/convex` | Convex (DB + serverless functions + file storage) | — (it *is* the backend) |
-| iOS app | `/ios` | SwiftUI + Clerk iOS SDK + Convex Swift client | Convex (directly) + Clerk |
+| Web app | `/web` | Vite + React 18 + TypeScript + React Router v6 + Tailwind CSS + shadcn-style components on Radix | Convex (directly) + Clerk (identity only) |
+| Backend | `/web/convex` | Convex (DB + serverless functions + file storage) | — (it *is* the backend, and owns club/membership state) |
+| iOS app | `/ios` | SwiftUI + Clerk iOS SDK + Convex Swift client | Convex (directly) + Clerk (identity only) |
 
 The core architectural decision: **both clients talk directly to Convex** using a
 Clerk-authenticated session. Convex validates the Clerk-issued JWT on every
@@ -34,7 +34,7 @@ graph TB
     end
 
     subgraph Identity
-        CLERK["Clerk<br/>Auth + Organisations<br/>(multi-tenancy)"]
+        CLERK["Clerk<br/>Auth (identity only)"]
     end
 
     subgraph Backend["Convex (/web/convex)"]
@@ -54,7 +54,7 @@ graph TB
     WEB --> CLERK
     IOS --> CLERK
     CLERK -.->|"JWKS (JWT verification)"| FUNCS
-    CLERK -.->|"org/user sync webhook"| HTTP
+    CLERK -.->|"user sync webhook"| HTTP
     PUBLIC --> HTTP
     WEBHOOK --> HTTP
     FUNCS --> DB
@@ -89,7 +89,7 @@ sequenceDiagram
     R->>CX: useQuery(api.members.list)
     CX->>CV: call + Clerk JWT
     CV->>CV: ctx.auth.getUserIdentity()
-    CV->>CV: requireOrgMember() -> orgId
+    CV->>CV: requireOrgMember() — lookup user → activeOrgId → membership
     CV->>DB: query withIndex("by_org", orgId)
     DB-->>CV: documents
     CV-->>CX: result
@@ -116,7 +116,7 @@ sequenceDiagram
     U->>C: Sign in
     C->>CL: Authenticate (password / OAuth / magic link)
     CL-->>C: Session + JWT (template "convex")
-    Note over CL: JWT claims include sub (user),<br/>org_id, org_role, org_slug
+    Note over CL: JWT claims: sub (user), email, name, picture<br/>(no org claims — clubs live in Convex)
     C->>CV: Function call (Authorization: Bearer JWT)
     CV->>CL: Verify signature via JWKS (issuer domain)
     CV->>CV: Identity available on ctx.auth
@@ -126,27 +126,31 @@ sequenceDiagram
 
 - Clerk issues a JWT using a JWT template named `convex`. Convex is configured
   with Clerk's issuer domain in `convex/auth.config.ts`.
-- The JWT carries the **active organisation** (`org_id`, `org_role`). Switching
-  org in the Clerk org switcher mints a token for the new org; the orgId the
-  backend trusts therefore comes from the verified token, not the request body.
+- The JWT carries **identity only** (subject, email, name, picture). The
+  active club is read from `users.activeOrgId` in Convex and validated against
+  the `memberships` table — Clerk Organizations are not used.
 
 ---
 
 ## 3. Multi-tenancy
 
-**Clerk Organisations map 1:1 to GatherHub clubs/tenants.** A club = a Clerk
-organisation = a `orgId` scope in Convex.
+**Clubs are Convex-native.** A club = an `organizations` row = an `orgId`
+scope. Clerk is responsible for "who is this user" only — it does not know
+about clubs.
 
-- A user can belong to multiple clubs (multiple Clerk orgs) and switch between
-  them via the Clerk org switcher.
-- The active org's id flows through the JWT into Convex on every call.
+- A user can belong to many clubs. Memberships are stored in the Convex
+  `memberships` table and managed in-app (`organizations.create`,
+  `organizations.joinByCode`, `organizations.leave`).
+- The active club is tracked per user on `users.activeOrgId` and switched via
+  `organizations.setActive`. The in-app `<OrgSwitcher>` component drives this.
 - Every tenant-owned table carries an `orgId` field and a `by_org` index.
-- All queries/mutations filter by the server-derived `orgId`. This is the
-  cornerstone of data isolation (see `security-model.md`).
+- All queries/mutations filter by `orgId` resolved from `users.activeOrgId` +
+  a `memberships` lookup. This is the cornerstone of data isolation (see
+  `security-model.md`).
 
-Roles within an org: **Owner, Admin, Committee, Coach, Volunteer, Parent,
-Player**. Clerk stores org membership and a base role; GatherHub maps the Clerk
-`org_role` claim onto these application roles.
+Roles within a club: **Owner, Admin, Committee, Coach, Volunteer, Parent,
+Player**. The role is stored on the `memberships` row. Whoever creates a club
+becomes its first `owner`; admins promote/demote others via `roles.updateRole`.
 
 ---
 
@@ -157,7 +161,7 @@ Player**. Clerk stores org membership and a base role; GatherHub maps the Clerk
 | **Vite + React 18 + TS** | Fast dev server / HMR, first-class TypeScript, simplest path to a SPA that talks directly to Convex. No SSR complexity needed for an admin console. |
 | **Tailwind + shadcn/Radix** | Accessible-by-default primitives (Radix), unstyled and ownable components (shadcn pattern), rapid consistent UI without a heavyweight component library. |
 | **Convex** | One backend for DB + serverless functions + file storage + realtime subscriptions. End-to-end TypeScript types from schema to client. Reactive queries remove most state-sync glue. Server functions are the natural place to enforce org-scoping and RBAC. |
-| **Clerk** | Drop-in auth with **Organisations** built in — exactly the multi-tenant primitive GatherHub needs. Native React + iOS SDKs, hosted org switcher, JWT templates that integrate cleanly with Convex. |
+| **Clerk** | Drop-in auth with native React + iOS SDKs and JWT templates that integrate cleanly with Convex. Used purely for identity — clubs and memberships are owned by Convex so tenancy stays under our control and is enforceable in tests. |
 | **Direct client → Convex** | Removes an entire REST/API-gateway tier. Fewer moving parts, fewer auth boundaries to secure, less code for an MVP. |
 
 ---

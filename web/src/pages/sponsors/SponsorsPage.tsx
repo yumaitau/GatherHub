@@ -34,7 +34,7 @@ export default function SponsorsPage() {
         description={
           totalValue !== undefined
             ? `Total sponsorship value: ${formatCurrency(totalValue)}`
-            : "Your club's sponsors and partners."
+            : "Your organisation's sponsors and partners."
         }
         actions={can("committee") ? <NewSponsorDialog /> : undefined}
       />

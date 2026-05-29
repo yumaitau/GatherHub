@@ -4,6 +4,7 @@ import { GatherHubProvider } from "@/lib/gatherhub";
 import { AppLayout } from "@/components/layout/AppLayout";
 import SignInPage from "@/pages/auth/SignInPage";
 import SignUpPage from "@/pages/auth/SignUpPage";
+import AcceptInvitePage from "@/pages/auth/AcceptInvitePage";
 import ProfilePage from "@/pages/auth/ProfilePage";
 
 import DashboardPage from "@/pages/DashboardPage";
@@ -42,6 +43,9 @@ export default function App() {
       {/* Clerk auth routes — wildcard so Clerk's sub-routes (verify, sso, etc.) work */}
       <Route path="/sign-in/*" element={<SignInPage />} />
       <Route path="/sign-up/*" element={<SignUpPage />} />
+
+      {/* Org invitation acceptance — works signed in or out */}
+      <Route path="/invite/:code" element={<AcceptInvitePage />} />
 
       {/* Authenticated app */}
       <Route path="/*" element={<AuthedApp />} />

@@ -79,7 +79,7 @@ export default function NewsAdminPage() {
         <EmptyState
           icon={Newspaper}
           title="No news articles"
-          description="Write your first article to share club news."
+          description="Write your first article to share organisation news."
           action={can("committee") ? <NewsDialog mode="create" /> : undefined}
         />
       ) : (

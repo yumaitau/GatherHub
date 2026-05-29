@@ -61,11 +61,17 @@ npx convex env set CLERK_WEBHOOK_SECRET    whsec_<from-clerk-dashboard>
 
 `CLERK_JWT_ISSUER_DOMAIN` is the Clerk Frontend API URL. `CLERK_WEBHOOK_SECRET`
 is the signing secret of the Clerk webhook you configure to point at
-`<your-convex-url>/clerk-webhook` (subscribe to `user.*`,
-`organization.*`, `organizationMembership.*`).
+`<your-convex-url>/clerk-webhook` (subscribe to `user.*` only — organisations
+live in Convex, so no `organization.*` events).
 
-Configure the Clerk JWT template named **`convex`** with org claims. See
-`docs/security-model.md` for the exact template body.
+Configure the Clerk JWT template named **`convex`** with default identity
+claims (`aud: "convex"`, plus `sub`, `email`, `name`, `picture`). No org
+claims are required. See `docs/security-model.md`.
+
+Optional: to send invitation emails, also set `RESEND_API_KEY`,
+`INVITE_FROM_EMAIL`, and `PUBLIC_APP_URL`. Without these the invitation
+delivery action logs the email body to the Convex logs (useful for local
+testing — just copy the link).
 
 ## 4. Run the web app
 

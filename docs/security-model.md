@@ -4,15 +4,19 @@ GatherHub is multi-tenant: many clubs share one Convex backend. The security
 model has one non-negotiable rule and several supporting layers.
 
 > **Golden rule:** every authenticated query/mutation derives `orgId` from the
-> verified Clerk session. The client's organisation id is **never** trusted.
+> authenticated user's Convex record. The client's organisation id is **never**
+> trusted, and Clerk is **not** the source of truth for org membership.
 
 ---
 
 ## 1. Organisation-scoped data isolation
 
-Each club is a Clerk organisation mapped 1:1 to a GatherHub tenant. The active
-org rides in the Clerk JWT (`org_id`, `org_role`). Convex verifies the JWT and
-exposes the identity via `ctx.auth.getUserIdentity()`.
+Clubs live entirely in the Convex `organizations` table. Clerk is used only
+to identify the human ("which user is this session?") — it does **not** know
+about clubs. The currently active club is stored on `users.activeOrgId` and
+is switched via the Convex `organizations.setActive` mutation. Convex verifies
+the Clerk JWT, looks up the matching Convex user, and validates the active
+org against the `memberships` table on every call.
 
 ### How orgId is resolved (server side, every call)
 
@@ -24,31 +28,24 @@ export async function requireOrgMember(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Unauthenticated");
 
-  // org_id comes from the VERIFIED JWT claim — not from any function argument.
-  const clerkOrgId = identity.orgId as string | undefined;
-  if (!clerkOrgId) throw new Error("No active organisation");
-
-  const org = await ctx.db
-    .query("organisations")
-    .withIndex("by_clerkOrgId", (q) => q.eq("clerkOrgId", clerkOrgId))
-    .unique();
-  if (!org) throw new Error("Unknown organisation");
-
+  // The Clerk subject identifies the human; the active org lives in Convex.
   const user = await ctx.db
     .query("users")
-    .withIndex("by_clerkUserId", (q) =>
-      q.eq("clerkUserId", identity.subject),
-    )
+    .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
     .unique();
   if (!user) throw new Error("Unknown user");
+  if (!user.activeOrgId) throw new Error("No active organisation");
 
   const membership = await ctx.db
     .query("memberships")
-    .withIndex("by_org_user", (q) =>
-      q.eq("orgId", org._id).eq("userId", user._id),
+    .withIndex("by_org_and_user", (q) =>
+      q.eq("orgId", user.activeOrgId!).eq("userId", user._id),
     )
     .unique();
-  if (!membership || !membership.active) throw new Error("Not a member");
+  if (!membership) throw new Error("Not a member");
+
+  const org = await ctx.db.get(user.activeOrgId);
+  if (!org) throw new Error("Unknown organisation");
 
   return { orgId: org._id, userId: user._id, role: membership.role };
 }
@@ -87,8 +84,9 @@ if (!member || member.orgId !== orgId) throw new Error("Not found");
 ## 2. Role-based permissions
 
 Roles, most → least privileged: **Owner, Admin, Committee, Coach, Volunteer,
-Parent, Player**. Roles are taken from the membership row (mapped from the Clerk
-`org_role` claim).
+Parent, Player**. Roles are stored on the Convex `memberships` row and are
+managed entirely in-app (see `roles.updateRole` and `organizations.create`
+which seeds the creator as `owner`). Clerk plays no part in role assignment.
 
 ### Server-side checks: `requireRole`
 
@@ -290,7 +288,7 @@ function redactMember(member, viewer, canSeeMedical: boolean) {
 
 | Threat | Mitigation |
 | --- | --- |
-| Cross-tenant data access | `orgId` from verified JWT; every query/mutation filters by it; fetched docs re-checked against caller org. |
+| Cross-tenant data access | `orgId` resolved from the authenticated user's Convex record (`users.activeOrgId`) and validated against the Convex `memberships` table on every call; fetched docs re-checked against caller org. |
 | Privilege escalation | Server-side `requireRole`/`requireAnyRole`; UI gating is non-authoritative. |
 | Audit tampering | Append-only `assetAuditLog`; no update/delete code paths. |
 | QR/NFC data leakage | Opaque tag ids; no private data on unauthenticated landing; permission check before detail. |

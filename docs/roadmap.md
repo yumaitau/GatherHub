@@ -19,7 +19,7 @@ GatherHub is **not** a chat-first app. For v0.1 we deliberately exclude:
 
 In scope: people, teams, events, attendance, announcements, **KitTrace** asset
 tracking with QR/NFC, volunteers, sponsors, a basic public website, and a
-field-ops iOS app — all multi-tenant via Clerk organisations, all on Convex.
+field-ops iOS app — all multi-tenant via Convex-native clubs, all on Convex.
 
 ---
 
@@ -28,7 +28,7 @@ field-ops iOS app — all multi-tenant via Clerk organisations, all on Convex.
 | # | Epic | Summary |
 | --- | --- | --- |
 | 1 | **Project Foundation** | Monorepo, `/web` (Vite + React 18 + TS + React Router v6 + Tailwind + shadcn/Radix), `/web/convex`, `/ios` skeleton, lint/format/CI, env config. |
-| 2 | **Auth & Multi-Tenancy** | Clerk auth (sign in/up), Clerk Organisations 1:1 → clubs, org switcher, `convex` JWT template, Convex `auth.config.ts`, `requireOrgMember`/`requireRole` helpers, Clerk→Convex user/org sync webhook. |
+| 2 | **Auth & Multi-Tenancy** | Clerk auth (sign in/up, identity only), Convex-native clubs + memberships, in-app club switcher and invite-code joins, `convex` JWT template, Convex `auth.config.ts`, `requireOrgMember`/`requireRole` helpers, Clerk→Convex `user.*` sync webhook. |
 | 3 | **Members & Teams** | `members` (people, may not be users), guardians, emergency contacts, teams, team assignments (player/coach/manager), medical-notes redaction. |
 | 4 | **Events & Attendance** | Events (training/match/meeting), RSVPs (going/not_going/maybe), attendance recording, parent-RSVP-for-child. |
 | 5 | **Announcements** | Club/team announcements, pinning, read receipts. |
@@ -90,8 +90,8 @@ v0.1 is done when a real club can run day-to-day operations end to end:
 **Platform**
 - [ ] Monorepo builds; `/web` (Vite/React/TS) and `/web/convex` deploy; `/ios`
       builds and runs.
-- [ ] Clerk auth works; Clerk Organisations map 1:1 to clubs; org switcher works;
-      Convex verifies the Clerk JWT on every call.
+- [ ] Clerk auth works; clubs and memberships are Convex-native; in-app club
+      switcher works; Convex verifies the Clerk JWT on every call.
 - [ ] All tenant data is org-scoped server-side; no client-supplied `orgId` is
       trusted; cross-tenant access is impossible.
 

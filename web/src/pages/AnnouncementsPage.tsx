@@ -47,7 +47,7 @@ export default function AnnouncementsPage() {
     <div>
       <PageHeader
         title="Announcements"
-        description="Club and team updates."
+        description="Organisation and team updates."
         actions={can("coach") ? <NewAnnouncementDialog /> : undefined}
       />
 
@@ -147,7 +147,7 @@ function AnnouncementCard({ announcement }: { announcement: Announcement }) {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant={announcement.teamName ? "secondary" : "muted"}>
-              {announcement.teamName ?? "Club-wide"}
+              {announcement.teamName ?? "Org-wide"}
             </Badge>
             {can("committee") && (
               <Button
@@ -251,7 +251,7 @@ function NewAnnouncementDialog() {
           <DialogHeader>
             <DialogTitle>New announcement</DialogTitle>
             <DialogDescription>
-              Post an update to your club or a specific team.
+              Post an update to your organisation or a specific team.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -281,7 +281,7 @@ function NewAnnouncementDialog() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="org" disabled={!canOrgWide}>
-                    Club-wide{!canOrgWide ? " (committee only)" : ""}
+                    Org-wide{!canOrgWide ? " (committee only)" : ""}
                   </SelectItem>
                   {(teams ?? []).map((t) => (
                     <SelectItem key={t._id} value={t._id}>

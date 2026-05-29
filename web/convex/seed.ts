@@ -9,12 +9,12 @@ import { generateTagId, generateSlug } from "./lib/ids";
  *
  * Run with: `npx convex run seed:run`  (or `npm run seed`).
  *
- * To explore the app against this data, create a Clerk organisation whose id is
- * mirrored here, OR call `seed:attachClerkOrg` after signing in to repoint the
- * demo data at your real Clerk org. For the public site, visit /club/demo-united.
+ * The demo org is looked up by its slug ("demo-united"). To explore the
+ * seeded data while signed in, call `seed:claimDemo` once after signing in —
+ * it grants you ownership and sets the demo org as your active club. For the
+ * public site, visit /club/demo-united.
  */
 
-const DEMO_CLERK_ORG = "org_demo_united";
 const DEMO_SLUG = "demo-united";
 
 export const run = mutation({
@@ -22,7 +22,7 @@ export const run = mutation({
   handler: async (ctx) => {
     const existing = await ctx.db
       .query("organizations")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkOrgId", DEMO_CLERK_ORG))
+      .withIndex("by_slug", (q) => q.eq("slug", DEMO_SLUG))
       .unique();
     if (existing) {
       return { status: "already-seeded", orgId: existing._id };
@@ -30,12 +30,6 @@ export const run = mutation({
 
     const now = Date.now();
     const day = 86_400_000;
-
-    const orgId = await ctx.db.insert("organizations", {
-      clerkOrgId: DEMO_CLERK_ORG,
-      name: "Demo United FC",
-      slug: DEMO_SLUG,
-    });
 
     // Demo users (committee + coach).
     const adminUserId = await ctx.db.insert("users", {
@@ -50,16 +44,20 @@ export const run = mutation({
       firstName: "Sam",
       lastName: "Coach",
     });
+
+    const orgId = await ctx.db.insert("organizations", {
+      name: "Demo United FC",
+      slug: DEMO_SLUG,
+      createdBy: adminUserId,
+    });
     await ctx.db.insert("memberships", {
       orgId,
       userId: adminUserId,
-      clerkUserId: "user_demo_admin",
       role: "owner",
     });
     await ctx.db.insert("memberships", {
       orgId,
       userId: coachUserId,
-      clerkUserId: "user_demo_coach",
       role: "coach",
     });
 
@@ -379,49 +377,42 @@ export const run = mutation({
 });
 
 /**
- * Repoint the demo organisation at the Clerk org you are currently signed into,
- * so you can explore the seeded data in the authenticated app. Call this once
- * after signing in and selecting an organisation.
+ * Grant the signed-in user owner membership on the demo organisation and set
+ * it as their active club. Call once after signing in to explore the seeded
+ * data in the authenticated app.
  */
-export const attachClerkOrg = mutation({
+export const claimDemo = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Sign in first.");
-    const clerkOrgId =
-      (identity.orgId as string | undefined) ??
-      (identity as unknown as { org_id?: string }).org_id;
-    if (!clerkOrgId) throw new Error("Select an organisation first.");
 
     const demo = await ctx.db
       .query("organizations")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkOrgId", DEMO_CLERK_ORG))
+      .withIndex("by_slug", (q) => q.eq("slug", DEMO_SLUG))
       .unique();
     if (!demo) throw new Error("Run seed:run first.");
 
-    await ctx.db.patch(demo._id, { clerkOrgId });
-
-    // Ensure the current user has an owner membership on the demo org.
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
-    if (user) {
-      const existing = await ctx.db
-        .query("memberships")
-        .withIndex("by_org_and_clerk_user", (q) =>
-          q.eq("orgId", demo._id).eq("clerkUserId", identity.subject),
-        )
-        .unique();
-      if (!existing) {
-        await ctx.db.insert("memberships", {
-          orgId: demo._id,
-          userId: user._id,
-          clerkUserId: identity.subject,
-          role: "owner",
-        });
-      }
+    if (!user) throw new Error("User not yet synced — refresh and retry.");
+
+    const existing = await ctx.db
+      .query("memberships")
+      .withIndex("by_org_and_user", (q) =>
+        q.eq("orgId", demo._id).eq("userId", user._id),
+      )
+      .unique();
+    if (!existing) {
+      await ctx.db.insert("memberships", {
+        orgId: demo._id,
+        userId: user._id,
+        role: "owner",
+      });
     }
-    return { status: "attached", orgId: demo._id };
+    await ctx.db.patch(user._id, { activeOrgId: demo._id });
+    return { status: "claimed", orgId: demo._id };
   },
 });

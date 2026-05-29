@@ -27,9 +27,9 @@ Environment variables. These are **not** read from `.env.local`.
 | `CLERK_JWT_ISSUER_DOMAIN`   | yes      | `convex/auth.config.ts`       | Clerk dashboard → JWT templates → `convex` template → Issuer (e.g. `https://your-app.clerk.accounts.dev`). |
 | `CLERK_WEBHOOK_SECRET`      | yes      | `convex/http.ts` (svix verify)| Clerk dashboard → Webhooks → endpoint → Signing secret.                                                    |
 
-The Clerk JWT template must be named **`convex`** and must include
-`org_id`, `org_slug`, `org_name`, `org_role` claims. See
-`docs/security-model.md`.
+The Clerk JWT template must be named **`convex`**. The default identity claims
+(subject, email, name, picture) are enough — GatherHub does **not** use Clerk
+Organizations, so no `org_*` claims are required. See `docs/security-model.md`.
 
 ## iOS (`ios/`)
 

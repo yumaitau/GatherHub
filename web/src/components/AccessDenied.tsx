@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { OrganizationSwitcher } from "@clerk/clerk-react";
+import { OrgSwitcher } from "@/components/OrgSwitcher";
 import { Building2, ShieldOff, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared";
@@ -41,8 +41,8 @@ export function AccessDenied({ error }: { error: unknown }) {
         <EmptyState
           icon={Building2}
           title="You are not a member of this organisation"
-          description="Switch organisation or ask an admin to invite you."
-          action={<OrganizationSwitcher hidePersonal />}
+          description="Switch organisation or ask an admin to invite you with a code."
+          action={<OrgSwitcher />}
         />
       );
 
@@ -65,9 +65,9 @@ export function NoOrganisation() {
     <div className="mx-auto max-w-xl pt-10">
       <EmptyState
         icon={Building2}
-        title="Select or create a club"
-        description="GatherHub organises everything by club. Use the organisation switcher in the top bar to create a new club or select an existing one."
-        action={<OrganizationSwitcher hidePersonal />}
+        title="Select or create an organisation"
+        description="Use the organisation switcher in the top bar to create a new organisation or select an existing one."
+        action={<OrgSwitcher />}
       />
     </div>
   );

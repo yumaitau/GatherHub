@@ -33,7 +33,7 @@ export default function ScanPage() {
       setError(null);
       const result = await convex.query(api.tags.lookupAuthed, { tagId });
       if (!result.found) {
-        setError("No asset in your club matches that tag.");
+        setError("No asset in your organisation matches that tag.");
         return;
       }
       navigate(`/assets/${result.asset._id}`);

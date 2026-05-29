@@ -56,14 +56,13 @@ export interface AuthContext {
 
 /**
  * Resolve the authenticated user, their active organisation, and their role
- * WITHIN that organisation — derived entirely from the verified Clerk JWT.
+ * WITHIN that organisation.
  *
- * The Clerk JWT (template "convex") carries:
- *   - subject              → Clerk user id
- *   - org_id (claim "o.id")→ active Clerk organisation id
- *
- * We never trust an orgId passed by the client. This is the single chokepoint
- * for tenant isolation; see /docs/security-model.md.
+ * Clerk handles identity only — the JWT subject is mapped to the Convex
+ * `users` row. The active org lives on `users.activeOrgId` (set via
+ * `organizations.setActive`) and is validated against the Convex
+ * `memberships` table. We never trust an orgId passed by the client. This is
+ * the single chokepoint for tenant isolation; see /docs/security-model.md.
  */
 export async function getAuthContext(
   ctx: QueryCtx | MutationCtx,
@@ -71,34 +70,23 @@ export async function getAuthContext(
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
 
-  const clerkUserId = identity.subject;
-
-  // Clerk puts the active org id in the `org_id` claim when an org is active.
-  // Convex exposes custom claims on the identity object.
-  const clerkOrgId =
-    (identity.orgId as string | undefined) ??
-    (identity as unknown as { org_id?: string }).org_id;
-  if (!clerkOrgId) return null;
-
   const user = await ctx.db
     .query("users")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", clerkUserId))
+    .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
     .unique();
   if (!user) return null;
-
-  const org = await ctx.db
-    .query("organizations")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkOrgId", clerkOrgId))
-    .unique();
-  if (!org) return null;
+  if (!user.activeOrgId) return null;
 
   const membership = await ctx.db
     .query("memberships")
-    .withIndex("by_org_and_clerk_user", (q) =>
-      q.eq("orgId", org._id).eq("clerkUserId", clerkUserId),
+    .withIndex("by_org_and_user", (q) =>
+      q.eq("orgId", user.activeOrgId!).eq("userId", user._id),
     )
     .unique();
   if (!membership) return null;
+
+  const org = await ctx.db.get(user.activeOrgId);
+  if (!org) return null;
 
   return { user, org, membership, role: membership.role };
 }
@@ -140,20 +128,36 @@ export async function requireOrgMember(
   if (!identity) {
     throw authError("unauthenticated", "Sign in to continue.");
   }
-  const clerkOrgId =
-    (identity.orgId as string | undefined) ??
-    (identity as unknown as { org_id?: string }).org_id;
-  if (!clerkOrgId) {
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
+    .unique();
+  if (!user) {
+    throw authError(
+      "unauthenticated",
+      "Your account is still being created — refresh in a moment.",
+    );
+  }
+  if (!user.activeOrgId) {
     throw authError(
       "no_active_org",
       "Select or create an organisation to continue.",
     );
   }
-  const auth = await getAuthContext(ctx);
-  if (!auth) {
+  const membership = await ctx.db
+    .query("memberships")
+    .withIndex("by_org_and_user", (q) =>
+      q.eq("orgId", user.activeOrgId!).eq("userId", user._id),
+    )
+    .unique();
+  if (!membership) {
     throw authError("not_member", "You are not a member of this organisation.");
   }
-  return auth;
+  const org = await ctx.db.get(user.activeOrgId);
+  if (!org) {
+    throw authError("not_member", "You are not a member of this organisation.");
+  }
+  return { user, org, membership, role: membership.role };
 }
 
 export function hasAtLeastRole(role: Role, minimum: Role): boolean {

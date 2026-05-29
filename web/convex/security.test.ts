@@ -13,27 +13,24 @@ async function seedOrg(
   opts: { clerkOrg: string; clerkUser: string; role: Role },
 ) {
   const ids = await t.run(async (ctx) => {
-    const orgId = await ctx.db.insert("organizations", {
-      clerkOrgId: opts.clerkOrg,
-      name: opts.clerkOrg,
-      slug: opts.clerkOrg,
-    });
     const userId = await ctx.db.insert("users", {
       clerkUserId: opts.clerkUser,
       email: `${opts.clerkUser}@example.test`,
     });
+    const orgId = await ctx.db.insert("organizations", {
+      name: opts.clerkOrg,
+      slug: opts.clerkOrg,
+      createdBy: userId,
+    });
     await ctx.db.insert("memberships", {
       orgId,
       userId,
-      clerkUserId: opts.clerkUser,
       role: opts.role,
     });
+    await ctx.db.patch(userId, { activeOrgId: orgId });
     return { orgId, userId };
   });
-  const as = t.withIdentity({
-    subject: opts.clerkUser,
-    orgId: opts.clerkOrg,
-  });
+  const as = t.withIdentity({ subject: opts.clerkUser });
   return { ...ids, as };
 }
 
@@ -84,20 +81,20 @@ describe("role-based permissions", () => {
       }),
     ).rejects.toThrow(/permission/i);
 
-    const coach = t.withIdentity({ subject: "user_coach", orgId: "org_c" });
+    const coach = t.withIdentity({ subject: "user_coach" });
     await t.run(async (ctx) => {
       const org = await ctx.db
         .query("organizations")
-        .withIndex("by_clerk_id", (q) => q.eq("clerkOrgId", "org_c"))
+        .withIndex("by_slug", (q) => q.eq("slug", "org_c"))
         .unique();
       const userId = await ctx.db.insert("users", {
         clerkUserId: "user_coach",
         email: "coach@example.test",
+        activeOrgId: org!._id,
       });
       await ctx.db.insert("memberships", {
         orgId: org!._id,
         userId,
-        clerkUserId: "user_coach",
         role: "coach",
       });
     });
@@ -111,6 +108,92 @@ describe("role-based permissions", () => {
   test("anonymous callers are rejected", async () => {
     const t = convexTest(schema, modules);
     await expect(t.query(api.members.list, {})).rejects.toThrow();
+  });
+});
+
+describe("organisation lifecycle (Convex-native)", () => {
+  test("signed-in user with no active org gets no_active_org", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", {
+        clerkUserId: "user_lonely",
+        email: "lonely@example.test",
+      });
+    });
+    const as = t.withIdentity({ subject: "user_lonely" });
+    await expect(as.query(api.members.list, {})).rejects.toThrow(
+      /no_active_org|Select or create/i,
+    );
+  });
+
+  test("create + joinByCode + setActive + leave round-trip", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", {
+        clerkUserId: "user_owner",
+        email: "owner@example.test",
+      });
+      await ctx.db.insert("users", {
+        clerkUserId: "user_joiner",
+        email: "joiner@example.test",
+      });
+    });
+    const owner = t.withIdentity({ subject: "user_owner" });
+    const joiner = t.withIdentity({ subject: "user_joiner" });
+
+    const { orgId } = await owner.mutation(api.organizations.create, {
+      name: "Test FC",
+    });
+    // Owner can read their own club immediately (active org was set).
+    const ctx1 = await owner.query(api.sync.currentContext);
+    expect(ctx1?.org.id).toBe(orgId);
+    expect(ctx1?.role).toBe("owner");
+
+    // Rotate invite code, then have a second user join.
+    const { code } = await owner.mutation(
+      api.organizations.rotateInviteCode,
+      {},
+    );
+    await joiner.mutation(api.organizations.joinByCode, { code });
+    const ctx2 = await joiner.query(api.sync.currentContext);
+    expect(ctx2?.org.id).toBe(orgId);
+    expect(ctx2?.role).toBe("player");
+
+    // Bad codes are rejected.
+    await expect(
+      joiner.mutation(api.organizations.joinByCode, { code: "ZZZZZZZZZZ" }),
+    ).rejects.toThrow(/Invalid invite code/i);
+
+    // The last owner cannot leave their only-owner club.
+    await expect(
+      owner.mutation(api.organizations.leave, { orgId }),
+    ).rejects.toThrow(/last owner/i);
+
+    // Joiner leaves cleanly; their active org clears.
+    await joiner.mutation(api.organizations.leave, { orgId });
+    expect(await joiner.query(api.sync.currentContext)).toBeNull();
+  });
+
+  test("setActive denies switching to a club the user is not in", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", {
+        clerkUserId: "user_a",
+        email: "a@example.test",
+      });
+      await ctx.db.insert("users", {
+        clerkUserId: "user_b",
+        email: "b@example.test",
+      });
+    });
+    const a = t.withIdentity({ subject: "user_a" });
+    const b = t.withIdentity({ subject: "user_b" });
+    const { orgId } = await a.mutation(api.organizations.create, {
+      name: "Private FC",
+    });
+    await expect(
+      b.mutation(api.organizations.setActive, { orgId }),
+    ).rejects.toThrow(/Not a member/i);
   });
 });
 

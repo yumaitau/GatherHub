@@ -1,6 +1,7 @@
-import { UserProfile, useOrganizationList } from "@clerk/clerk-react";
-import { useQuery } from "convex/react";
+import { UserProfile } from "@clerk/clerk-react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { PageHeader, LoadingState } from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -48,13 +49,12 @@ export default function ProfilePage() {
 
 function MembershipsCard() {
   const memberships = useQuery(api.sync.myMemberships);
-  const { setActive, isLoaded } = useOrganizationList();
+  const setActive = useMutation(api.organizations.setActive);
 
   if (memberships === undefined) return <LoadingState />;
 
-  async function switchTo(clerkOrgId: string) {
-    if (!isLoaded || !setActive) return;
-    await setActive({ organization: clerkOrgId });
+  async function switchTo(orgId: Id<"organizations">) {
+    await setActive({ orgId });
   }
 
   return (
@@ -66,13 +66,13 @@ function MembershipsCard() {
         {memberships.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             You are not a member of any organisation yet. Accept an invite from
-            an admin or create your own club from the organisation switcher.
+            an admin or create your own organisation from the switcher.
           </p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Club</TableHead>
+                <TableHead>Organisation</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead className="w-32" />
               </TableRow>
@@ -87,14 +87,17 @@ function MembershipsCard() {
                     <Badge variant="secondary">{humanise(m.role)}</Badge>
                   </TableCell>
                   <TableCell>
-                    {m.org && (
+                    {m.org && !m.isActive && (
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => switchTo(m.org!.clerkOrgId)}
+                        onClick={() => switchTo(m.org!.id as Id<"organizations">)}
                       >
                         Switch to
                       </Button>
+                    )}
+                    {m.isActive && (
+                      <Badge variant="outline">Active</Badge>
                     )}
                   </TableCell>
                 </TableRow>

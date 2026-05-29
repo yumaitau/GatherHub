@@ -16,8 +16,9 @@ GatherHub answers the questions a committee actually has:
 
 ## Highlights
 
-- **Multi-tenant** by club using Clerk organisations — strict, server-enforced
-  data isolation.
+- **Multi-tenant** by club, owned entirely in the Convex database — Clerk is
+  used only for user identity. Every query/mutation derives the active club
+  from `users.activeOrgId` on the server, never from client input.
 - **KitTrace** — first-class asset/kit tracking with QR codes, an NFC-ready data
   model, full check-out/in/transfer/lost/maintenance/retire operations, and an
   **immutable audit log** for every action.
@@ -38,7 +39,7 @@ GatherHub answers the questions a committee actually has:
 | Frontend    | React + TypeScript + Vite + Tailwind + shadcn-style (Radix)   |
 | Routing     | React Router v6                                               |
 | Backend     | Convex (database, serverless functions, file storage)        |
-| Auth        | Clerk (with organisations for multi-tenancy)                  |
+| Auth        | Clerk (identity only — clubs live in Convex)                  |
 | Mobile      | SwiftUI + Clerk iOS SDK + Convex Swift client                 |
 | QR / NFC    | `qrcode` (web), AVFoundation + Core NFC (iOS)                 |
 
@@ -65,7 +66,8 @@ GatherHub/
 
 - Node.js 20+
 - A [Convex](https://convex.dev) account
-- A [Clerk](https://clerk.com) account with **Organizations** enabled
+- A [Clerk](https://clerk.com) account (Organizations feature **not** required —
+  clubs are managed in Convex)
 
 ### 1. Install
 
@@ -75,8 +77,10 @@ npm install
 
 ### 2. Configure Clerk
 
-1. Create a Clerk application and **enable Organizations**.
-2. Create a **JWT template named `convex`** (Clerk → JWT Templates → Convex).
+1. Create a Clerk application. Leave the Organizations feature **disabled** —
+   GatherHub manages clubs itself.
+2. Create a **JWT template named `convex`** (Clerk → JWT Templates → Convex)
+   using the default claims. No org claims are needed.
 3. Copy your **Publishable key**.
 
 ### 3. Configure Convex
@@ -116,8 +120,10 @@ npm run convex:dev    # Convex functions (watch mode)
 npm run dev           # Vite dev server → http://localhost:5173
 ```
 
-Sign in, create an organisation (your club), and you're in. The app syncs your
-Clerk user/org into Convex automatically on first load.
+Sign in and use the club switcher in the top bar to **create a club** or **join
+one with an invite code**. Either action sets the club as your active org. The
+app syncs your Clerk user into Convex automatically on first load; clubs and
+memberships are created entirely in-app.
 
 ### 6. Seed demo data (optional)
 
@@ -125,9 +131,9 @@ Clerk user/org into Convex automatically on first load.
 npm run seed          # creates the "Demo United FC" demo club
 ```
 
-Then, signed in to a club, you can run `npx convex run seed:attachClerkOrg` to
-point the demo data at your Clerk org and explore it in the authenticated app.
-The public site for the demo club is at `/club/demo-united`.
+Then, signed in, run `npx convex run seed:claimDemo` to grant yourself owner
+membership on the demo club and switch to it. The public site for the demo
+club is at `/club/demo-united`.
 
 ## iOS app
 

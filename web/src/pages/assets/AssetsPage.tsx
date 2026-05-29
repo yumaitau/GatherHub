@@ -114,7 +114,7 @@ export default function AssetsPage() {
     <div>
       <PageHeader
         title="KitTrace"
-        description="Track every piece of club kit and equipment."
+        description="Track every piece of kit and equipment."
         actions={
           <>
             <Button variant="outline" asChild>

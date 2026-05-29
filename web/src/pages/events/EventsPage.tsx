@@ -115,7 +115,7 @@ export default function EventsPage() {
                     </span>
                   )}
                   {e.teamName && <span>{e.teamName}</span>}
-                  {!e.teamName && <span>Club-wide</span>}
+                  {!e.teamName && <span>Org-wide</span>}
                 </CardContent>
               </Card>
             </Link>
@@ -249,10 +249,10 @@ function NewEventDialog() {
               <Label>Team</Label>
               <Select value={teamId} onValueChange={setTeamId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Club-wide" />
+                  <SelectValue placeholder="Org-wide" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Club-wide</SelectItem>
+                  <SelectItem value="none">Org-wide</SelectItem>
                   {(teams ?? []).map((t) => (
                     <SelectItem key={t._id} value={t._id}>
                       {t.name}

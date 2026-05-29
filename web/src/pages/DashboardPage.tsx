@@ -93,8 +93,8 @@ export default function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title={`${org?.name ?? "Club"} dashboard`}
-        description="Your club at a glance."
+        title={`${org?.name ?? "Organisation"} dashboard`}
+        description="Your organisation at a glance."
       />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { OrganizationSwitcher, UserButton } from "@clerk/clerk-react";
+import { UserButton } from "@clerk/clerk-react";
+import { OrgSwitcher } from "@/components/OrgSwitcher";
 import {
   LayoutDashboard,
   Users,
@@ -73,11 +74,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="hidden sm:inline">GatherHub</span>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <OrganizationSwitcher
-            hidePersonal
-            afterCreateOrganizationUrl="/"
-            afterSelectOrganizationUrl="/"
-          />
+          <OrgSwitcher />
           <UserButton afterSignOutUrl="/" />
         </div>
       </header>
@@ -115,7 +112,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Main */}
         <main className="flex-1 p-4 md:p-8 min-w-0">
           {isLoading ? (
-            <LoadingState label="Loading your club…" />
+            <LoadingState label="Loading your organisation…" />
           ) : !isSignedInToOrg || !org ? (
             <NoOrganisation />
           ) : (

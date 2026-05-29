@@ -1,6 +1,6 @@
 import * as React from "react";
-import { OrganizationProfile } from "@clerk/clerk-react";
 import { useQuery, useMutation } from "convex/react";
+import { Mail, RefreshCw, X } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -24,9 +24,10 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { PageHeader, LoadingState } from "@/components/shared";
+import { Badge } from "@/components/ui/badge";
 import { useGatherHub } from "@/lib/gatherhub";
 import { ALL_ROLES, type Role } from "@/lib/roles";
-import { humanise } from "@/lib/utils";
+import { humanise, formatDateTime } from "@/lib/utils";
 
 export default function SettingsPage() {
   const { org, can } = useGatherHub();
@@ -35,7 +36,7 @@ export default function SettingsPage() {
     <div>
       <PageHeader
         title="Settings"
-        description={`Manage ${org?.name ?? "your club"}.`}
+        description={`Manage ${org?.name ?? "your organisation"}.`}
       />
       <Tabs defaultValue="roles">
         <TabsList>
@@ -62,23 +63,200 @@ export default function SettingsPage() {
 }
 
 /**
- * Invitations & members managed by Clerk. Clerk handles sending invites,
- * listing pending ones, and revocation; the role chosen at invite time maps
- * to a GatherHub role on acceptance via the webhook in convex/http.ts → the
- * `mapClerkRole` function in convex/clerk.ts. Non-admins do not see this tab
- * because the trigger is hidden above, and Clerk also enforces server-side.
+ * Convex-native invitations: send by email + shareable invite code. Admin+
+ * only (gated by the tab trigger and enforced server-side in
+ * `convex/invitations.ts` / `convex/organizations.ts`).
  */
 function InvitationsTab() {
   return (
+    <div className="grid gap-6">
+      <SendInviteCard />
+      <InviteCodeCard />
+      <InvitationListCard />
+    </div>
+  );
+}
+
+function SendInviteCard() {
+  const send = useMutation(api.invitations.send);
+  const [email, setEmail] = React.useState("");
+  const [role, setRole] = React.useState<Role>("player");
+  const [busy, setBusy] = React.useState(false);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await send({ email: email.trim(), role });
+      setMessage(`Invitation sent to ${email.trim()}.`);
+      setEmail("");
+      setRole("player");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send invite.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
     <Card>
       <CardHeader>
-        <CardTitle>Invite members</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="h-4 w-4" /> Invite by email
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <OrganizationProfile
-          routing="hash"
-          appearance={{ elements: { rootBox: "w-full" } }}
-        />
+        <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+          <div className="grid gap-1.5">
+            <Label htmlFor="inv-email">Email</Label>
+            <Input
+              id="inv-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="person@example.com"
+              required
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Role</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ALL_ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {humanise(r)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="submit" disabled={busy || !email.trim()}>
+            {busy ? "Sending…" : "Send invite"}
+          </Button>
+        </form>
+        {message && <p className="mt-3 text-sm text-emerald-600">{message}</p>}
+        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function InviteCodeCard() {
+  const data = useQuery(api.organizations.getInviteCode);
+  const rotate = useMutation(api.organizations.rotateInviteCode);
+  const [busy, setBusy] = React.useState(false);
+
+  async function onRotate() {
+    setBusy(true);
+    try {
+      await rotate({});
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Shareable invite code</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Anyone signed in with this code can join as a Player. Rotate to invalidate the previous code.
+        </p>
+        <div className="flex items-center gap-3">
+          <code className="rounded-md border bg-muted px-3 py-1.5 font-mono text-sm">
+            {data?.code ?? "—"}
+          </code>
+          <Button variant="outline" onClick={onRotate} disabled={busy}>
+            <RefreshCw className="h-4 w-4" />
+            {busy ? "Rotating…" : "Rotate"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function InvitationListCard() {
+  const invites = useQuery(api.invitations.list);
+  const revoke = useMutation(api.invitations.revoke);
+
+  if (invites === undefined) return <LoadingState />;
+  if (invites.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Invitations</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">No invitations sent yet.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Invitations</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Sent</TableHead>
+              <TableHead className="w-20" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {invites.map((i) => (
+              <TableRow key={i.id}>
+                <TableCell>{i.email}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{humanise(i.role)}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      i.status === "accepted"
+                        ? "success"
+                        : i.status === "pending"
+                          ? "secondary"
+                          : "muted"
+                    }
+                  >
+                    {humanise(i.status)}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatDateTime(i.sentAt)}
+                </TableCell>
+                <TableCell>
+                  {i.status === "pending" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => revoke({ invitationId: i.id })}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );
@@ -145,7 +323,7 @@ function RolesTab() {
         </Table>
         <p className="mt-4 text-xs text-muted-foreground">
           Roles control what members can do. All permissions are enforced
-          server-side. These app roles are independent of Clerk's org roles.
+          server-side.
         </p>
       </CardContent>
     </Card>
@@ -221,7 +399,7 @@ function PublicSiteTab() {
             onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
           />
           <span className="text-sm font-medium">
-            Enable public website for this club
+            Enable public website for this organisation
           </span>
         </label>
         {publicUrl && form.enabled && (

@@ -23,8 +23,9 @@ Set the production environment variables in the Convex dashboard:
 
 The production Convex deployment exposes an HTTP site URL
 (`https://<name>.convex.site`). Configure the Clerk webhook endpoint as
-`<CONVEX_SITE_URL>/clerk-webhook` and subscribe to `user.*`, `organization.*`,
-and `organizationMembership.*` events.
+`<CONVEX_SITE_URL>/clerk-webhook` and subscribe to `user.*` events only.
+GatherHub does not use Clerk Organizations; do not subscribe to
+`organization.*` / `organizationMembership.*` events.
 
 ## 2. Web frontend
 

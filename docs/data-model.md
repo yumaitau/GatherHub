@@ -9,11 +9,14 @@ the field lists.
 ## Conventions
 
 - **Org scoping.** Every tenant-owned table carries `orgId: Id<"organisations">`
-  and a `by_org` index. All queries derive `orgId` from the authenticated Clerk
-  session, never from client input (see `security-model.md`).
-- **Mirrors of Clerk.** `organisations` and `users` mirror Clerk
-  organisations/users (kept in sync via webhook). They hold a stable
-  `clerkId`/`clerkOrgId` plus cached display fields.
+  and a `by_org` index. All queries derive `orgId` from the authenticated user's
+  Convex record (`users.activeOrgId`), validated against `memberships` — never
+  from client input (see `security-model.md`).
+- **Convex-native orgs.** `organisations` and `memberships` live entirely in
+  Convex; they are created in-app and Clerk is never consulted for them.
+- **Mirror of Clerk users.** `users` mirrors Clerk identities (kept in sync via
+  the `user.*` webhooks and a client-side `ensureFromClient` upsert). It holds
+  the stable Clerk `subject` plus cached display fields.
 - **Members vs users.** A **member** is a person in a club and may *not* be a
   GatherHub `user` (e.g. a child player, or an adult who never signs in). When a
   member is also a user, `members.userId` links them.
@@ -27,7 +30,7 @@ the field lists.
 ## Enums
 
 ```ts
-// Application roles (mapped from Clerk org_role). Ordered most → least privileged.
+// Application roles (stored on the memberships row). Ordered most → least privileged.
 export const roles = v.union(
   v.literal("owner"),
   v.literal("admin"),
@@ -151,46 +154,48 @@ erDiagram
 ## Tables
 
 ### organisations
-Mirrors a Clerk organisation; one row per club/tenant.
+One row per club/tenant. Created and owned entirely in Convex.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `clerkOrgId` | `v.string()` | Clerk organisation id; unique. |
-| `name` | `v.string()` | Club name (cached from Clerk). |
-| `slug` | `v.string()` | URL slug (cached from Clerk). |
-| `logoStorageId` | `v.optional(v.id("_storage"))` | Club logo in Convex storage. |
-| `timezone` | `v.string()` | IANA tz, default `Australia/Sydney`. |
-| `createdByUserId` | `v.optional(v.id("users"))` | Creator. |
+| `name` | `v.string()` | Club name. |
+| `slug` | `v.optional(v.string())` | URL slug; unique when set. |
+| `imageUrl` | `v.optional(v.string())` | Logo URL. |
+| `createdBy` | `v.id("users")` | Creator (granted `owner` membership). |
+| `inviteCode` | `v.optional(v.string())` | Opaque code used by `organizations.joinByCode`; rotate via `organizations.rotateInviteCode`. |
 
-**Org-scoping field:** *(is the org)* — `clerkOrgId`.
-**Indexes:** `by_clerkOrgId` `["clerkOrgId"]`, `by_slug` `["slug"]`.
+**Org-scoping field:** *(is the org)* — the row's own `_id`.
+**Indexes:** `by_slug` `["slug"]`, `by_invite_code` `["inviteCode"]`.
 
 ### users
-Mirrors a Clerk user. Global (not org-scoped); org membership is via `memberships`.
+Identity mirror — one row per Clerk subject. Global (not org-scoped); club
+membership is tracked separately in `memberships`. `activeOrgId` points at the
+club the user is currently working in.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `clerkUserId` | `v.string()` | Clerk user id; unique. |
-| `email` | `v.string()` | Primary email (cached). |
+| `clerkUserId` | `v.string()` | Clerk subject id; unique. |
+| `email` | `v.optional(v.string())` | Primary email (cached from Clerk). |
 | `firstName` | `v.optional(v.string())` | |
 | `lastName` | `v.optional(v.string())` | |
 | `imageUrl` | `v.optional(v.string())` | Clerk avatar URL. |
+| `activeOrgId` | `v.optional(v.id("organisations"))` | Currently selected club; set by `organizations.setActive`. |
 
 **Org-scoping field:** none (global).
-**Indexes:** `by_clerkUserId` `["clerkUserId"]`, `by_email` `["email"]`.
+**Indexes:** `by_clerk_id` `["clerkUserId"]`.
 
 ### memberships
-User ↔ org link carrying the application role. Mirrors Clerk org membership.
+User ↔ club link carrying the application role. Convex-native (not synced
+from Clerk).
 
 | Field | Type | Notes |
 | --- | --- | --- |
 | `orgId` | `v.id("organisations")` | |
 | `userId` | `v.id("users")` | |
-| `role` | `roles` | Mapped from Clerk `org_role`. |
-| `active` | `v.boolean()` | Suspended memberships set `false`. |
+| `role` | `roles` | Set on join (owner for creator, player for invite-code joiners); changed via `roles.updateRole`. |
 
 **Org-scoping field:** `orgId`.
-**Indexes:** `by_org` `["orgId"]`, `by_user` `["userId"]`, `by_org_user` `["orgId","userId"]`.
+**Indexes:** `by_org` `["orgId"]`, `by_user` `["userId"]`, `by_org_and_user` `["orgId","userId"]`, `by_user_and_org` `["userId","orgId"]`.
 
 ### members
 A person in a club. May or may not be a `user`.
@@ -505,7 +510,7 @@ Per-org configuration for the public website. One row per org.
 
 | Table | Org-scoped? | Scoping field |
 | --- | --- | --- |
-| organisations | is the org | `clerkOrgId` |
+| organisations | is the org | own `_id` (orgs are Convex-native) |
 | users | no (global) | — |
 | memberships | yes | `orgId` |
 | members | yes | `orgId` |

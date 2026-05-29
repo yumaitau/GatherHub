@@ -20,9 +20,9 @@ export default function PublicSitePage() {
   if (data === null) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-2 text-center">
-        <h1 className="text-2xl font-bold">Club not found</h1>
+        <h1 className="text-2xl font-bold">Organisation not found</h1>
         <p className="text-muted-foreground">
-          This club doesn't have a public website, or the link is incorrect.
+          This organisation doesn't have a public website, or the link is incorrect.
         </p>
       </div>
     );

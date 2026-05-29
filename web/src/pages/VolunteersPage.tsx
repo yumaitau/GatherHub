@@ -69,7 +69,7 @@ export default function VolunteersPage() {
     <div>
       <PageHeader
         title="Volunteers"
-        description="People who help your club run, and their certifications."
+        description="People who help your organisation run, and their certifications."
         actions={
           <>
             <Button
