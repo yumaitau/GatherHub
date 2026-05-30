@@ -24,6 +24,15 @@ enum Secrets {
     /// Must match `applicationID` in `web/convex/auth.config.ts` ("convex").
     static let convexJWTTemplate = "convex"
 
+    /// SnagSpot team token used by YumaSupportKit to deliver in-app support
+    /// tickets. Generated in the SnagSpot dashboard. When left blank, the
+    /// support form falls back to opening a mailto: link to `supportEmail`.
+    static let snagSpotToken = ""
+
+    /// Fallback email address shown to users when SnagSpot is unreachable
+    /// or unconfigured.
+    static let supportEmail = "support@yumait.com.au"
+
     /// True when the placeholders above have not been replaced. Used by the UI
     /// to show a friendly "configure me" message instead of failing silently.
     static var isConfigured: Bool {

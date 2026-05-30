@@ -1,5 +1,6 @@
 import SwiftUI
 import Clerk
+import YumaSupportKit
 
 /// GatherHub — field-operations companion app for community sports clubs.
 ///
@@ -21,6 +22,21 @@ struct GatherHubApp: App {
         if Secrets.isConfigured {
             Clerk.shared.configure(publishableKey: Secrets.clerkPublishableKey)
         }
+
+        // Configure YumaSupportKit so in-app "Contact support" routes
+        // tickets to SnagSpot. The configuration is idempotent and safe
+        // to call before sign-in; user details are layered in lazily
+        // when ProfileView opens the support sheet.
+        YumaSupport.configure(
+            YumaSupportConfiguration(
+                snagSpotToken: Secrets.snagSpotToken,
+                customMetadata: [
+                    "app": .string("gatherhub-ios"),
+                ],
+                diagnosticsEnabledByDefault: true,
+                fallbackEmail: Secrets.supportEmail
+            )
+        )
 
         let authService = AuthService()
         _auth = StateObject(wrappedValue: authService)

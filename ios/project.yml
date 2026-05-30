@@ -25,6 +25,9 @@ packages:
   ConvexMobile:
     url: https://github.com/get-convex/convex-swift
     from: "0.4.0"
+  YumaKit:
+    url: https://github.com/yumaitau/yumakit-ios
+    branch: main
 
 targets:
   GatherHub:
@@ -41,6 +44,10 @@ targets:
         product: Clerk
       - package: ConvexMobile
         product: ConvexMobile
+      - package: YumaKit
+        product: YumaBrandKit
+      - package: YumaKit
+        product: YumaSupportKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.gatherhub.app
