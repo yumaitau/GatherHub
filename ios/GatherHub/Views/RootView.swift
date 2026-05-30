@@ -28,11 +28,6 @@ struct RootView: View {
                 ProgressView("Loading…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.gh.paper.ignoresSafeArea())
-                    .task {
-                        // Drive load() from the same view that consumes
-                        // isLoaded so the transition is observed.
-                        try? await clerk.load()
-                    }
             } else if clerk.user == nil {
                 SignInView()
             } else {

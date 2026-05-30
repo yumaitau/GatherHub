@@ -10,6 +10,12 @@ import YumaSupportKit
 @main
 struct GatherHubApp: App {
 
+    /// Tracked Clerk instance. Matches the Clerk SDK Quickstart pattern
+    /// (Examples/Quickstart) — holding Clerk.shared as @State at App
+    /// scope is what registers the @Observable with SwiftUI's tracking
+    /// loop so child views see sign-in transitions.
+    @State private var clerk = Clerk.shared
+
     /// Clerk session state, shared app-wide.
     @StateObject private var auth: AuthService
 
@@ -17,16 +23,8 @@ struct GatherHubApp: App {
     @StateObject private var convex: ConvexService
 
     init() {
-        // Configure Clerk with the publishable key before anything else.
-        // (No-op friendly when the key is still a placeholder.)
-        if Secrets.isConfigured {
-            Clerk.shared.configure(publishableKey: Secrets.clerkPublishableKey)
-        }
-
-        // Configure YumaSupportKit so in-app "Contact support" routes
-        // tickets to SnagSpot. The configuration is idempotent and safe
-        // to call before sign-in; user details are layered in lazily
-        // when ProfileView opens the support sheet.
+        // YumaSupportKit configures synchronously so the in-app "Contact
+        // support" route is wired before anyone navigates to Profile.
         YumaSupport.configure(
             YumaSupportConfiguration(
                 snagSpotToken: Secrets.snagSpotToken,
@@ -52,13 +50,25 @@ struct GatherHubApp: App {
             RootView()
                 .environmentObject(auth)
                 .environmentObject(convex)
-                // Handle gatherhub://asset/tag_xxx deep links.
                 .onOpenURL { url in
                     if let tagId = TagParser.extractTagId(from: url.absoluteString) {
                         DeepLinkRouter.shared.pendingTagId = tagId
                     }
                 }
-                .task { await auth.bootstrap() }
+                // Quickstart pattern: configure + load inside the same
+                // .task that the @State-tracked clerk lives under. This
+                // guarantees the load() call's mutations propagate to
+                // the same observation cycle as views reading clerk.user.
+                .task {
+                    if Secrets.isConfigured {
+                        clerk.configure(publishableKey: Secrets.clerkPublishableKey)
+                    }
+                    do {
+                        try await clerk.load()
+                    } catch {
+                        dump(error)
+                    }
+                }
         }
     }
 }

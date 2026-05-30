@@ -69,15 +69,11 @@ struct SignInView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.gh.paper.ignoresSafeArea())
         .sheet(isPresented: $isPresentingAuth) {
-            // Clerk's hosted experience handles every credential type
-            // configured for the tenant (password, email code, OAuth,
-            // SSO, passkeys, MFA). AuthService.startObservingClerk()
-            // tracks the underlying Clerk @Observable and mirrors
-            // session changes into our @Published state — no manual
-            // refresh on dismiss required.
-            NavigationStack {
-                AuthView(mode: .signInOrUp, isDismissable: true)
-            }
+            // Mirrors the Clerk SDK Quickstart: present AuthView
+            // directly, no NavigationStack wrapper. AuthView manages
+            // its own internal navigation between sign-in, sign-up,
+            // verification, and dismiss-on-success.
+            AuthView(mode: .signInOrUp, isDismissable: true)
         }
         // Clerk drives the transition: once `clerk.user` is non-nil the
         // RootView swaps screens and this sheet is torn down with the
