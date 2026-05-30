@@ -52,7 +52,8 @@ interface MemberRow {
 }
 
 export default function MembersPage() {
-  const { can } = useGatherHub();
+  const { can, org } = useGatherHub();
+  const soccerMode = Boolean(org?.soccerMode);
   const [status, setStatus] = React.useState<StatusFilter>("all");
   const [lifetimeOnly, setLifetimeOnly] = React.useState(false);
 
@@ -150,7 +151,7 @@ export default function MembersPage() {
   return (
     <div>
       <PageHeader
-        title="Members"
+        title={`${soccerMode ? "Players" : "Members"} (${members?.length ?? 0})`}
         description="Everyone in your organisation."
         actions={
           <>

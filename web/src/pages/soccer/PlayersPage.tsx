@@ -61,7 +61,7 @@ export default function SoccerPlayersPage() {
   return (
     <div>
       <PageHeader
-        title="Players"
+        title={`Player Roster (${rows?.length ?? 0})`}
         description="Every member with a soccer registration or evaluation, including team, division, and grade progress."
         actions={
           <Button

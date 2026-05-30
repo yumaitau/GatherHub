@@ -84,7 +84,7 @@ export default function RegistrationsPage() {
   return (
     <div>
       <PageHeader
-        title="Registrations"
+        title={`Player Registrations (${rows?.length ?? 0})`}
         description="Track who's registered, paid, and assigned to a team or competition."
         actions={
           <>

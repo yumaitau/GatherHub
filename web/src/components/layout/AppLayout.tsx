@@ -20,6 +20,9 @@ import {
   Gauge,
   Trophy,
   Layers,
+  Layers3,
+  UserCog,
+  Award,
 } from "lucide-react";
 import { useGatherHub } from "@/lib/gatherhub";
 import { cn } from "@/lib/utils";
@@ -48,53 +51,78 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const NAV: NavGroup[] = [
-  {
-    label: "Workspace",
-    items: [
-      {
-        to: "/",
-        label: "Dashboard",
-        icon: LayoutDashboard,
-        shortcut: "D",
-        end: true,
-      },
-    ],
-  },
-  {
-    label: "Operations",
-    items: [
-      { to: "/members", label: "Members", icon: Users, shortcut: "M" },
-      { to: "/teams", label: "Teams", icon: Shield, shortcut: "T" },
-      { to: "/events", label: "Events", icon: CalendarDays, shortcut: "E" },
-      { to: "/announcements", label: "Announcements", icon: Megaphone },
-      { to: "/assets", label: "KitTrace", icon: Package, shortcut: "K" },
-      { to: "/assets/history", label: "Asset history", icon: History },
-      { to: "/volunteers", label: "Volunteers", icon: HandHeart },
-    ],
-  },
-  {
-    label: "Club",
-    items: [
-      {
-        to: "/sponsors",
-        label: "Sponsors",
-        icon: Building2,
-        minRole: "committee",
-      },
-      { to: "/news", label: "News", icon: Newspaper, minRole: "committee" },
-    ],
-  },
-];
+function buildNav(soccerMode: boolean): NavGroup[] {
+  return [
+    {
+      label: "Workspace",
+      items: [
+        {
+          to: "/",
+          label: "Dashboard",
+          icon: LayoutDashboard,
+          shortcut: "D",
+          end: true,
+        },
+      ],
+    },
+    {
+      label: "Operations",
+      items: [
+        {
+          to: "/members",
+          label: soccerMode ? "Players" : "Members",
+          icon: Users,
+          shortcut: "M",
+        },
+        { to: "/teams", label: "Teams", icon: Shield, shortcut: "T" },
+        { to: "/events", label: "Events", icon: CalendarDays, shortcut: "E" },
+        { to: "/announcements", label: "Announcements", icon: Megaphone },
+        { to: "/assets", label: "KitTrace", icon: Package, shortcut: "K" },
+        { to: "/assets/history", label: "Asset history", icon: History },
+        { to: "/volunteers", label: "Volunteers", icon: HandHeart },
+      ],
+    },
+    {
+      label: "Club",
+      items: [
+        { to: "/lifetime-members", label: "Lifetime Members", icon: Award },
+        {
+          to: "/sponsors",
+          label: "Sponsors",
+          icon: Building2,
+          minRole: "committee",
+        },
+        { to: "/news", label: "News", icon: Newspaper, minRole: "committee" },
+      ],
+    },
+  ];
+}
 
 const SOCCER_NAV: NavGroup = {
   label: "Soccer",
   items: [
-    { to: "/soccer/players", label: "Players", icon: Trophy },
+    { to: "/soccer/players", label: "Player Roster", icon: Trophy },
     {
       to: "/soccer/registrations",
-      label: "Registrations",
+      label: "Player Registrations",
       icon: ClipboardList,
+      minRole: "committee",
+    },
+    {
+      to: "/soccer/coaches-managers",
+      label: "Coaches & Managers",
+      icon: UserCog,
+    },
+    {
+      to: "/soccer/competitions",
+      label: "Competitions",
+      icon: Trophy,
+      minRole: "committee",
+    },
+    {
+      to: "/soccer/age-groups",
+      label: "Age Groups",
+      icon: Layers3,
       minRole: "committee",
     },
     { to: "/soccer/divisions", label: "Divisions", icon: Layers },
@@ -122,7 +150,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { isLoading, isSignedInToOrg, org, can } = useGatherHub();
   const soccerMode = Boolean(org?.soccerMode);
-  const groups = soccerMode ? [...NAV, SOCCER_NAV] : NAV;
+  const baseNav = buildNav(soccerMode);
+  const groups = soccerMode ? [...baseNav, SOCCER_NAV] : baseNav;
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const location = useLocation();
 

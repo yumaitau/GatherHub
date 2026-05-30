@@ -28,6 +28,11 @@ import RegistrationsPage from "@/pages/soccer/RegistrationsPage";
 import GradingPage, { PlayerEvaluationPage } from "@/pages/soccer/GradingPage";
 import SoccerPlayersPage from "@/pages/soccer/PlayersPage";
 import SoccerDivisionsPage from "@/pages/soccer/DivisionsPage";
+import CoachesManagersPage from "@/pages/soccer/CoachesManagersPage";
+import CompetitionsPage from "@/pages/soccer/CompetitionsPage";
+import AgeGroupsPage from "@/pages/soccer/AgeGroupsPage";
+import LifetimeMembersPage from "@/pages/members/LifetimeMembersPage";
+import AuditLogsPage from "@/pages/settings/AuditLogsPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 import PublicAssetPage from "@/pages/public/PublicAssetPage";
@@ -103,6 +108,20 @@ function AuthedApp() {
                 path="/soccer/grading/:memberId"
                 element={<PlayerEvaluationPage />}
               />
+              <Route
+                path="/soccer/coaches-managers"
+                element={<CoachesManagersPage />}
+              />
+              <Route
+                path="/soccer/competitions"
+                element={<CompetitionsPage />}
+              />
+              <Route path="/soccer/age-groups" element={<AgeGroupsPage />} />
+              <Route
+                path="/lifetime-members"
+                element={<LifetimeMembersPage />}
+              />
+              <Route path="/settings/audit-logs" element={<AuditLogsPage />} />
               {/* Redirects from the pre-namespace routes. */}
               <Route
                 path="/registrations"

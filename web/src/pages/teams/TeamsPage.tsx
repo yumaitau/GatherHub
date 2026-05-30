@@ -36,7 +36,7 @@ export default function TeamsPage() {
   return (
     <div>
       <PageHeader
-        title="Teams"
+        title={`Teams (${teams?.length ?? 0})`}
         description="Squads, age groups and seasons."
         actions={can("committee") ? <NewTeamDialog /> : undefined}
       />

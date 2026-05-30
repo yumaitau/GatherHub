@@ -662,6 +662,65 @@ export const upsertEvaluation = mutation({
   },
 });
 
+/**
+ * Coaches and managers list. Members whose clubRole is "coach" or
+ * "manager" plus their WWVP status and any team links. Used by
+ * /soccer/coaches-managers.
+ */
+export const coachesAndManagers = query({
+  args: {},
+  handler: async (ctx) => {
+    const auth = await requireOrgMember(ctx);
+    const members = await ctx.db
+      .query("members")
+      .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    const relevant = members.filter(
+      (m) => m.clubRole === "coach" || m.clubRole === "manager",
+    );
+    const wwvpRows = await ctx.db
+      .query("soccerWwvp")
+      .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    const wwvpByMember = new Map(wwvpRows.map((r) => [String(r.memberId), r]));
+    return await Promise.all(
+      relevant.map(async (m) => {
+        const teamLinks = await ctx.db
+          .query("teamMembers")
+          .withIndex("by_member", (q) => q.eq("memberId", m._id))
+          .collect();
+        const teams = await Promise.all(
+          teamLinks.map(async (l) => {
+            const t = await ctx.db.get(l.teamId);
+            return t
+              ? {
+                  id: t._id,
+                  name: t.name,
+                  role: l.role,
+                  ageGroup: t.ageGroup ?? null,
+                }
+              : null;
+          }),
+        );
+        const wwvp = wwvpByMember.get(String(m._id));
+        return {
+          memberId: m._id,
+          firstName: m.firstName,
+          lastName: m.lastName,
+          email: m.email,
+          phone: m.phone,
+          clubRole: m.clubRole ?? "coach",
+          teams: teams.filter((t): t is NonNullable<typeof t> => Boolean(t)),
+          wwvpStatus: wwvp?.status ?? "not_provided",
+          wwvpSightedAt: wwvp?.sightedAt,
+          wwvpExpiresAt: wwvp?.expiresAt,
+          wwvpNotes: wwvp?.notes,
+        };
+      }),
+    );
+  },
+});
+
 /** Divisions with the members assigned to each (by registration or by
  *  computed grade band). Used by /soccer/divisions. */
 export const divisionRoster = query({
