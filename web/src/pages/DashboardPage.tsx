@@ -26,12 +26,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Separator } from "@/components/ui/separator";
 import { QuickCreateMenu } from "@/components/layout/quick-create-menu";
 import { useGatherHub } from "@/lib/gatherhub";
-import {
-  formatCurrency,
-  greeting,
-  humanise,
-  relativeTime,
-} from "@/lib/utils";
+import { formatCurrency, greeting, humanise, relativeTime } from "@/lib/utils";
 
 interface AttentionItem {
   count: number;
@@ -239,11 +234,7 @@ function Panel({
 
 type EventRow = NonNullable<ReturnType<typeof useUpcomingEvents>>[number];
 
-function UpcomingEventsBody({
-  events,
-}: {
-  events: EventRow[] | undefined;
-}) {
+function UpcomingEventsBody({ events }: { events: EventRow[] | undefined }) {
   if (events === undefined) return <LoadingState />;
   if (events.length === 0) {
     return (
@@ -316,9 +307,7 @@ function formatEventTime(ms: number): string {
   });
 }
 
-type AuditEntry = NonNullable<
-  ReturnType<typeof useRecentAudit>
->[number];
+type AuditEntry = NonNullable<ReturnType<typeof useRecentAudit>>[number];
 
 function RecentActivityBody({ audit }: { audit: AuditEntry[] | undefined }) {
   if (audit === undefined) return <LoadingState />;
@@ -400,13 +389,9 @@ function ActivityRow({ entry }: { entry: AuditEntry }) {
           <span className="font-semi text-ink-strong">
             {humanise(entry.action)}
           </span>{" "}
-          <span className="text-ink-soft">
-            {entry.assetName}
-          </span>
+          <span className="text-ink-soft">{entry.assetName}</span>
         </p>
-        <p className="text-caption text-ink-quiet">
-          by {entry.performerName}
-        </p>
+        <p className="text-caption text-ink-quiet">by {entry.performerName}</p>
       </div>
       <span className="text-caption text-ink-quiet shrink-0 whitespace-nowrap">
         {relativeTime(entry.performedAt)}
@@ -436,10 +421,7 @@ function PendingInvitesBlock() {
       </header>
       <ul className="divide-y divide-hairline">
         {pending.slice(0, 5).map((i) => (
-          <li
-            key={i.id}
-            className="flex items-center gap-2 px-5 py-2.5"
-          >
+          <li key={i.id} className="flex items-center gap-2 px-5 py-2.5">
             <span className="flex-1 min-w-0 text-body text-ink truncate">
               {i.email}
             </span>

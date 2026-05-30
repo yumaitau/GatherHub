@@ -1,10 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import {
-  MutationCtx,
-  mutation,
-  query,
-  QueryCtx,
-} from "./_generated/server";
+import { MutationCtx, mutation, query, QueryCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
 import { taxonomyKindValidator } from "./schema";
@@ -70,12 +65,14 @@ const DEFAULTS: Record<Kind, DefaultRow[]> = {
 };
 
 export function slugify(label: string): string {
-  return label
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 48) || "untitled";
+  return (
+    label
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 48) || "untitled"
+  );
 }
 
 /**
@@ -249,7 +246,11 @@ export const create = mutation({
         });
       }
       // Reactivate the soft-deleted row instead of creating a new one.
-      await ctx.db.patch(existing._id, { label, active: true, color: args.color });
+      await ctx.db.patch(existing._id, {
+        label,
+        active: true,
+        color: args.color,
+      });
       return existing._id;
     }
 

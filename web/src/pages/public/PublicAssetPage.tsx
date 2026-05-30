@@ -88,9 +88,7 @@ export default function PublicAssetPage() {
               role="region"
               aria-label="Return instructions"
             >
-              <p className="text-label text-ink-quiet mb-1.5">
-                If found
-              </p>
+              <p className="text-label text-ink-quiet mb-1.5">If found</p>
               <p className="whitespace-pre-wrap leading-[1.5rem] max-w-prose">
                 {data.message}
               </p>

@@ -88,10 +88,7 @@ export default function PublicSitePage() {
         )}
 
         <section id="teams" aria-labelledby="teams-heading">
-          <h2
-            id="teams-heading"
-            className="text-headline text-ink-strong mb-4"
-          >
+          <h2 id="teams-heading" className="text-headline text-ink-strong mb-4">
             Our teams
           </h2>
           {teams.length === 0 ? (
@@ -103,9 +100,7 @@ export default function PublicSitePage() {
                   key={t.id}
                   className="rounded-md border border-hairline bg-surface px-4 py-3.5"
                 >
-                  <h3 className="text-body-strong text-ink-strong">
-                    {t.name}
-                  </h3>
+                  <h3 className="text-body-strong text-ink-strong">{t.name}</h3>
                   {(t.ageGroup || t.season) && (
                     <p className="mt-0.5 text-caption text-ink-quiet">
                       {[t.ageGroup, t.season].filter(Boolean).join(" · ")}
@@ -249,10 +244,7 @@ export default function PublicSitePage() {
           <span>{org.name}</span>
           <span>
             Powered by{" "}
-            <a
-              href="/"
-              className="text-ink-soft hover:text-ink font-semi"
-            >
+            <a href="/" className="text-ink-soft hover:text-ink font-semi">
               GatherHub
             </a>
           </span>

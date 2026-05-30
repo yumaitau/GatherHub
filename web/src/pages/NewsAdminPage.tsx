@@ -96,7 +96,9 @@ export default function NewsAdminPage() {
             <TableBody>
               {news.map((post) => (
                 <TableRow key={post._id}>
-                  <TableCell className="font-semi text-ink-strong">{post.title}</TableCell>
+                  <TableCell className="font-semi text-ink-strong">
+                    {post.title}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={post.published ? "success" : "muted"}>
                       {post.published ? "Published" : "Draft"}

@@ -288,7 +288,10 @@ function CommandPaletteDialog({
             Type to filter routes and actions, then press Enter.
           </DialogPrimitive.Description>
           <div className="flex items-center gap-3 px-3 h-12 border-b border-hairline">
-            <Search className="h-4 w-4 text-ink-quiet shrink-0" aria-hidden="true" />
+            <Search
+              className="h-4 w-4 text-ink-quiet shrink-0"
+              aria-hidden="true"
+            />
             <input
               autoFocus
               value={query}

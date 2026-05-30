@@ -1,16 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import {
-  mutation,
-  query,
-  MutationCtx,
-  QueryCtx,
-} from "./_generated/server";
+import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import {
-  requireOrgMember,
-  requireRole,
-  assertSameOrg,
-} from "./lib/auth";
+import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
 
 /**
  * Soccer-mode features: configurable skill rubric, weighted evaluations,

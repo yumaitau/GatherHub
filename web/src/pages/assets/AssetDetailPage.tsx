@@ -37,7 +37,11 @@ import {
 } from "@/components/ui/dialog";
 import { AuditRow } from "@/components/ui/audit-row";
 import { EmptyState as PrimitiveEmpty } from "@/components/ui/empty-state";
-import { PageHeader, LoadingState, AssetStatusBadge } from "@/components/shared";
+import {
+  PageHeader,
+  LoadingState,
+  AssetStatusBadge,
+} from "@/components/shared";
 import { QrCode, assetTagUrl } from "@/components/QrCode";
 import { useGatherHub } from "@/lib/gatherhub";
 import { canManageAssets } from "@/lib/roles";
@@ -177,11 +181,7 @@ export default function AssetDetailPage() {
                   )
                 }
               />
-              <Field
-                label="Notes"
-                value={asset.notes ?? "—"}
-                wide
-              />
+              <Field label="Notes" value={asset.notes ?? "—"} wide />
             </dl>
           </section>
         </TabsContent>
@@ -231,9 +231,7 @@ export default function AssetDetailPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-body text-ink-quiet">
-                  No QR tag assigned.
-                </p>
+                <p className="text-body text-ink-quiet">No QR tag assigned.</p>
               )}
 
               <div className="pt-5 border-t border-hairline">
@@ -731,9 +729,7 @@ function EditAssetDialog({ asset }: { asset: EditableAsset }) {
     setSaving(true);
     try {
       const valueNum =
-        replacementValue.trim() === ""
-          ? undefined
-          : Number(replacementValue);
+        replacementValue.trim() === "" ? undefined : Number(replacementValue);
       if (valueNum !== undefined && Number.isNaN(valueNum)) {
         setError("Replacement value must be a number.");
         return;
@@ -889,10 +885,7 @@ function ReassignTagDialog({
   currentAssetId: Id<"assets">;
 }) {
   const reassign = useMutation(api.assets.reassignTag);
-  const assets = useQuery(
-    api.assets.list,
-    {},
-  );
+  const assets = useQuery(api.assets.list, {});
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [toAssetId, setToAssetId] = React.useState<string>("");
@@ -945,11 +938,10 @@ function ReassignTagDialog({
         </DialogHeader>
         <form id={formId} onSubmit={submit} className="grid gap-3">
           <p className="text-body text-ink-soft">
-            Move{" "}
-            <code className="text-mono text-ink">{tagId}</code> to another
+            Move <code className="text-mono text-ink">{tagId}</code> to another
             asset. The current asset will lose its{" "}
-            {tagType === "qr" ? "QR" : "NFC"} link; the physical tag
-            continues to scan to whichever asset you choose here.
+            {tagType === "qr" ? "QR" : "NFC"} link; the physical tag continues
+            to scan to whichever asset you choose here.
           </p>
           <div className="grid gap-1.5">
             <Label>New asset</Label>
@@ -973,11 +965,7 @@ function ReassignTagDialog({
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>
           </DialogClose>
-          <Button
-            type="submit"
-            form={formId}
-            disabled={busy || !toAssetId}
-          >
+          <Button type="submit" form={formId} disabled={busy || !toAssetId}>
             {busy ? "Reassigning…" : "Reassign"}
           </Button>
         </DialogFooter>

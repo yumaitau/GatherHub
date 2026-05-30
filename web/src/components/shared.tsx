@@ -67,10 +67,7 @@ export function EmptyState({
   return (
     <div className="mx-auto flex max-w-[360px] flex-col items-center gap-2 py-12 text-center">
       {Icon && (
-        <Icon
-          className="h-6 w-6 text-ink-quiet mb-1"
-          aria-hidden="true"
-        />
+        <Icon className="h-6 w-6 text-ink-quiet mb-1" aria-hidden="true" />
       )}
       <p className="text-body-strong text-ink-strong">{title}</p>
       {description && (

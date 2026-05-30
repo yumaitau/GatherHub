@@ -496,8 +496,7 @@ export default defineSchema({
     season: v.optional(v.string()),
     order: v.number(),
     active: v.boolean(),
-  })
-    .index("by_org_order", ["orgId", "order"]),
+  }).index("by_org_order", ["orgId", "order"]),
 
   // Per-member registration record. Covers rego status, payment status,
   // payment plan window, FFA number, gender, school.

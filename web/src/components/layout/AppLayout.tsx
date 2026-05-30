@@ -153,7 +153,10 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
         <Wordmark />
 
-        <div className="hidden md:block h-5 w-px bg-hairline mx-1" aria-hidden="true" />
+        <div
+          className="hidden md:block h-5 w-px bg-hairline mx-1"
+          aria-hidden="true"
+        />
 
         <OrgSwitcher />
 

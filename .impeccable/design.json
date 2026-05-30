@@ -96,26 +96,81 @@
       }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Section landing titles (Members, KitTrace). Never inline." },
-      "headline": { "displayName": "Headline", "purpose": "Subsection, dialog and drawer titles." },
-      "title": { "displayName": "Title", "purpose": "Card and panel titles, table titles inside a panel." },
-      "body": { "displayName": "Body", "purpose": "Default product UI body. Tables, forms, list items." },
-      "body-strong": { "displayName": "Body Strong", "purpose": "Inline emphasis, button labels, table primary-column values." },
-      "caption": { "displayName": "Caption", "purpose": "Metadata, timestamps, chip labels." },
-      "label": { "displayName": "Label", "purpose": "Form labels, table headers, sidebar dividers. Uppercase, tracked." },
-      "numeric": { "displayName": "Numeric", "purpose": "Any digit in a column, total, badge, or money field. Tabular." },
-      "mono": { "displayName": "Mono", "purpose": "Kit serials, QR data, audit IDs, code blocks." }
+      "display": {
+        "displayName": "Display",
+        "purpose": "Section landing titles (Members, KitTrace). Never inline."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Subsection, dialog and drawer titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card and panel titles, table titles inside a panel."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default product UI body. Tables, forms, list items."
+      },
+      "body-strong": {
+        "displayName": "Body Strong",
+        "purpose": "Inline emphasis, button labels, table primary-column values."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Metadata, timestamps, chip labels."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form labels, table headers, sidebar dividers. Uppercase, tracked."
+      },
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "Any digit in a column, total, badge, or money field. Tabular."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Kit serials, QR data, audit IDs, code blocks."
+      }
     },
     "shadows": [
-      { "name": "popover", "value": "0 1px 2px oklch(0% 0 0 / 0.04), 0 6px 16px oklch(0% 0 0 / 0.06)", "purpose": "Dropdown menus, tooltips, command palette, autocomplete." },
-      { "name": "dialog", "value": "0 2px 4px oklch(0% 0 0 / 0.05), 0 16px 32px oklch(0% 0 0 / 0.10)", "purpose": "Modal dialogs, confirmation prompts, drawers." },
-      { "name": "focus-ring", "value": "0 0 0 2px var(--paper), 0 0 0 4px oklch(38% 0.080 250 / 0.45)", "purpose": "The only lift on interactive elements. Replaces browser default focus." }
+      {
+        "name": "popover",
+        "value": "0 1px 2px oklch(0% 0 0 / 0.04), 0 6px 16px oklch(0% 0 0 / 0.06)",
+        "purpose": "Dropdown menus, tooltips, command palette, autocomplete."
+      },
+      {
+        "name": "dialog",
+        "value": "0 2px 4px oklch(0% 0 0 / 0.05), 0 16px 32px oklch(0% 0 0 / 0.10)",
+        "purpose": "Modal dialogs, confirmation prompts, drawers."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 2px var(--paper), 0 0 0 4px oklch(38% 0.080 250 / 0.45)",
+        "purpose": "The only lift on interactive elements. Replaces browser default focus."
+      }
     ],
     "motion": [
-      { "name": "ease-out-quart", "value": "cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Default easing for state transitions (hover, focus, open, close)." },
-      { "name": "duration-fast", "value": "120ms", "purpose": "Hover, focus, tonal step changes." },
-      { "name": "duration-base", "value": "180ms", "purpose": "Popover open/close, sidebar collapse." },
-      { "name": "duration-slow", "value": "220ms", "purpose": "Dialog/drawer entrance; clamped to opacity when prefers-reduced-motion." }
+      {
+        "name": "ease-out-quart",
+        "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "Default easing for state transitions (hover, focus, open, close)."
+      },
+      {
+        "name": "duration-fast",
+        "value": "120ms",
+        "purpose": "Hover, focus, tonal step changes."
+      },
+      {
+        "name": "duration-base",
+        "value": "180ms",
+        "purpose": "Popover open/close, sidebar collapse."
+      },
+      {
+        "name": "duration-slow",
+        "value": "220ms",
+        "purpose": "Dialog/drawer entrance; clamped to opacity when prefers-reduced-motion."
+      }
     ],
     "breakpoints": [
       { "name": "sm", "value": "640px" },
@@ -187,14 +242,46 @@
       "150–220ms ease-out-quart on state transitions; nothing else moves."
     ],
     "rules": [
-      { "name": "The 10% Accent Rule", "body": "Slate Ink covers no more than 10% of any rendered screen. Count it. If a primary button, the active sidebar item, and a selected row already exist on screen, a fourth use of the accent is wrong.", "section": "colors" },
-      { "name": "The No Saturation in Chrome Rule", "body": "Chrome (sidebar, top bar, table dividers, borders, cards) is tinted-neutral only. Saturation lives in content (status chips, accent buttons, audit markers).", "section": "colors" },
-      { "name": "The Status Carries Icon + Text Rule", "body": "Status colour is never the only signal. Every status chip has an icon and a text label; every status row has a textual state.", "section": "colors" },
-      { "name": "The One Family Rule", "body": "Inter Variable carries every role. The system has no display serif, no script accent, no second sans. If a second family is reached for, the answer is wrong weight, not wrong typeface.", "section": "typography" },
-      { "name": "The Tabular Numerics Rule", "body": "Any digit that appears in a column, total, badge count, money figure, or attendance count uses tabular numerals. Lining proportional digits are forbidden in committee data.", "section": "typography" },
-      { "name": "The Label Restraint Rule", "body": "The uppercase Label role appears only in form field labels, table headers, and sidebar section dividers. It is forbidden in body copy, button text, dialog headings, and decorative captions.", "section": "typography" },
-      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. Shadows exist only as a response to 'this thing is actually floating off the page': popover, dialog, focused control. Hover does not lift; hover changes tonal value.", "section": "elevation" },
-      { "name": "The Tonal-Before-Shadow Rule", "body": "When a region needs to read as distinct, the answer is a tonal step (Surface to Surface Sunk, or a hairline border), not a shadow.", "section": "elevation" }
+      {
+        "name": "The 10% Accent Rule",
+        "body": "Slate Ink covers no more than 10% of any rendered screen. Count it. If a primary button, the active sidebar item, and a selected row already exist on screen, a fourth use of the accent is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Saturation in Chrome Rule",
+        "body": "Chrome (sidebar, top bar, table dividers, borders, cards) is tinted-neutral only. Saturation lives in content (status chips, accent buttons, audit markers).",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Carries Icon + Text Rule",
+        "body": "Status colour is never the only signal. Every status chip has an icon and a text label; every status row has a textual state.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "Inter Variable carries every role. The system has no display serif, no script accent, no second sans. If a second family is reached for, the answer is wrong weight, not wrong typeface.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Numerics Rule",
+        "body": "Any digit that appears in a column, total, badge count, money figure, or attendance count uses tabular numerals. Lining proportional digits are forbidden in committee data.",
+        "section": "typography"
+      },
+      {
+        "name": "The Label Restraint Rule",
+        "body": "The uppercase Label role appears only in form field labels, table headers, and sidebar section dividers. It is forbidden in body copy, button text, dialog headings, and decorative captions.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Surfaces are flat at rest. Shadows exist only as a response to 'this thing is actually floating off the page': popover, dialog, focused control. Hover does not lift; hover changes tonal value.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Tonal-Before-Shadow Rule",
+        "body": "When a region needs to read as distinct, the answer is a tonal step (Surface to Surface Sunk, or a hairline border), not a shadow.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do keep slate-blue accent at or below 10% of any rendered screen. Count the uses before shipping a layout.",

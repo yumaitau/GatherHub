@@ -6,10 +6,7 @@ export default function SignInPage() {
   const [params] = useSearchParams();
   const redirect = params.get("redirect_url") ?? "/";
   return (
-    <AuthShell
-      heading="Sign in"
-      caption="Welcome back."
-    >
+    <AuthShell heading="Sign in" caption="Welcome back.">
       <SignIn
         routing="path"
         path="/sign-in"

@@ -140,7 +140,10 @@ function SendInviteCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+        <form
+          onSubmit={submit}
+          className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end"
+        >
           <div className="grid gap-1.5">
             <Label htmlFor="inv-email">Email</Label>
             <Input
@@ -199,7 +202,8 @@ function InviteCodeCard() {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Anyone signed in with this code can join as a Player. Rotate to invalidate the previous code.
+          Anyone signed in with this code can join as a Player. Rotate to
+          invalidate the previous code.
         </p>
         <div className="flex items-center gap-3">
           <code className="rounded-md border bg-muted px-3 py-1.5 font-mono text-sm">
@@ -227,7 +231,9 @@ function InvitationListCard() {
           <CardTitle>Invitations</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No invitations sent yet.</p>
+          <p className="text-sm text-muted-foreground">
+            No invitations sent yet.
+          </p>
         </CardContent>
       </Card>
     );
@@ -520,9 +526,7 @@ function TaxonomyEditor({ kind }: { kind: TaxonomyKind }) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    title={
-                      row.isDefault ? "Default item" : "Set as default"
-                    }
+                    title={row.isDefault ? "Default item" : "Set as default"}
                     onClick={() => setDefault({ id: row.id })}
                     disabled={row.isDefault}
                   >

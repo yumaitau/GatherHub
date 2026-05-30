@@ -157,7 +157,8 @@ export const accept = mutation({
       .unique();
     if (!inv || inv.revokedAt) throw new ConvexError("Invitation not found.");
     if (inv.acceptedAt) throw new ConvexError("Invitation already used.");
-    if (inv.expiresAt < Date.now()) throw new ConvexError("Invitation expired.");
+    if (inv.expiresAt < Date.now())
+      throw new ConvexError("Invitation expired.");
 
     const userEmail = (user.email ?? "").trim().toLowerCase();
     if (userEmail !== inv.email) {
@@ -208,8 +209,7 @@ export const deliver = internalAction({
   handler: async (_ctx, args) => {
     const apiKey = process.env.RESEND_API_KEY;
     const from = process.env.INVITE_FROM_EMAIL ?? "invites@gatherhub.local";
-    const appUrl =
-      process.env.PUBLIC_APP_URL ?? "http://localhost:5173";
+    const appUrl = process.env.PUBLIC_APP_URL ?? "http://localhost:5173";
     const link = `${appUrl}/invite/${args.code}`;
     const subject = `${args.inviterName} invited you to join ${args.orgName} on GatherHub`;
     const text =

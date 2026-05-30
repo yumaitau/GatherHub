@@ -19,31 +19,31 @@
 
     /* Borders */
     --border-hairline: 93% 0.008 250;
-    --border-default: 88% 0.010 250;
+    --border-default: 88% 0.01 250;
     --border-strong: 80% 0.012 250;
 
     /* Ink */
     --ink-quiet: 48% 0.014 250;
     --ink-soft: 36% 0.018 250;
-    --ink: 22% 0.020 250;
-    --ink-strong: 14% 0.020 250;
+    --ink: 22% 0.02 250;
+    --ink-strong: 14% 0.02 250;
 
     /* Accent (Slate Ink) */
-    --accent-base: 38% 0.080 250;
+    --accent-base: 38% 0.08 250;
     --accent-hover: 32% 0.085 250;
     --accent-active: 28% 0.085 250;
     --accent-wash: 94% 0.025 250;
     --accent-ink: 98% 0.003 250;
 
     /* Status */
-    --success: 48% 0.100 155;
-    --success-wash: 94% 0.040 155;
-    --warning: 60% 0.130 70;
-    --warning-wash: 94% 0.060 75;
-    --danger: 48% 0.160 25;
-    --danger-wash: 94% 0.050 25;
-    --info: 45% 0.070 235;
-    --info-wash: 94% 0.030 235;
+    --success: 48% 0.1 155;
+    --success-wash: 94% 0.04 155;
+    --warning: 60% 0.13 70;
+    --warning-wash: 94% 0.06 75;
+    --danger: 48% 0.16 25;
+    --danger-wash: 94% 0.05 25;
+    --info: 45% 0.07 235;
+    --info-wash: 94% 0.03 235;
 
     /* shadcn semantic aliases. Existing `bg-primary`, `bg-card`, etc. keep
        working, now resolving to the new token system. */
@@ -70,18 +70,15 @@
 
     /* Elevation. Shadows reserved for genuinely lifted overlays. */
     --shadow-popover:
-      0 1px 2px oklch(0% 0 0 / 0.04),
-      0 6px 16px oklch(0% 0 0 / 0.06);
+      0 1px 2px oklch(0% 0 0 / 0.04), 0 6px 16px oklch(0% 0 0 / 0.06);
     --shadow-dialog:
-      0 2px 4px oklch(0% 0 0 / 0.05),
-      0 16px 32px oklch(0% 0 0 / 0.10);
+      0 2px 4px oklch(0% 0 0 / 0.05), 0 16px 32px oklch(0% 0 0 / 0.1);
 
     /* Focus ring: 2px paper inner gap, 4px accent halo. */
     --focus-ring-halo: oklch(var(--accent-base) / 0.45);
     --focus-ring-gap: oklch(var(--paper));
     --shadow-focus:
-      0 0 0 2px var(--focus-ring-gap),
-      0 0 0 4px var(--focus-ring-halo);
+      0 0 0 2px var(--focus-ring-gap), 0 0 0 4px var(--focus-ring-halo);
 
     /* Motion */
     --ease: cubic-bezier(0.25, 1, 0.5, 1);
@@ -91,9 +88,9 @@
   }
 
   .dark {
-    --paper: 15% 0.010 250;
+    --paper: 15% 0.01 250;
     --surface: 18% 0.012 250;
-    --surface-sunk: 12.5% 0.010 250;
+    --surface-sunk: 12.5% 0.01 250;
     --surface-raised: 21% 0.014 250;
 
     --border-hairline: 22% 0.014 250;
@@ -105,33 +102,30 @@
     --ink: 88% 0.012 250;
     --ink-strong: 96% 0.008 250;
 
-    --accent-base: 72% 0.090 250;
+    --accent-base: 72% 0.09 250;
     --accent-hover: 78% 0.095 250;
     --accent-active: 82% 0.095 250;
     --accent-wash: 28% 0.045 250;
-    --accent-ink: 14% 0.020 250;
+    --accent-ink: 14% 0.02 250;
 
-    --success: 68% 0.100 155;
-    --success-wash: 28% 0.040 155;
-    --warning: 76% 0.130 70;
-    --warning-wash: 30% 0.060 75;
-    --danger: 68% 0.140 25;
-    --danger-wash: 28% 0.050 25;
-    --info: 70% 0.080 235;
-    --info-wash: 28% 0.030 235;
+    --success: 68% 0.1 155;
+    --success-wash: 28% 0.04 155;
+    --warning: 76% 0.13 70;
+    --warning-wash: 30% 0.06 75;
+    --danger: 68% 0.14 25;
+    --danger-wash: 28% 0.05 25;
+    --info: 70% 0.08 235;
+    --info-wash: 28% 0.03 235;
 
     --shadow-popover:
-      0 1px 2px oklch(0% 0 0 / 0.30),
-      0 6px 16px oklch(0% 0 0 / 0.40);
+      0 1px 2px oklch(0% 0 0 / 0.3), 0 6px 16px oklch(0% 0 0 / 0.4);
     --shadow-dialog:
-      0 2px 4px oklch(0% 0 0 / 0.35),
-      0 16px 32px oklch(0% 0 0 / 0.55);
+      0 2px 4px oklch(0% 0 0 / 0.35), 0 16px 32px oklch(0% 0 0 / 0.55);
 
     --focus-ring-halo: oklch(var(--accent-base) / 0.55);
     --focus-ring-gap: oklch(var(--paper));
     --shadow-focus:
-      0 0 0 2px var(--focus-ring-gap),
-      0 0 0 4px var(--focus-ring-halo);
+      0 0 0 2px var(--focus-ring-gap), 0 0 0 4px var(--focus-ring-halo);
   }
 }
 
@@ -150,8 +144,14 @@
   body {
     @apply bg-background text-foreground;
     font-family:
-      "InterVariable", "Inter", ui-sans-serif, system-ui, -apple-system,
-      BlinkMacSystemFont, "Segoe UI", sans-serif;
+      "InterVariable",
+      "Inter",
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
     font-feature-settings:
       "cv11" 1,
       "ss01" 1,

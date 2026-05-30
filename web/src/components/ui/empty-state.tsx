@@ -22,9 +22,7 @@ export const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
       )}
       {...props}
     >
-      {icon && (
-        <div className="mb-1 text-ink-quiet [&_svg]:size-6">{icon}</div>
-      )}
+      {icon && <div className="mb-1 text-ink-quiet [&_svg]:size-6">{icon}</div>}
       <p className="text-body-strong text-ink-strong">{title}</p>
       {description && (
         <p className="max-w-prose text-body text-ink-soft">{description}</p>

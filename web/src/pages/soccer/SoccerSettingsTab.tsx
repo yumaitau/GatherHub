@@ -432,12 +432,8 @@ function CompetitionEditor() {
               key={c._id}
               className="flex flex-wrap items-center gap-3 px-5 py-2.5"
             >
-              <span className="text-body-strong text-ink-strong">
-                {c.name}
-              </span>
-              {c.season && (
-                <Badge variant="muted">{c.season}</Badge>
-              )}
+              <span className="text-body-strong text-ink-strong">{c.name}</span>
+              {c.season && <Badge variant="muted">{c.season}</Badge>}
               <span className="ml-auto">
                 <label className="inline-flex items-center gap-2 text-caption text-ink-soft">
                   <input

@@ -1,7 +1,14 @@
 import * as React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Download, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  MapPin,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";

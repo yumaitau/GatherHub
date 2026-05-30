@@ -61,9 +61,9 @@ export default function QrSheetPage() {
       </header>
 
       <div className="qr-sheet__intro qr-sheet__chrome mb-6 max-w-prose text-body text-ink-soft">
-        Each label prints with a QR code, the asset name, and the tag id.
-        Cut along the gridlines or print on Avery L7160 (or equivalent
-        63.5×38mm) labels.
+        Each label prints with a QR code, the asset name, and the tag id. Cut
+        along the gridlines or print on Avery L7160 (or equivalent 63.5×38mm)
+        labels.
       </div>
 
       {printable.length === 0 ? (

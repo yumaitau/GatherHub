@@ -93,9 +93,7 @@ function MembershipsPanel() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() =>
-                        switchTo(m.org!.id as Id<"organizations">)
-                      }
+                      onClick={() => switchTo(m.org!.id as Id<"organizations">)}
                     >
                       Switch to
                     </Button>

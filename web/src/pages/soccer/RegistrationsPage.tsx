@@ -245,7 +245,9 @@ function RegistrationDialog({
   const [schoolName, setSchoolName] = React.useState(
     existing?.schoolName ?? "",
   );
-  const [registered, setRegistered] = React.useState(existing?.registered ?? false);
+  const [registered, setRegistered] = React.useState(
+    existing?.registered ?? false,
+  );
   const [paid, setPaid] = React.useState(existing?.paid ?? false);
   const [paymentPlan, setPaymentPlan] = React.useState(
     existing?.paymentPlan ?? false,
@@ -331,9 +333,7 @@ function RegistrationDialog({
               <Label>Competition</Label>
               <Select
                 value={compId || "__none__"}
-                onValueChange={(v) =>
-                  setCompId(v === "__none__" ? "" : v)
-                }
+                onValueChange={(v) => setCompId(v === "__none__" ? "" : v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="None" />
@@ -352,9 +352,7 @@ function RegistrationDialog({
               <Label>Team</Label>
               <Select
                 value={teamId || "__none__"}
-                onValueChange={(v) =>
-                  setTeamId(v === "__none__" ? "" : v)
-                }
+                onValueChange={(v) => setTeamId(v === "__none__" ? "" : v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="None" />
@@ -384,9 +382,7 @@ function RegistrationDialog({
               <Label>Gender</Label>
               <Select
                 value={gender || "__none__"}
-                onValueChange={(v) =>
-                  setGender(v === "__none__" ? "" : v)
-                }
+                onValueChange={(v) => setGender(v === "__none__" ? "" : v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="None" />

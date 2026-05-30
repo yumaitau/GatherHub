@@ -53,13 +53,19 @@ export function OrgSwitcher({ compact = false }: { compact?: boolean }) {
           "focus-visible:outline-none focus-visible:shadow-focus",
         )}
       >
-        <Building2 className="h-3.5 w-3.5 text-ink-quiet shrink-0" aria-hidden="true" />
+        <Building2
+          className="h-3.5 w-3.5 text-ink-quiet shrink-0"
+          aria-hidden="true"
+        />
         {!compact && (
           <span className="max-w-[16ch] truncate font-semi">
             {active?.org?.name ?? "Select organisation"}
           </span>
         )}
-        <ChevronsUpDown className="h-3.5 w-3.5 text-ink-quiet shrink-0" aria-hidden="true" />
+        <ChevronsUpDown
+          className="h-3.5 w-3.5 text-ink-quiet shrink-0"
+          aria-hidden="true"
+        />
       </button>
 
       {open && (
@@ -87,9 +93,7 @@ export function OrgSwitcher({ compact = false }: { compact?: boolean }) {
                   <li key={m.membershipId}>
                     <button
                       type="button"
-                      onClick={() =>
-                        m.org && !m.isActive && switchTo(m.org.id)
-                      }
+                      onClick={() => m.org && !m.isActive && switchTo(m.org.id)}
                       className={cn(
                         "flex w-full items-center gap-2 px-3 py-1.5",
                         "text-body text-ink text-left",
@@ -205,11 +209,7 @@ function CreateClubAction({ onDone }: { onDone: () => void }) {
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>
         <DialogFooter>
-          <Button
-            type="submit"
-            form={formId}
-            disabled={busy || !name.trim()}
-          >
+          <Button type="submit" form={formId} disabled={busy || !name.trim()}>
             {busy ? "Creating…" : "Create organisation"}
           </Button>
         </DialogFooter>
@@ -281,11 +281,7 @@ function JoinClubAction({ onDone }: { onDone: () => void }) {
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>
         <DialogFooter>
-          <Button
-            type="submit"
-            form={formId}
-            disabled={busy || !code.trim()}
-          >
+          <Button type="submit" form={formId} disabled={busy || !code.trim()}>
             {busy ? "Joining…" : "Join organisation"}
           </Button>
         </DialogFooter>

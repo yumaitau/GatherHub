@@ -311,9 +311,7 @@ function SkillCard({
           {saving ? "Saving…" : existing ? "Update" : "Save"}
         </Button>
       </div>
-      {error && (
-        <p className="px-5 pb-3 text-caption text-danger">{error}</p>
-      )}
+      {error && <p className="px-5 pb-3 text-caption text-danger">{error}</p>}
     </section>
   );
 }

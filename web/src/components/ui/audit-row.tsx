@@ -57,9 +57,7 @@ export const AuditRow = React.forwardRef<HTMLDivElement, AuditRowProps>(
         {...props}
       >
         <div className="flex flex-col gap-1 px-4 py-2.5 md:grid md:grid-cols-[96px_minmax(0,180px)_1fr] md:items-center md:gap-4">
-          <time className="text-mono text-ink-quiet shrink-0">
-            {timestamp}
-          </time>
+          <time className="text-mono text-ink-quiet shrink-0">{timestamp}</time>
           <div className="flex items-center gap-2 min-w-0 text-body text-ink">
             {actor}
           </div>

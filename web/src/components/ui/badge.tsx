@@ -43,7 +43,8 @@ const STATUS_VARIANTS = new Set([
 ]);
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLSpanElement>,
+  extends
+    React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {
   withDot?: boolean;
 }

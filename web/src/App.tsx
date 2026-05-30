@@ -25,9 +25,7 @@ import SponsorDetailPage from "@/pages/sponsors/SponsorDetailPage";
 import NewsAdminPage from "@/pages/NewsAdminPage";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import RegistrationsPage from "@/pages/soccer/RegistrationsPage";
-import GradingPage, {
-  PlayerEvaluationPage,
-} from "@/pages/soccer/GradingPage";
+import GradingPage, { PlayerEvaluationPage } from "@/pages/soccer/GradingPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 import PublicAssetPage from "@/pages/public/PublicAssetPage";

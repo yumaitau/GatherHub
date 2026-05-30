@@ -208,10 +208,7 @@ export default function ScanPage() {
       <div className="mx-auto max-w-md space-y-5">
         <section className="rounded-md border border-hairline bg-surface overflow-hidden">
           <header className="flex items-center gap-2 px-5 py-3 border-b border-hairline">
-            <Camera
-              className="h-4 w-4 text-ink-quiet"
-              aria-hidden="true"
-            />
+            <Camera className="h-4 w-4 text-ink-quiet" aria-hidden="true" />
             <h2 className="text-title text-ink-strong">Camera</h2>
           </header>
           <div className="p-5 space-y-3">
@@ -299,10 +296,7 @@ export default function ScanPage() {
         </section>
 
         {error && (
-          <p
-            role="alert"
-            className="text-center text-body text-danger"
-          >
+          <p role="alert" className="text-center text-body text-danger">
             {error}
           </p>
         )}
