@@ -102,7 +102,7 @@ export default function GradingPage() {
                   </TableCell>
                   <TableCell>
                     <Button asChild size="sm" variant="outline">
-                      <Link to={`/grading/${p.memberId}`}>Evaluate</Link>
+                      <Link to={`/soccer/grading/${p.memberId}`}>Evaluate</Link>
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -139,7 +139,7 @@ export function PlayerEvaluationPage() {
   return (
     <div>
       <Button variant="ghost" size="sm" asChild className="mb-2">
-        <Link to="/grading">
+        <Link to="/soccer/grading">
           <ArrowLeft className="h-4 w-4" /> Grading
         </Link>
       </Button>

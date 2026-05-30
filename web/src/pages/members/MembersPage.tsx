@@ -42,10 +42,12 @@ export default function MembersPage() {
   const { can } = useGatherHub();
   const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState<StatusFilter>("all");
+  const [lifetimeOnly, setLifetimeOnly] = React.useState(false);
 
   const members = useQuery(api.members.list, {
     search: search.trim() || undefined,
     status: status === "all" ? undefined : status,
+    lifetimeOnly: lifetimeOnly || undefined,
   });
 
   function exportCsv() {
@@ -119,6 +121,15 @@ export default function MembersPage() {
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
+          <label className="inline-flex items-center gap-2 text-body text-ink-soft">
+            <input
+              type="checkbox"
+              checked={lifetimeOnly}
+              onChange={(e) => setLifetimeOnly(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            Lifetime members only
+          </label>
           {members && (
             <span className="ml-auto text-caption text-ink-quiet">
               <span data-numeric className="font-medium text-ink-soft">
@@ -162,6 +173,11 @@ export default function MembersPage() {
                     >
                       {m.firstName} {m.lastName}
                     </Link>
+                    {m.isLifetimeMember && (
+                      <Badge variant="accent" className="ml-2 align-middle">
+                        Lifetime
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge

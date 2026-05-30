@@ -26,6 +26,8 @@ import NewsAdminPage from "@/pages/NewsAdminPage";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import RegistrationsPage from "@/pages/soccer/RegistrationsPage";
 import GradingPage, { PlayerEvaluationPage } from "@/pages/soccer/GradingPage";
+import SoccerPlayersPage from "@/pages/soccer/PlayersPage";
+import SoccerDivisionsPage from "@/pages/soccer/DivisionsPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 import PublicAssetPage from "@/pages/public/PublicAssetPage";
@@ -82,11 +84,32 @@ function AuthedApp() {
                 element={<SponsorDetailPage />}
               />
               <Route path="/news" element={<NewsAdminPage />} />
-              <Route path="/registrations" element={<RegistrationsPage />} />
-              <Route path="/grading" element={<GradingPage />} />
+              <Route path="/soccer/players" element={<SoccerPlayersPage />} />
+              <Route
+                path="/soccer/registrations"
+                element={<RegistrationsPage />}
+              />
+              <Route
+                path="/soccer/divisions"
+                element={<SoccerDivisionsPage />}
+              />
+              <Route path="/soccer/grading" element={<GradingPage />} />
+              <Route
+                path="/soccer/grading/:memberId"
+                element={<PlayerEvaluationPage />}
+              />
+              {/* Redirects from the pre-namespace routes. */}
+              <Route
+                path="/registrations"
+                element={<Navigate to="/soccer/registrations" replace />}
+              />
+              <Route
+                path="/grading"
+                element={<Navigate to="/soccer/grading" replace />}
+              />
               <Route
                 path="/grading/:memberId"
-                element={<PlayerEvaluationPage />}
+                element={<Navigate to="/soccer/grading" replace />}
               />
               <Route path="/profile/*" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />

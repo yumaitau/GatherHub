@@ -13,6 +13,7 @@ export const list = query({
   args: {
     status: v.optional(memberStatusValidator),
     search: v.optional(v.string()),
+    lifetimeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const auth = await requireOrgMember(ctx);
@@ -30,19 +31,46 @@ export const list = query({
           .collect();
 
     const search = args.search?.trim().toLowerCase();
-    const filtered = search
+    let filtered = search
       ? rows.filter((m) =>
           `${m.firstName} ${m.lastName} ${m.email ?? ""}`
             .toLowerCase()
             .includes(search),
         )
       : rows;
+    if (args.lifetimeOnly) {
+      filtered = filtered.filter((m) => m.isLifetimeMember);
+    }
 
     return filtered.sort((a, b) =>
       `${a.lastName} ${a.firstName}`.localeCompare(
         `${b.lastName} ${b.firstName}`,
       ),
     );
+  },
+});
+
+export const setLifetimeMember = mutation({
+  args: {
+    memberId: v.id("members"),
+    isLifetimeMember: v.boolean(),
+    lifetimeMemberSince: v.optional(v.string()),
+    lifetimeMemberNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireRole(ctx, "committee");
+    const member = await ctx.db.get(args.memberId);
+    assertSameOrg(auth, member);
+    if (!member) return;
+    await ctx.db.patch(args.memberId, {
+      isLifetimeMember: args.isLifetimeMember,
+      lifetimeMemberSince: args.isLifetimeMember
+        ? (args.lifetimeMemberSince ?? member.lifetimeMemberSince)
+        : undefined,
+      lifetimeMemberNotes: args.isLifetimeMember
+        ? (args.lifetimeMemberNotes ?? member.lifetimeMemberNotes)
+        : undefined,
+    });
   },
 });
 

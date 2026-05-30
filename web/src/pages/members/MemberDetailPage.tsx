@@ -113,6 +113,14 @@ export default function MemberDetailPage() {
           {member.status === "active" ? "Active" : "Inactive"}
         </Badge>
         {member.isVolunteer && <Badge variant="secondary">Volunteer</Badge>}
+        {member.isLifetimeMember && (
+          <Badge variant="accent" withDot>
+            Lifetime
+            {member.lifetimeMemberSince
+              ? ` · since ${member.lifetimeMemberSince}`
+              : ""}
+          </Badge>
+        )}
       </div>
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
@@ -179,6 +187,16 @@ function ProfileTab({
   const [volunteerNotes, setVolunteerNotes] = React.useState(
     member.volunteerNotes ?? "",
   );
+  const [isLifetimeMember, setIsLifetimeMember] = React.useState(
+    Boolean(member.isLifetimeMember),
+  );
+  const [lifetimeMemberSince, setLifetimeMemberSince] = React.useState(
+    member.lifetimeMemberSince ?? "",
+  );
+  const [lifetimeMemberNotes, setLifetimeMemberNotes] = React.useState(
+    member.lifetimeMemberNotes ?? "",
+  );
+  const setLifetime = useMutation(api.members.setLifetimeMember);
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
@@ -204,6 +222,12 @@ function ProfileTab({
           .filter(Boolean),
         volunteerAvailability: availability.trim() || undefined,
         volunteerNotes: volunteerNotes.trim() || undefined,
+      });
+      await setLifetime({
+        memberId: member._id,
+        isLifetimeMember,
+        lifetimeMemberSince: lifetimeMemberSince.trim() || undefined,
+        lifetimeMemberNotes: lifetimeMemberNotes.trim() || undefined,
       });
       setSaved(true);
     } catch (err) {
@@ -322,6 +346,39 @@ function ProfileTab({
                 />
               </div>
             </>
+          )}
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={isLifetimeMember}
+              onChange={(e) => setIsLifetimeMember(e.target.checked)}
+              disabled={!canEdit}
+              className="h-4 w-4 accent-primary"
+            />
+            Lifetime member
+          </label>
+          {isLifetimeMember && (
+            <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
+              <div className="grid gap-2">
+                <Label htmlFor="m-lifesince">Member since</Label>
+                <Input
+                  id="m-lifesince"
+                  value={lifetimeMemberSince}
+                  onChange={(e) => setLifetimeMemberSince(e.target.value)}
+                  placeholder="e.g. 1998"
+                  disabled={!canEdit}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="m-lifenotes">Lifetime notes</Label>
+                <Input
+                  id="m-lifenotes"
+                  value={lifetimeMemberNotes}
+                  onChange={(e) => setLifetimeMemberNotes(e.target.value)}
+                  disabled={!canEdit}
+                />
+              </div>
+            </div>
           )}
           {error && <p className="text-caption text-danger">{error}</p>}
           {saved && <p className="text-caption text-success">Saved.</p>}

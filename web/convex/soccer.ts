@@ -662,6 +662,151 @@ export const upsertEvaluation = mutation({
   },
 });
 
+/** Divisions with the members assigned to each (by registration or by
+ *  computed grade band). Used by /soccer/divisions. */
+export const divisionRoster = query({
+  args: {},
+  handler: async (ctx) => {
+    const auth = await requireOrgMember(ctx);
+    const divisions = await ctx.db
+      .query("soccerDivisions")
+      .withIndex("by_org_order", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    divisions.sort((a, b) => a.order - b.order);
+    const regs = await ctx.db
+      .query("soccerRegistrations")
+      .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    const skills = await ctx.db
+      .query("soccerSkills")
+      .withIndex("by_org_order", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    const matchDivision = (grade: number) => {
+      for (const d of divisions) {
+        if (d.active && grade >= d.minGrade && grade <= d.maxGrade) return d;
+      }
+      return null;
+    };
+    const members = await ctx.db
+      .query("members")
+      .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    const byMember = new Map(members.map((m) => [m._id, m]));
+
+    const memberToDivision = new Map<string, string>();
+    for (const r of regs) {
+      if (r.divisionId) memberToDivision.set(r.memberId, String(r.divisionId));
+    }
+    // Fall back to graded division for members without explicit
+    // registration link.
+    for (const m of members) {
+      if (memberToDivision.has(m._id)) continue;
+      const evs = await ctx.db
+        .query("soccerEvaluations")
+        .withIndex("by_member", (q) => q.eq("memberId", m._id))
+        .collect();
+      if (evs.length === 0) continue;
+      const map = new Map(evs.map((e) => [e.skillId, e.score]));
+      const grade = computeGrade(skills, map);
+      const d = matchDivision(grade);
+      if (d) memberToDivision.set(m._id, String(d._id));
+    }
+
+    return divisions.map((d) => {
+      const memberIds = [...memberToDivision.entries()]
+        .filter(([, divId]) => divId === String(d._id))
+        .map(([mid]) => mid);
+      const rosterMembers = memberIds
+        .map((id) => byMember.get(id as Id<"members">))
+        .filter((m): m is NonNullable<typeof m> => Boolean(m))
+        .sort((a, b) =>
+          `${a.lastName} ${a.firstName}`.localeCompare(
+            `${b.lastName} ${b.firstName}`,
+          ),
+        );
+      return {
+        id: d._id,
+        name: d.name,
+        color: d.color,
+        minGrade: d.minGrade,
+        maxGrade: d.maxGrade,
+        active: d.active,
+        memberCount: rosterMembers.length,
+        members: rosterMembers.map((m) => ({
+          id: m._id,
+          name: `${m.firstName} ${m.lastName}`.trim(),
+        })),
+      };
+    });
+  },
+});
+
+/** Combined player listing for /soccer/players. */
+export const playerListing = query({
+  args: {},
+  handler: async (ctx) => {
+    const auth = await requireOrgMember(ctx);
+    const regs = await ctx.db
+      .query("soccerRegistrations")
+      .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    const skills = await ctx.db
+      .query("soccerSkills")
+      .withIndex("by_org_order", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    const divisions = await ctx.db
+      .query("soccerDivisions")
+      .withIndex("by_org_active", (q) =>
+        q.eq("orgId", auth.org._id).eq("active", true),
+      )
+      .collect();
+    const matchDivision = (grade: number) => {
+      for (const d of divisions) {
+        if (grade >= d.minGrade && grade <= d.maxGrade) return d;
+      }
+      return null;
+    };
+
+    const byMemberId = new Map(regs.map((r) => [String(r.memberId), r]));
+    const members = await ctx.db
+      .query("members")
+      .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+
+    return await Promise.all(
+      members.map(async (m) => {
+        const reg = byMemberId.get(String(m._id));
+        const team = reg?.teamId ? await ctx.db.get(reg.teamId) : null;
+        const evs = await ctx.db
+          .query("soccerEvaluations")
+          .withIndex("by_member", (q) => q.eq("memberId", m._id))
+          .collect();
+        const evalMap = new Map(evs.map((e) => [e.skillId, e.score]));
+        const grade = computeGrade(skills, evalMap);
+        const division = reg?.divisionId
+          ? await ctx.db.get(reg.divisionId)
+          : matchDivision(grade);
+        return {
+          memberId: m._id,
+          name: `${m.firstName} ${m.lastName}`.trim(),
+          email: m.email,
+          dateOfBirth: m.dateOfBirth,
+          hasRegistration: Boolean(reg),
+          registered: reg?.registered ?? false,
+          paid: reg?.paid ?? false,
+          paymentPlan: reg?.paymentPlan ?? false,
+          teamName: team?.name ?? null,
+          divisionName: division?.name ?? null,
+          divisionColor: division?.color,
+          grade: evs.length > 0 ? grade : null,
+          scoredCount: evs.length,
+          totalSkills: skills.filter((s) => s.active).length,
+        };
+      }),
+    );
+  },
+});
+
 /** Roster with each player's computed grade and matched division. */
 export const playerRoster = query({
   args: {},

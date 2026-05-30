@@ -18,6 +18,8 @@ import {
   X,
   ClipboardList,
   Gauge,
+  Trophy,
+  Layers,
 } from "lucide-react";
 import { useGatherHub } from "@/lib/gatherhub";
 import { cn } from "@/lib/utils";
@@ -88,14 +90,16 @@ const NAV: NavGroup[] = [
 const SOCCER_NAV: NavGroup = {
   label: "Soccer",
   items: [
+    { to: "/soccer/players", label: "Players", icon: Trophy },
     {
-      to: "/registrations",
+      to: "/soccer/registrations",
       label: "Registrations",
       icon: ClipboardList,
       minRole: "committee",
     },
+    { to: "/soccer/divisions", label: "Divisions", icon: Layers },
     {
-      to: "/grading",
+      to: "/soccer/grading",
       label: "Grading",
       icon: Gauge,
       minRole: "coach",
