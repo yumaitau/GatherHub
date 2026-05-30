@@ -1,24 +1,26 @@
 import Foundation
 
-/// App configuration / secrets.
+/// App configuration.
 ///
-/// These are NOT real secrets — fill them in before running. The Clerk
-/// publishable key is safe to ship in a client (it is, by design, public), and
-/// the Convex deployment URL is likewise public. Anything truly secret lives in
-/// the Convex deployment environment, never here.
+/// GatherHub is a SaaS run by Yuma IT — every install points at the same
+/// production Convex deployment and the same Clerk tenant. Both values
+/// below are public-by-design (Clerk publishable keys are intended for
+/// client embedding; Convex deployment URLs are HTTPS endpoints with
+/// server-side auth). They are safe to commit.
 ///
-/// Recommended: instead of editing this file, inject the values via an
-/// `.xcconfig` file (e.g. `Config.xcconfig`) and read them from the Info.plist
-/// at runtime. A simple placeholder is used here to keep the scaffold building.
+/// Anything truly secret (Clerk secret key, webhook signing secret,
+/// Resend API key, etc.) lives in the Convex deployment environment,
+/// never in this file.
 enum Secrets {
 
-    /// Clerk publishable key, e.g. `pk_test_xxx` or `pk_live_xxx`.
-    /// Find it in the Clerk dashboard → API Keys.
-    static let clerkPublishableKey = "pk_test_REPLACE_ME"
+    /// Clerk publishable key. Matches the web app's
+    /// `VITE_CLERK_PUBLISHABLE_KEY`.
+    static let clerkPublishableKey =
+        "pk_test_dmlhYmxlLWFkZGVyLTUyLmNsZXJrLmFjY291bnRzLmRldiQ"
 
-    /// Convex deployment URL, e.g. `https://your-deployment-123.convex.cloud`.
-    /// Find it in the Convex dashboard, or `npx convex dashboard`.
-    static let convexDeploymentURL = "https://REPLACE_ME.convex.cloud"
+    /// Convex deployment URL. Matches the web app's `VITE_CONVEX_URL`.
+    static let convexDeploymentURL =
+        "https://graceful-jellyfish-285.convex.cloud"
 
     /// The name of the Clerk JWT template that Convex validates against.
     /// Must match `applicationID` in `web/convex/auth.config.ts` ("convex").
@@ -33,10 +35,7 @@ enum Secrets {
     /// or unconfigured.
     static let supportEmail = "support@yumait.com.au"
 
-    /// True when the placeholders above have not been replaced. Used by the UI
-    /// to show a friendly "configure me" message instead of failing silently.
-    static var isConfigured: Bool {
-        !clerkPublishableKey.contains("REPLACE_ME")
-            && !convexDeploymentURL.contains("REPLACE_ME")
-    }
+    /// Always true now that the SaaS endpoints are baked in. Kept so callers
+    /// can keep the historical guard pattern without behaviour change.
+    static let isConfigured = true
 }
