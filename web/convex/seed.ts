@@ -218,16 +218,16 @@ export const run = mutation({
     const assetDefs: Array<{
       name: string;
       category:
-        | "uniform"
-        | "kit_bag"
-        | "ball"
-        | "training_equipment"
-        | "goal"
-        | "gazebo"
-        | "first_aid"
-        | "key"
-        | "device"
+        | "apparel"
+        | "equipment"
+        | "tool"
+        | "electronics"
+        | "av_equipment"
+        | "safety_equipment"
+        | "furniture"
         | "vehicle"
+        | "key"
+        | "media"
         | "other";
       status:
         | "available"
@@ -242,39 +242,39 @@ export const run = mutation({
     }> = [
       {
         name: "Senior Home Kit Set",
-        category: "uniform",
+        category: "apparel",
         status: "available",
         value: 800,
         sponsored: true,
       },
       {
         name: "Match Ball Bag",
-        category: "kit_bag",
+        category: "equipment",
         status: "checked_out",
         value: 120,
         custodianIdx: 0,
       },
       {
         name: "Training Cones (x20)",
-        category: "training_equipment",
+        category: "equipment",
         status: "available",
         value: 60,
       },
       {
         name: "Portable Goal",
-        category: "goal",
+        category: "equipment",
         status: "maintenance",
         value: 450,
       },
       {
         name: "Club Gazebo 3x3",
-        category: "gazebo",
+        category: "furniture",
         status: "available",
         value: 300,
       },
       {
         name: "First Aid Kit",
-        category: "first_aid",
+        category: "safety_equipment",
         status: "in_use",
         value: 80,
         custodianIdx: 11,
@@ -288,7 +288,7 @@ export const run = mutation({
       },
       {
         name: "Match Recording Tablet",
-        category: "device",
+        category: "electronics",
         status: "available",
         value: 500,
       },

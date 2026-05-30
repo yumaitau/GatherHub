@@ -38,7 +38,7 @@ export default function DashboardPage() {
   const attention: AttentionItem[] = [
     {
       count: stats.overdueCount,
-      label: stats.overdueCount === 1 ? "Overdue kit item" : "Overdue kit items",
+      label: stats.overdueCount === 1 ? "Overdue item" : "Overdue items",
       icon: Clock,
       tone: "warning",
       to: "/assets",
@@ -88,7 +88,7 @@ export default function DashboardPage() {
         {flagged.length === 0 ? (
           <EmptyState
             title="Nothing flagged."
-            description="Overdue kit, lost items, and expiring certifications will appear here."
+            description="Overdue items, losses, and expiring certifications will appear here."
           />
         ) : (
           <ul className="divide-y divide-hairline">
@@ -125,7 +125,7 @@ export default function DashboardPage() {
           ) : audit.length === 0 ? (
             <EmptyState
               title="No KitTrace activity yet."
-              description="Issuing, returning, and transferring kit will show here as it happens."
+              description="Issuing, returning, and transferring items will show here as it happens."
             />
           ) : (
             <div role="list" aria-label="Recent KitTrace audit entries">
@@ -254,7 +254,7 @@ function GlanceStrip({
     { label: "Teams", value: stats.teamCount, to: "/teams" },
     { label: "Events upcoming", value: stats.upcomingEventCount, to: "/events" },
     { label: "Volunteers", value: stats.volunteerCount, to: "/volunteers" },
-    { label: "Assets tracked", value: stats.assetCount, to: "/assets" },
+    { label: "Items tracked", value: stats.assetCount, to: "/assets" },
     {
       label: "Checked out",
       value: stats.checkedOutCount,

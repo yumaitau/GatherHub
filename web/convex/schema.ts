@@ -47,16 +47,16 @@ export const rsvpStatusValidator = v.union(
 );
 
 export const assetCategoryValidator = v.union(
-  v.literal("uniform"),
-  v.literal("kit_bag"),
-  v.literal("ball"),
-  v.literal("training_equipment"),
-  v.literal("goal"),
-  v.literal("gazebo"),
-  v.literal("first_aid"),
-  v.literal("key"),
-  v.literal("device"),
+  v.literal("apparel"),
+  v.literal("equipment"),
+  v.literal("tool"),
+  v.literal("electronics"),
+  v.literal("av_equipment"),
+  v.literal("safety_equipment"),
+  v.literal("furniture"),
   v.literal("vehicle"),
+  v.literal("key"),
+  v.literal("media"),
   v.literal("other"),
 );
 

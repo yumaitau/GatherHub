@@ -213,7 +213,7 @@ describe("asset operations & audit log", () => {
 
     const assetId = await club.as.mutation(api.assets.create, {
       name: "Match Ball Bag",
-      category: "kit_bag",
+      category: "equipment",
     });
 
     // Creation logged + a QR tag minted.

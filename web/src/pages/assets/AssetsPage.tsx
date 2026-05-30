@@ -41,16 +41,16 @@ import { canManageAssets } from "@/lib/roles";
 import { humanise, formatCurrency, toCsv, downloadCsv } from "@/lib/utils";
 
 const CATEGORIES = [
-  "uniform",
-  "kit_bag",
-  "ball",
-  "training_equipment",
-  "goal",
-  "gazebo",
-  "first_aid",
-  "key",
-  "device",
+  "apparel",
+  "equipment",
+  "tool",
+  "electronics",
+  "av_equipment",
+  "safety_equipment",
+  "furniture",
   "vehicle",
+  "key",
+  "media",
   "other",
 ] as const;
 
@@ -114,7 +114,7 @@ export default function AssetsPage() {
     <div>
       <PageHeader
         title="KitTrace"
-        description="Every piece of kit, who has it, and where it has been."
+        description="Every item, who has it, where it has been."
         actions={
           <>
             <Button variant="outline" asChild>
@@ -185,8 +185,8 @@ export default function AssetsPage() {
         ) : assets.length === 0 ? (
           <EmptyState
             icon={Package}
-            title="No assets yet"
-            description="Add your first piece of kit to start tracking it with QR codes."
+            title="No items yet"
+            description="Add your first item to start tracking it with QR codes."
             action={canManage ? <CreateAssetDialog /> : undefined}
           />
         ) : (

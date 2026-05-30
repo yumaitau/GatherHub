@@ -82,7 +82,7 @@ const ENTRIES: PaletteEntry[] = [
     icon: Package,
     group: "Operations",
     to: "/assets",
-    keywords: ["kit", "asset", "equipment", "inventory"],
+    keywords: ["kit", "assets", "items", "equipment", "inventory"],
   },
   {
     id: "scan",
