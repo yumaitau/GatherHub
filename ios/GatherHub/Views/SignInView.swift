@@ -70,14 +70,18 @@ struct SignInView: View {
         .sheet(isPresented: $isPresentingAuth) {
             // Clerk's hosted experience handles every credential type
             // configured for the tenant (password, email code, OAuth,
-            // SSO, passkeys, MFA). Dismisses itself on success; we then
-            // re-poll the session from AuthService.
+            // SSO, passkeys, MFA). AuthService.startObservingClerk()
+            // tracks the underlying Clerk @Observable and mirrors
+            // session changes into our @Published state — no manual
+            // refresh on dismiss required.
             NavigationStack {
                 AuthView(mode: .signInOrUp, isDismissable: true)
             }
-            .onDisappear {
-                Task { await auth.refreshFromClerk() }
-            }
+        }
+        // If the observation loop flips us to signed-in while the sheet
+        // is still up, close it explicitly so the user lands on the app.
+        .onChange(of: auth.state) { _, new in
+            if new == .signedIn { isPresentingAuth = false }
         }
     }
 }

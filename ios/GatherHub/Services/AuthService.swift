@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Observation
 
 // Clerk's iOS SDK is the `Clerk` product of https://github.com/clerk/clerk-ios.
 // Add it in Xcode before building (see README.md). Until then this import fails
@@ -55,9 +56,31 @@ final class AuthService: ObservableObject {
             // `load()` restores any cached session.
             try await clerk.load()
             await refreshFromClerk()
+            startObservingClerk()
         } catch {
             lastError = error.localizedDescription
             state = .signedOut
+        }
+    }
+
+    /// Continuously track changes to Clerk's `user` / `session` so this
+    /// service mirrors them into the `@Published` SwiftUI state without
+    /// callers having to remember to call `refreshFromClerk()` after every
+    /// auth event. Uses Observation's tracking loop: each fire re-arms
+    /// itself by recursing into a fresh `withObservationTracking` call.
+    private func startObservingClerk() {
+        let cb: @Sendable () -> Void = { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.refreshFromClerk()
+                self.startObservingClerk()
+            }
+        }
+        withObservationTracking { [clerk] in
+            _ = clerk.user
+            _ = clerk.session
+        } onChange: {
+            cb()
         }
     }
 
