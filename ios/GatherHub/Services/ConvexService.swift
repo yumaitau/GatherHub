@@ -37,11 +37,17 @@ final class ConvexService: ObservableObject {
 
     // MARK: - Auth lifecycle
 
-    /// Push the latest Clerk credentials into the Convex client. Call after the
-    /// Clerk session changes (sign in / org switch). Implementation depends on
-    /// the SDK; commonly `client.loginFromCache()` or `client.login(...)`.
+    /// Push the latest Clerk credentials into the Convex client. Call once
+    /// after Clerk reports a signed-in user so the underlying FFI client
+    /// stores our `AuthProvider`'s token bridge and starts attaching the
+    /// JWT to every subscription / mutation. Without this call, Convex
+    /// sees every request as unauthenticated and `requireUser` rejects
+    /// with "Not authenticated. at ... convex/sync.ts".
     func refreshAuth() async {
-        // try? await client.loginFromCache()
+        let result = await client.login()
+        if case .failure(let error) = result {
+            dump(error)
+        }
     }
 
     // MARK: - Sync / context
