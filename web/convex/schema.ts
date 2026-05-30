@@ -198,6 +198,12 @@ export default defineSchema({
     volunteerSkills: v.optional(v.array(v.string())),
     volunteerAvailability: v.optional(v.string()),
     volunteerNotes: v.optional(v.string()),
+    // Lifetime member recognition. Universal (any club kind can mark a
+    // person as a lifetime member; soccer clubs migrated this in from a
+    // dedicated table).
+    isLifetimeMember: v.optional(v.boolean()),
+    lifetimeMemberSince: v.optional(v.string()), // year or ISO date
+    lifetimeMemberNotes: v.optional(v.string()),
   })
     .index("by_org", ["orgId"])
     .index("by_org_and_status", ["orgId", "status"])
