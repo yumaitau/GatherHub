@@ -29,6 +29,7 @@ import type * as seed from "../seed.js";
 import type * as sponsors from "../sponsors.js";
 import type * as sync from "../sync.js";
 import type * as tags from "../tags.js";
+import type * as taxonomies from "../taxonomies.js";
 import type * as teams from "../teams.js";
 import type * as volunteers from "../volunteers.js";
 
@@ -60,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   sponsors: typeof sponsors;
   sync: typeof sync;
   tags: typeof tags;
+  taxonomies: typeof taxonomies;
   teams: typeof teams;
   volunteers: typeof volunteers;
 }>;

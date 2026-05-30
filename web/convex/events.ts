@@ -1,7 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
-import { eventTypeValidator, rsvpStatusValidator } from "./schema";
+import { rsvpStatusValidator } from "./schema";
+import { assertTaxonomyKey } from "./taxonomies";
 
 export const list = query({
   args: {
@@ -91,7 +92,7 @@ export const get = query({
 
 export const create = mutation({
   args: {
-    type: eventTypeValidator,
+    type: v.string(),
     title: v.string(),
     description: v.optional(v.string()),
     location: v.optional(v.string()),
@@ -102,6 +103,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "coach");
+    await assertTaxonomyKey(ctx, auth.org._id, "event_type", args.type);
     if (args.teamId) {
       const team = await ctx.db.get(args.teamId);
       assertSameOrg(auth, team);
@@ -124,7 +126,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     eventId: v.id("events"),
-    type: v.optional(eventTypeValidator),
+    type: v.optional(v.string()),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     location: v.optional(v.string()),
@@ -137,6 +139,9 @@ export const update = mutation({
     const auth = await requireRole(ctx, "coach");
     const event = await ctx.db.get(args.eventId);
     assertSameOrg(auth, event);
+    if (args.type !== undefined) {
+      await assertTaxonomyKey(ctx, auth.org._id, "event_type", args.type);
+    }
     const { eventId, ...rest } = args;
     const patch = Object.fromEntries(
       Object.entries(rest).filter(([, v]) => v !== undefined),

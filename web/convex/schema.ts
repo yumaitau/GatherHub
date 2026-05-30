@@ -92,9 +92,40 @@ export const assetActionValidator = v.union(
 
 export const tagTypeValidator = v.union(v.literal("qr"), v.literal("nfc"));
 
+/**
+ * Taxonomy kinds: lists of values that orgs configure themselves rather than
+ * us hardcoding. The corresponding fields on `events` / `assets` / `teams`
+ * store free strings; mutations validate against the active taxonomy rows.
+ */
+export const taxonomyKindValidator = v.union(
+  v.literal("event_type"),
+  v.literal("asset_category"),
+  v.literal("asset_condition"),
+  v.literal("team_age_group"),
+);
+
 // --- Schema --------------------------------------------------------------
 
 export default defineSchema({
+  // Per-org configurable taxonomies. Replaces hardcoded enums for event
+  // types, asset categories, asset conditions, and team age groups. The
+  // referenced records (events.type, assets.category, etc.) store the
+  // `key` string. Soft-delete via `active=false` keeps existing records
+  // readable but hides the option from create dropdowns.
+  taxonomies: defineTable({
+    orgId: v.id("organizations"),
+    kind: taxonomyKindValidator,
+    key: v.string(), // slug; immutable once referenced
+    label: v.string(), // display, editable
+    order: v.number(), // sort within kind
+    active: v.boolean(),
+    isDefault: v.optional(v.boolean()), // one per kind, used in create-record default
+    color: v.optional(v.string()), // optional accent tint for chips
+  })
+    .index("by_org_kind_order", ["orgId", "kind", "order"])
+    .index("by_org_kind_key", ["orgId", "kind", "key"])
+    .index("by_org_kind_active", ["orgId", "kind", "active"]),
+
   // Identity mirror. `clerkUserId` is the Clerk subject — used only to bind a
   // signed-in session to the Convex user. `activeOrgId` is the org the user is
   // currently working in; switched in-app via `organizations.setActive`.
@@ -227,7 +258,7 @@ export default defineSchema({
 
   events: defineTable({
     orgId: v.id("organizations"),
-    type: eventTypeValidator,
+    type: v.string(),
     title: v.string(),
     description: v.optional(v.string()),
     location: v.optional(v.string()),
@@ -292,12 +323,12 @@ export default defineSchema({
   assets: defineTable({
     orgId: v.id("organizations"),
     name: v.string(),
-    category: assetCategoryValidator,
+    category: v.string(),
     description: v.optional(v.string()),
     serialNumber: v.optional(v.string()),
     purchaseDate: v.optional(v.string()), // ISO yyyy-mm-dd
     replacementValue: v.optional(v.number()), // minor units? stored as number (currency major)
-    condition: assetConditionValidator,
+    condition: v.string(),
     status: assetStatusValidator,
     custodianMemberId: v.optional(v.id("members")),
     location: v.optional(v.string()),

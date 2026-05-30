@@ -10,16 +10,13 @@ import {
 } from "./lib/auth";
 import { writeAudit } from "./lib/audit";
 import { generateTagId } from "./lib/ids";
-import {
-  assetCategoryValidator,
-  assetConditionValidator,
-  assetStatusValidator,
-} from "./schema";
+import { assetStatusValidator } from "./schema";
+import { assertTaxonomyKey } from "./taxonomies";
 
 export const list = query({
   args: {
     status: v.optional(assetStatusValidator),
-    category: v.optional(assetCategoryValidator),
+    category: v.optional(v.string()),
     search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -127,18 +124,27 @@ export const history = query({
 export const create = mutation({
   args: {
     name: v.string(),
-    category: assetCategoryValidator,
+    category: v.string(),
     description: v.optional(v.string()),
     serialNumber: v.optional(v.string()),
     purchaseDate: v.optional(v.string()),
     replacementValue: v.optional(v.number()),
-    condition: v.optional(assetConditionValidator),
+    condition: v.optional(v.string()),
     location: v.optional(v.string()),
     notes: v.optional(v.string()),
     sponsorId: v.optional(v.id("sponsors")),
   },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    await assertTaxonomyKey(ctx, auth.org._id, "asset_category", args.category);
+    if (args.condition !== undefined) {
+      await assertTaxonomyKey(
+        ctx,
+        auth.org._id,
+        "asset_condition",
+        args.condition,
+      );
+    }
     if (args.sponsorId) {
       const sponsor = await ctx.db.get(args.sponsorId);
       assertSameOrg(auth, sponsor);
@@ -186,12 +192,12 @@ export const update = mutation({
   args: {
     assetId: v.id("assets"),
     name: v.optional(v.string()),
-    category: v.optional(assetCategoryValidator),
+    category: v.optional(v.string()),
     description: v.optional(v.string()),
     serialNumber: v.optional(v.string()),
     purchaseDate: v.optional(v.string()),
     replacementValue: v.optional(v.number()),
-    condition: v.optional(assetConditionValidator),
+    condition: v.optional(v.string()),
     location: v.optional(v.string()),
     notes: v.optional(v.string()),
     sponsorId: v.optional(v.union(v.id("sponsors"), v.null())),
@@ -200,6 +206,22 @@ export const update = mutation({
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
     const asset = await ctx.db.get(args.assetId);
     assertSameOrg(auth, asset);
+    if (args.category !== undefined) {
+      await assertTaxonomyKey(
+        ctx,
+        auth.org._id,
+        "asset_category",
+        args.category,
+      );
+    }
+    if (args.condition !== undefined) {
+      await assertTaxonomyKey(
+        ctx,
+        auth.org._id,
+        "asset_condition",
+        args.condition,
+      );
+    }
 
     const { assetId, sponsorId, ...rest } = args;
     const patch: Record<string, unknown> = Object.fromEntries(

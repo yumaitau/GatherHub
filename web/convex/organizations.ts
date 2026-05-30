@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { requireRole, requireUser } from "./lib/auth";
 import { generateSlug, generateTagId } from "./lib/ids";
+import { seedAllDefaultsForOrg } from "./taxonomies";
 
 /**
  * Convex-native organisation (club) lifecycle: create, join by invite code,
@@ -42,6 +43,7 @@ export const create = mutation({
       role: "owner",
     });
     await ctx.db.patch(user._id, { activeOrgId: orgId });
+    await seedAllDefaultsForOrg(ctx, orgId);
     return { orgId, slug };
   },
 });
