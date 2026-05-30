@@ -23,6 +23,7 @@ import {
   Layers3,
   UserCog,
   Award,
+  ChevronRight,
 } from "lucide-react";
 import { useGatherHub } from "@/lib/gatherhub";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,8 @@ interface NavItem {
 interface NavGroup {
   label: string;
   items: NavItem[];
+  collapsible?: boolean;
+  defaultOpen?: boolean;
 }
 
 function buildNav(_soccerMode: boolean): NavGroup[] {
@@ -95,6 +98,8 @@ function buildNav(_soccerMode: boolean): NavGroup[] {
 
 const SOCCER_NAV: NavGroup = {
   label: "Soccer",
+  collapsible: true,
+  defaultOpen: false,
   items: [
     {
       to: "/soccer/registrations",
@@ -265,15 +270,67 @@ function NavSection({
   can: (role: Role) => boolean;
 }) {
   const items = group.items.filter((n) => !n.minRole || can(n.minRole));
+  const location = useLocation();
+  const hasActive = items.some((i) =>
+    i.end
+      ? location.pathname === i.to
+      : location.pathname === i.to || location.pathname.startsWith(i.to + "/"),
+  );
+  const storageKey = `gh.nav.section.${group.label}`;
+  const [open, setOpen] = React.useState<boolean>(() => {
+    if (!group.collapsible) return true;
+    if (typeof window === "undefined") return group.defaultOpen ?? false;
+    const stored = window.localStorage.getItem(storageKey);
+    if (stored === "1") return true;
+    if (stored === "0") return false;
+    return group.defaultOpen ?? false;
+  });
+  React.useEffect(() => {
+    if (group.collapsible && hasActive) setOpen(true);
+  }, [group.collapsible, hasActive]);
+  React.useEffect(() => {
+    if (!group.collapsible) return;
+    window.localStorage.setItem(storageKey, open ? "1" : "0");
+  }, [open, group.collapsible, storageKey]);
+
   if (items.length === 0) return null;
+
+  if (!group.collapsible) {
+    return (
+      <div className="mb-1.5">
+        <div className="px-3 pt-3 pb-1.5 text-label text-ink-quiet">
+          {group.label}
+        </div>
+        {items.map((item) => (
+          <NavRow key={item.to} item={item} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="mb-1.5">
-      <div className="px-3 pt-3 pb-1.5 text-label text-ink-quiet">
-        {group.label}
-      </div>
-      {items.map((item) => (
-        <NavRow key={item.to} item={item} />
-      ))}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={cn(
+          "w-full flex items-center gap-1.5 px-3 pt-3 pb-1.5",
+          "text-label text-ink-quiet hover:text-ink-soft",
+          "transition-colors duration-fast ease-out",
+          "focus-visible:outline-none focus-visible:shadow-focus rounded-sm",
+        )}
+      >
+        <ChevronRight
+          className={cn(
+            "h-3 w-3 shrink-0 transition-transform duration-fast ease-out",
+            open && "rotate-90",
+          )}
+          aria-hidden="true"
+        />
+        <span className="flex-1 text-left">{group.label}</span>
+      </button>
+      {open && items.map((item) => <NavRow key={item.to} item={item} />)}
     </div>
   );
 }
