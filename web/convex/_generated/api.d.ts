@@ -26,6 +26,7 @@ import type * as organizations from "../organizations.js";
 import type * as publicSite from "../publicSite.js";
 import type * as roles from "../roles.js";
 import type * as seed from "../seed.js";
+import type * as soccer from "../soccer.js";
 import type * as sponsors from "../sponsors.js";
 import type * as sync from "../sync.js";
 import type * as tags from "../tags.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   publicSite: typeof publicSite;
   roles: typeof roles;
   seed: typeof seed;
+  soccer: typeof soccer;
   sponsors: typeof sponsors;
   sync: typeof sync;
   tags: typeof tags;

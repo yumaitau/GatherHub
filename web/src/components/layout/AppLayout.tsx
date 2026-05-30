@@ -16,6 +16,8 @@ import {
   Settings,
   Menu,
   X,
+  ClipboardList,
+  Gauge,
 } from "lucide-react";
 import { useGatherHub } from "@/lib/gatherhub";
 import { cn } from "@/lib/utils";
@@ -83,6 +85,24 @@ const NAV: NavGroup[] = [
   },
 ];
 
+const SOCCER_NAV: NavGroup = {
+  label: "Soccer",
+  items: [
+    {
+      to: "/registrations",
+      label: "Registrations",
+      icon: ClipboardList,
+      minRole: "committee",
+    },
+    {
+      to: "/grading",
+      label: "Grading",
+      icon: Gauge,
+      minRole: "coach",
+    },
+  ],
+};
+
 const SYSTEM_NAV: NavItem[] = [
   { to: "/settings", label: "Settings", icon: Settings, minRole: "admin" },
 ];
@@ -97,6 +117,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { isLoading, isSignedInToOrg, org, can } = useGatherHub();
+  const soccerMode = Boolean(org?.soccerMode);
+  const groups = soccerMode ? [...NAV, SOCCER_NAV] : NAV;
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const location = useLocation();
 
@@ -166,7 +188,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
           )}
         >
           <div className="flex h-full flex-col overflow-y-auto px-2 pt-3 pb-4">
-            {NAV.map((group) => (
+            {groups.map((group) => (
               <NavSection key={group.label} group={group} can={can} />
             ))}
             <div className="mt-auto pt-4">

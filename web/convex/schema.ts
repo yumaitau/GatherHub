@@ -140,12 +140,15 @@ export default defineSchema({
 
   // Clubs. Created and owned entirely in Convex. `inviteCode` is an opaque
   // short string used by `organizations.joinByCode`; null/absent disables it.
+  // `soccerMode` unlocks soccer-specific surfaces (Registrations, Grading,
+  // soccer settings, kit metadata on teams).
   organizations: defineTable({
     name: v.string(),
     slug: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     createdBy: v.id("users"),
     inviteCode: v.optional(v.string()),
+    soccerMode: v.optional(v.boolean()),
   })
     .index("by_slug", ["slug"])
     .index("by_invite_code", ["inviteCode"]),
@@ -241,6 +244,10 @@ export default defineSchema({
     season: v.optional(v.string()),
     description: v.optional(v.string()),
     isActive: v.boolean(),
+    // Soccer mode extras. Free-string hex like "#bf0000" for visual
+    // identity; bag number identifies the physical kit bag (KitTrace-ish).
+    kitColour: v.optional(v.string()),
+    kitBagNumber: v.optional(v.string()),
   })
     .index("by_org", ["orgId"])
     .index("by_org_and_active", ["orgId", "isActive"]),
@@ -435,4 +442,101 @@ export default defineSchema({
     instagramUrl: v.optional(v.string()),
     websiteUrl: v.optional(v.string()),
   }).index("by_org", ["orgId"]),
+
+  // ---------- Soccer-mode tables --------------------------------------
+  // Only used when `organizations.soccerMode === true`. Designed as
+  // sidecars over members so non-soccer orgs aren't affected.
+
+  // Skill rubric. Configurable per org. Lazy-seeded with seven defaults
+  // (Ball Handling, Passing, Shooting, Defense, Speed & Agility,
+  // Physical Strength, Game Intelligence) on first read.
+  soccerSkills: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    maxScore: v.number(), // typically 10
+    weight: v.number(), // 0..1
+    order: v.number(),
+    active: v.boolean(),
+  })
+    .index("by_org_order", ["orgId", "order"])
+    .index("by_org_active", ["orgId", "active"]),
+
+  // One row per (member, skill). Latest score wins (upsert on write).
+  soccerEvaluations: defineTable({
+    orgId: v.id("organizations"),
+    memberId: v.id("members"),
+    skillId: v.id("soccerSkills"),
+    score: v.number(),
+    notes: v.optional(v.string()),
+    evaluatedBy: v.id("users"),
+    evaluatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_member", ["memberId"])
+    .index("by_member_skill", ["memberId", "skillId"]),
+
+  // Grade-band divisions. Used to auto-assign a player to a division
+  // from their computed overall grade.
+  soccerDivisions: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    minGrade: v.number(), // 0..100 inclusive
+    maxGrade: v.number(),
+    color: v.optional(v.string()), // hex
+    order: v.number(),
+    active: v.boolean(),
+  })
+    .index("by_org_order", ["orgId", "order"])
+    .index("by_org_active", ["orgId", "active"]),
+
+  soccerCompetitions: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    season: v.optional(v.string()),
+    order: v.number(),
+    active: v.boolean(),
+  })
+    .index("by_org_order", ["orgId", "order"]),
+
+  // Per-member registration record. Covers rego status, payment status,
+  // payment plan window, FFA number, gender, school.
+  soccerRegistrations: defineTable({
+    orgId: v.id("organizations"),
+    memberId: v.id("members"),
+    competitionId: v.optional(v.id("soccerCompetitions")),
+    ageGroupKey: v.optional(v.string()), // matches team_age_group taxonomy
+    divisionId: v.optional(v.id("soccerDivisions")),
+    teamId: v.optional(v.id("teams")),
+    ffaNumber: v.optional(v.string()),
+    gender: v.optional(v.string()), // "male" | "female" | "unspecified"
+    schoolName: v.optional(v.string()),
+    registered: v.boolean(),
+    registeredAt: v.optional(v.number()),
+    paid: v.boolean(),
+    paidAt: v.optional(v.number()),
+    paymentPlan: v.optional(v.boolean()),
+    paymentPlanStart: v.optional(v.string()), // ISO yyyy-mm-dd
+    paymentPlanEnd: v.optional(v.string()),
+    comments: v.optional(v.string()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_member", ["orgId", "memberId"])
+    .index("by_org_team", ["orgId", "teamId"])
+    .index("by_org_division", ["orgId", "divisionId"]),
+
+  // Working with Vulnerable People (or equivalent) background-check
+  // status. Required by clubs for coaches and managers.
+  soccerWwvp: defineTable({
+    orgId: v.id("organizations"),
+    memberId: v.id("members"),
+    status: v.string(), // "not_provided" | "sighted" | "pending" | "approved"
+    sightedAt: v.optional(v.string()), // ISO yyyy-mm-dd
+    expiresAt: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_member", ["memberId"]),
 });

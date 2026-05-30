@@ -72,6 +72,7 @@ export const currentContext = query({
         id: auth.org._id,
         name: auth.org.name,
         slug: auth.org.slug,
+        soccerMode: Boolean(auth.org.soccerMode),
       },
       role: auth.role,
     };

@@ -14,7 +14,12 @@ export interface GatherHubContextValue {
     email?: string;
     imageUrl?: string;
   } | null;
-  org: { id: string; name: string; slug?: string } | null;
+  org: {
+    id: string;
+    name: string;
+    slug?: string;
+    soccerMode: boolean;
+  } | null;
   /** UI-only gate: does the caller hold at least `min`? (server re-checks). */
   can: (min: Role) => boolean;
 }
@@ -57,6 +62,7 @@ export function GatherHubProvider({ children }: { children: React.ReactNode }) {
             id: context.org.id,
             name: context.org.name,
             slug: context.org.slug ?? undefined,
+            soccerMode: Boolean(context.org.soccerMode),
           }
         : null,
       can: (min: Role) => (role ? hasAtLeastRole(role, min) : false),

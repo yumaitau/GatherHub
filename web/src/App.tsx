@@ -24,6 +24,10 @@ import SponsorsPage from "@/pages/sponsors/SponsorsPage";
 import SponsorDetailPage from "@/pages/sponsors/SponsorDetailPage";
 import NewsAdminPage from "@/pages/NewsAdminPage";
 import SettingsPage from "@/pages/settings/SettingsPage";
+import RegistrationsPage from "@/pages/soccer/RegistrationsPage";
+import GradingPage, {
+  PlayerEvaluationPage,
+} from "@/pages/soccer/GradingPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 import PublicAssetPage from "@/pages/public/PublicAssetPage";
@@ -80,6 +84,12 @@ function AuthedApp() {
                 element={<SponsorDetailPage />}
               />
               <Route path="/news" element={<NewsAdminPage />} />
+              <Route path="/registrations" element={<RegistrationsPage />} />
+              <Route path="/grading" element={<GradingPage />} />
+              <Route
+                path="/grading/:memberId"
+                element={<PlayerEvaluationPage />}
+              />
               <Route path="/profile/*" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFoundPage />} />

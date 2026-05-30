@@ -25,6 +25,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { SoccerSettingsTab } from "@/pages/soccer/SoccerSettingsTab";
 import {
   Table,
   TableHeader,
@@ -42,6 +43,7 @@ import { humanise, formatDateTime } from "@/lib/utils";
 export default function SettingsPage() {
   const { org, can } = useGatherHub();
   const isAdmin = can("admin");
+  const soccerMode = Boolean(org?.soccerMode);
   return (
     <div>
       <PageHeader
@@ -57,6 +59,11 @@ export default function SettingsPage() {
           {can("committee") && (
             <TabsTrigger value="taxonomies">Lists & types</TabsTrigger>
           )}
+          {can("committee") && (
+            <TabsTrigger value="soccer">
+              Soccer{soccerMode ? "" : " (off)"}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="public">Public website</TabsTrigger>
         </TabsList>
         <TabsContent value="roles">
@@ -70,6 +77,11 @@ export default function SettingsPage() {
         {can("committee") && (
           <TabsContent value="taxonomies">
             <TaxonomiesTab />
+          </TabsContent>
+        )}
+        {can("committee") && (
+          <TabsContent value="soccer">
+            <SoccerSettingsTab />
           </TabsContent>
         )}
         <TabsContent value="public">
