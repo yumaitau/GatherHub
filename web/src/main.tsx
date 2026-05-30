@@ -6,6 +6,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ConvexReactClient } from "convex/react";
 import App from "./App";
 import { MissingConfig } from "./components/MissingConfig";
+import { Toaster } from "sonner";
 import "./index.css";
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
@@ -28,6 +29,12 @@ if (!convexUrl || !clerkPublishableKey) {
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           <BrowserRouter>
             <App />
+            <Toaster
+              position="bottom-right"
+              theme="system"
+              richColors
+              closeButton
+            />
           </BrowserRouter>
         </ConvexProviderWithClerk>
       </ClerkProvider>

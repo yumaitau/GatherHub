@@ -133,7 +133,9 @@ export default function DashboardPage() {
         </section>
       )}
 
-      <div className="grid gap-6 mb-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <GlanceStrip stats={stats} />
+
+      <div className="grid gap-6 mt-8 mb-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <Panel
           title="Upcoming events"
           action={
@@ -170,8 +172,6 @@ export default function DashboardPage() {
       <PendingInvitesBlock />
 
       {org?.soccerMode && <SoccerSummary />}
-
-      <GlanceStrip stats={stats} />
     </div>
   );
 }

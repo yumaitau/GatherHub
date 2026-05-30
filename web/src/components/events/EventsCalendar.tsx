@@ -15,6 +15,7 @@ import type {
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "convex/react";
 import type { EventDropArg } from "@fullcalendar/core";
+import { toast } from "sonner";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -178,15 +179,25 @@ export function EventsCalendar({
     }
     const newStart = arg.event.start.getTime();
     const newEnd = arg.event.end ? arg.event.end.getTime() : undefined;
+    const when = new Date(newStart).toLocaleString(undefined, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+    });
     try {
       await updateEvent({
         eventId: arg.event.id as Id<"events">,
         startTime: newStart,
         endTime: newEnd,
       });
+      toast.success(`Rescheduled "${arg.event.title}" to ${when}`);
     } catch (err) {
-      console.error("Reschedule failed", err);
       arg.revert();
+      toast.error(
+        err instanceof Error ? err.message : "Could not reschedule event",
+      );
     }
   }
 
