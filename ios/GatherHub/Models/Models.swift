@@ -31,6 +31,7 @@ struct Org: Codable, Identifiable, Hashable {
     let id: String
     let name: String
     let slug: String?
+    let soccerMode: Bool?
 }
 
 /// GatherHub role. Mirrors `roleValidator` in schema.ts.
@@ -94,6 +95,158 @@ struct AssetSummary: Codable, Identifiable, Hashable {
         case id = "_id"
         case name, category
     }
+}
+
+/// One row returned by `sync:myMemberships` — every club the signed-in
+/// user belongs to, with role and whether it's currently the active org.
+struct OrgMembership: Codable, Identifiable, Hashable {
+    let membershipId: String
+    let role: Role
+    let isActive: Bool
+    let org: Org?
+
+    var id: String { membershipId }
+}
+
+// MARK: - Teams
+
+/// Row returned by `teams:list` (team doc plus derived player/staff counts).
+struct Team: Codable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let ageGroup: String?
+    let season: String?
+    let isActive: Bool
+    let playerCount: Int
+    let staffCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case name, ageGroup, season, isActive, playerCount, staffCount
+    }
+}
+
+// MARK: - Announcements
+
+/// Row returned by `announcements:list`.
+struct Announcement: Codable, Identifiable, Hashable {
+    let id: String
+    let title: String
+    let body: String
+    let pinned: Bool
+    let teamName: String?
+    let authorName: String?
+    let isRead: Bool
+    /// Epoch ms — Convex `_creationTime`.
+    let creationTime: Double
+
+    var creationDate: Date { Date(timeIntervalSince1970: creationTime / 1000) }
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case title, body, pinned, teamName, authorName, isRead
+        case creationTime = "_creationTime"
+    }
+}
+
+// MARK: - Soccer rows
+
+/// Row returned by `soccer:playerListing`.
+struct PlayerListingRow: Codable, Identifiable, Hashable {
+    let memberId: String
+    let name: String
+    let email: String?
+    let hasRegistration: Bool
+    let registered: Bool
+    let paid: Bool
+    let paymentPlan: Bool
+    let ffaNumber: String?
+    let teamName: String?
+    let divisionName: String?
+    let divisionColor: String?
+    let grade: Double?
+
+    var id: String { memberId }
+}
+
+/// Row returned by `soccer:coachesAndManagers`.
+struct CoachManagerRow: Codable, Identifiable, Hashable {
+    let memberId: String
+    let firstName: String
+    let lastName: String
+    let email: String?
+    let phone: String?
+    let clubRole: String
+    let wwvpStatus: String
+    let wwvpSightedAt: String?
+    let wwvpExpiresAt: String?
+    let registered: Bool?
+    let registeredDate: String?
+
+    var id: String { memberId }
+    var fullName: String { "\(firstName) \(lastName)" }
+}
+
+/// Row returned by `soccer:playerRoster`.
+struct PlayerRosterRow: Codable, Identifiable, Hashable {
+    let memberId: String
+    let name: String
+    let email: String?
+    let dateOfBirth: String?
+    let scoredCount: Int
+    let totalSkills: Int
+    let grade: Double
+    let division: PlayerRosterDivision?
+
+    var id: String { memberId }
+}
+
+struct PlayerRosterDivision: Codable, Hashable {
+    let id: String
+    let name: String
+    let color: String?
+}
+
+// MARK: - Grading
+
+/// Row in the configurable skill rubric (`soccer:listSkills`).
+struct SoccerSkill: Codable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let description: String?
+    let weight: Double
+    let maxScore: Double
+    let order: Double
+    let active: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case name, description, weight, maxScore, order, active
+    }
+}
+
+/// A scored evaluation row (`soccer:playerEvaluations`).
+struct SoccerEvaluation: Codable, Identifiable, Hashable {
+    let id: String
+    let memberId: String
+    let skillId: String
+    let score: Double
+    let notes: String?
+    let evaluatedAt: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case memberId, skillId, score, notes, evaluatedAt
+    }
+}
+
+/// Computed grade summary for one player (`soccer:playerGrade`).
+struct PlayerGrade: Codable, Hashable {
+    let grade: Double
+    let division: PlayerRosterDivision?
+    let scoredCount: Int
+    let totalSkills: Int
+    let evaluations: [SoccerEvaluation]
 }
 
 // MARK: - Assets

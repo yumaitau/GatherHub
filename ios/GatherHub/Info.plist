@@ -47,7 +47,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>au.gatherhub.app</string>
+			<string>au.com.gatherhub</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>gatherhub</string>

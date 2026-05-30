@@ -65,6 +65,21 @@ final class ConvexService: ObservableObject {
         try await once("sync:currentContext")
     }
 
+    /// `sync:myMemberships` (query) — every club the signed-in user
+    /// belongs to, with role + active flag. Drives the org switcher.
+    func myMemberships() async throws -> [OrgMembership] {
+        try await once("sync:myMemberships")
+    }
+
+    /// `organizations:setActive` (mutation) — flip the caller's active
+    /// org. Subsequent queries scope to the chosen org.
+    func setActiveOrg(_ orgId: String) async throws {
+        try await client.mutation(
+            "organizations:setActive",
+            with: ["orgId": orgId]
+        )
+    }
+
     // MARK: - Tags / assets
 
     /// `tags:lookupAuthed` (query, `{ tagId }`) — full asset for a scanned tag
@@ -126,9 +141,76 @@ final class ConvexService: ObservableObject {
 
     // MARK: - Members
 
-    /// `members:list` (query) — used for picking a custodian / RSVP target.
-    func listMembers() async throws -> [Member] {
-        try await once("members:list")
+    /// `members:list` (query). Optional `status` filter ("active" / "inactive").
+    func listMembers(status: String? = nil) async throws -> [Member] {
+        var args: [String: ConvexEncodable?] = [:]
+        if let status { args["status"] = status }
+        return try await once("members:list", with: args)
+    }
+
+    /// `teams:list` (query) — all teams in active org with roster counts.
+    func listTeams(includeInactive: Bool = false) async throws -> [Team] {
+        try await once("teams:list", with: ["includeInactive": includeInactive])
+    }
+
+    /// `announcements:list` (query).
+    func listAnnouncements() async throws -> [Announcement] {
+        try await once("announcements:list")
+    }
+
+    /// `announcements:markRead` (mutation).
+    func markAnnouncementRead(_ id: String) async throws {
+        try await client.mutation(
+            "announcements:markRead",
+            with: ["announcementId": id]
+        )
+    }
+
+    /// `soccer:playerListing` (query).
+    func listPlayerRegistrations() async throws -> [PlayerListingRow] {
+        try await once("soccer:playerListing")
+    }
+
+    /// `soccer:coachesAndManagers` (query).
+    func listCoachesManagers() async throws -> [CoachManagerRow] {
+        try await once("soccer:coachesAndManagers")
+    }
+
+    /// `soccer:playerRoster` (query) — players with computed grade for
+    /// the grading screen.
+    func listPlayerRoster() async throws -> [PlayerRosterRow] {
+        try await once("soccer:playerRoster")
+    }
+
+    /// `soccer:listSkills` (query) — active rubric for the org.
+    func listSoccerSkills(includeInactive: Bool = false) async throws -> [SoccerSkill] {
+        try await once(
+            "soccer:listSkills",
+            with: ["includeInactive": includeInactive]
+        )
+    }
+
+    /// `soccer:playerGrade` (query) — computed grade, division, and the
+    /// player's evaluation rows in one call.
+    func playerGrade(memberId: String) async throws -> PlayerGrade {
+        try await once("soccer:playerGrade", with: ["memberId": memberId])
+    }
+
+    /// `soccer:upsertEvaluation` (mutation) — record/update a score for
+    /// one skill. Requires coach+.
+    func upsertEvaluation(
+        memberId: String,
+        skillId: String,
+        score: Double,
+        notes: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = [
+            "memberId": memberId,
+            "skillId": skillId,
+            "score": score,
+        ]
+        if let notes { args["notes"] = notes }
+        try await client.mutation("soccer:upsertEvaluation", with: args)
     }
 
     // MARK: - Scan + asset registration

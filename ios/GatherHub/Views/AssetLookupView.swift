@@ -26,7 +26,7 @@ struct AssetLookupView: View {
 
                 if invalid {
                     Text("That doesn't contain a valid GatherHub tag id.")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Color.gh.danger)
                         .font(.footnote)
                 }
             }

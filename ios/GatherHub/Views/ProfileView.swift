@@ -8,6 +8,10 @@ struct ProfileView: View {
 
     @EnvironmentObject private var auth: AuthService
     @State private var isShowingSupport = false
+    @State private var isShowingOrgSwitcher = false
+    /// Bumped every time the user switches clubs so the parent
+    /// can trigger a re-sync of the active org context.
+    var onSwitchOrg: () -> Void = {}
 
     var body: some View {
         NavigationStack {
@@ -31,6 +35,11 @@ struct ProfileView: View {
                         LabeledContent("Slug", value: slug)
                     }
                     LabeledContent("Your role", value: context.role.displayName)
+                    Button {
+                        isShowingOrgSwitcher = true
+                    } label: {
+                        Label("Switch club", systemImage: "arrow.left.arrow.right.square")
+                    }
                 }
 
                 Section {
@@ -94,6 +103,11 @@ struct ProfileView: View {
             }
             .navigationTitle("Profile")
             .yumaSupportSheet(isPresented: $isShowingSupport) { _ in }
+            .sheet(isPresented: $isShowingOrgSwitcher) {
+                OrgSwitcherSheet(activeOrgId: context.org.id) {
+                    onSwitchOrg()
+                }
+            }
         }
     }
 

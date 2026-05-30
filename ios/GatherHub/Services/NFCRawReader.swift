@@ -26,7 +26,9 @@ final class NFCRawReader: NSObject, ObservableObject {
             delegate: self,
             queue: nil
         )
-        session?.alertMessage = "Hold your iPhone near a club tag."
+        // Wording mirrors Kit-Trace's flutter_nfc_kit prompts exactly so
+        // the system NFC sheet reads the same in both apps.
+        session?.alertMessage = "Hold your iPhone near the NFC tag"
         self.session = session
         session?.begin()
         isScanning = true
@@ -61,14 +63,15 @@ extension NFCRawReader: NFCTagReaderSessionDelegate {
             }
             let uid = Self.extractUid(from: tag)
             if let uid {
-                session.alertMessage = "Tag read."
+                // Kit-Trace's success message verbatim.
+                session.alertMessage = "Tag scanned successfully!"
                 session.invalidate()
                 Task { @MainActor [weak self] in
                     self?.lastUid = uid
                     self?.isScanning = false
                 }
             } else {
-                session.invalidate(errorMessage: "Couldn't read tag UID.")
+                session.invalidate(errorMessage: "Error reading tag")
                 Task { @MainActor [weak self] in
                     self?.isScanning = false
                 }

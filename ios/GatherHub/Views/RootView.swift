@@ -53,11 +53,12 @@ struct RootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.gh.paper.ignoresSafeArea())
         } else if let context {
-            if auth.activeOrgId == nil && auth.organizations.count > 1 {
-                OrgPickerView()
-            } else {
-                MainTabView(context: context)
-            }
+            MainTabView(context: context, onSwitchOrg: {
+                // After Convex flips activeOrgId via organizations:setActive
+                // we need to re-pull currentContext so the rest of the
+                // app sees the new org name / role / soccerMode.
+                Task { await sync() }
+            })
         } else if loadError != nil {
             OfflineStateView(
                 title: "Couldn't load your club",

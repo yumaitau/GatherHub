@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// The signed-in app shell: Dashboard, Scan, Assets, Events, Profile.
+/// The signed-in app shell: Home, Assets (scan + lookup combined),
+/// Events, More (expansive menu), Profile.
 struct MainTabView: View {
     let context: CurrentContext
+    var onSwitchOrg: () -> Void = {}
     @EnvironmentObject private var convex: ConvexService
 
     var body: some View {
@@ -12,16 +14,16 @@ struct MainTabView: View {
             }
             .tabItem { Label("Home", systemImage: "house") }
 
-            ScanView()
-                .tabItem { Label("Scan", systemImage: "qrcode.viewfinder") }
+            AssetsView()
+                .tabItem { Label("Assets", systemImage: "qrcode.viewfinder") }
 
-            AssetLookupView()
-                .tabItem { Label("Assets", systemImage: "shippingbox") }
-
-            EventListView(context: context)
+            EventCalendarView(context: context)
                 .tabItem { Label("Events", systemImage: "calendar") }
 
-            ProfileView(context: context)
+            MoreView(context: context)
+                .tabItem { Label("More", systemImage: "ellipsis.circle") }
+
+            ProfileView(context: context, onSwitchOrg: onSwitchOrg)
                 .tabItem { Label("Profile", systemImage: "person.crop.circle") }
         }
         .tint(Color.gh.accent)

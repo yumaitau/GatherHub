@@ -11,4 +11,4 @@
 // → Membership.
 
 DEVELOPMENT_TEAM =
-PRODUCT_BUNDLE_IDENTIFIER = au.gatherhub.app
+PRODUCT_BUNDLE_IDENTIFIER = au.com.gatherhub

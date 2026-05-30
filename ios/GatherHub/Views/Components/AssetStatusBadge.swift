@@ -14,13 +14,16 @@ struct AssetStatusBadge: View {
             .accessibilityLabel("Status: \(status.displayName)")
     }
 
+    /// Pull from the project's design tokens so the badge stays legible
+    /// in both light and dark mode (raw .red / .green / .orange render at
+    /// poor contrast on dark backgrounds).
     private var color: Color {
         switch status {
-        case .available: return .green
-        case .checkedOut, .inUse: return .orange
-        case .maintenance: return .blue
-        case .lost: return .red
-        case .retired: return .gray
+        case .available: return Color.gh.success
+        case .checkedOut, .inUse: return Color.gh.warning
+        case .maintenance: return Color.gh.info
+        case .lost: return Color.gh.danger
+        case .retired: return Color.gh.inkQuiet
         }
     }
 }

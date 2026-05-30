@@ -11,7 +11,7 @@
 name: GatherHub
 
 options:
-  bundleIdPrefix: au.gatherhub
+  bundleIdPrefix: au.com.gatherhub
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -50,7 +50,7 @@ targets:
         product: YumaSupportKit
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: au.gatherhub.app
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.gatherhub
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"

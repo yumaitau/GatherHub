@@ -136,7 +136,9 @@ final class EventListViewModel: ObservableObject {
     func load(context: CurrentContext, convex: ConvexService) async {
         phase = .loading
         do {
-            async let eventsTask = convex.listEvents(upcomingOnly: true)
+            // Calendar surface needs past events too so users can scroll
+            // back through previous months. The view filters per day.
+            async let eventsTask = convex.listEvents(upcomingOnly: false)
             async let membersTask = convex.listMembers()
             let (events, members) = try await (eventsTask, membersTask)
             self.events = events
