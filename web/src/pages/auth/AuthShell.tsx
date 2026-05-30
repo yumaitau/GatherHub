@@ -57,14 +57,17 @@ function Wordmark() {
   return (
     <a
       href="/"
+      aria-label="GatherHub home"
       className="inline-flex items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:shadow-focus"
     >
-      <span
-        className="inline-flex h-6 w-6 items-center justify-center rounded-xs border border-hairline bg-surface text-caption font-strong text-ink-strong"
+      <img
+        src="/logo.png"
+        alt=""
         aria-hidden="true"
-      >
-        GH
-      </span>
+        width={28}
+        height={28}
+        className="h-7 w-7 shrink-0"
+      />
       <span className="text-body-strong text-ink-strong tracking-[-0.012em]">
         GatherHub
       </span>

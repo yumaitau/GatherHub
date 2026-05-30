@@ -1,6 +1,16 @@
-# GatherHub
+<p align="center">
+  <img src="docs/brand/logo-mark.png" alt="GatherHub" width="120" />
+</p>
 
-> A modern operating system for community sports clubs and volunteer-run organisations.
+<h1 align="center">GatherHub</h1>
+
+<p align="center">
+  <em>The operating system for community sports clubs and volunteer-run organisations.</em>
+</p>
+
+<p align="center">
+  <img src="docs/brand/banner.png" alt="GatherHub product banner showing the dashboard with members, teams, events, KitTrace, and recent activity panels." />
+</p>
 
 GatherHub helps club committees manage people, teams, events, attendance,
 volunteers, sponsors, assets, kit, QR/NFC tracking, and a basic public website —

@@ -21,12 +21,14 @@ export default function PublicAssetPage() {
     <div className="min-h-screen bg-paper text-ink">
       <header className="border-b border-hairline">
         <div className="mx-auto flex max-w-md items-center gap-2 px-5 py-4">
-          <span
-            className="inline-flex h-7 w-7 items-center justify-center rounded-xs border border-hairline bg-surface text-caption font-strong text-ink-strong"
+          <img
+            src="/logo.png"
+            alt=""
             aria-hidden="true"
-          >
-            GH
-          </span>
+            width={28}
+            height={28}
+            className="h-7 w-7 shrink-0"
+          />
           <span className="text-body-strong text-ink-strong tracking-[-0.012em]">
             GatherHub
           </span>

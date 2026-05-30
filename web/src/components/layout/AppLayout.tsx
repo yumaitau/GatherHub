@@ -274,16 +274,14 @@ function Wordmark() {
       )}
       aria-label="GatherHub home"
     >
-      <span
-        className={cn(
-          "inline-flex h-6 w-6 items-center justify-center",
-          "rounded-xs border border-hairline bg-surface",
-          "text-caption font-strong text-ink-strong",
-        )}
+      <img
+        src="/logo.png"
+        alt=""
         aria-hidden="true"
-      >
-        GH
-      </span>
+        width={24}
+        height={24}
+        className="h-6 w-6 shrink-0"
+      />
       <span className="hidden sm:inline text-body-strong tracking-[-0.012em]">
         GatherHub
       </span>
