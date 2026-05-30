@@ -2,7 +2,7 @@ import * as React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
-import { Plus, Package, ScanLine, Download, Printer } from "lucide-react";
+import { Plus, Package, Download, Printer, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,8 +102,8 @@ export default function AssetsPage() {
         actions={
           <>
             <Button variant="outline" asChild>
-              <Link to="/assets/scan">
-                <ScanLine className="h-4 w-4" /> Scan
+              <Link to="/assets/history">
+                <History className="h-4 w-4" /> History
               </Link>
             </Button>
             <Button variant="outline" asChild>

@@ -17,7 +17,7 @@ import EventDetailPage from "@/pages/events/EventDetailPage";
 import AnnouncementsPage from "@/pages/AnnouncementsPage";
 import AssetsPage from "@/pages/assets/AssetsPage";
 import AssetDetailPage from "@/pages/assets/AssetDetailPage";
-import ScanPage from "@/pages/assets/ScanPage";
+import AssetHistoryPage from "@/pages/assets/HistoryPage";
 import QrSheetPage from "@/pages/assets/QrSheetPage";
 import VolunteersPage from "@/pages/VolunteersPage";
 import SponsorsPage from "@/pages/sponsors/SponsorsPage";
@@ -74,7 +74,12 @@ function AuthedApp() {
               <Route path="/events/:eventId" element={<EventDetailPage />} />
               <Route path="/announcements" element={<AnnouncementsPage />} />
               <Route path="/assets" element={<AssetsPage />} />
-              <Route path="/assets/scan" element={<ScanPage />} />
+              <Route path="/assets/history" element={<AssetHistoryPage />} />
+              {/* Old scan route redirects to history; web app does not scan. */}
+              <Route
+                path="/assets/scan"
+                element={<Navigate to="/assets/history" replace />}
+              />
               <Route path="/assets/qr-sheet" element={<QrSheetPage />} />
               <Route path="/assets/:assetId" element={<AssetDetailPage />} />
               <Route path="/volunteers" element={<VolunteersPage />} />

@@ -87,6 +87,45 @@ export const get = query({
   },
 });
 
+/**
+ * Org-wide audit history across every asset, newest first. Used by the
+ * /assets/history page so members can track asset lifecycle without
+ * digging into each asset record.
+ */
+export const allHistory = query({
+  args: {},
+  handler: async (ctx) => {
+    const auth = await requireOrgMember(ctx);
+    const entries = await ctx.db
+      .query("assetAuditLog")
+      .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    entries.sort((a, b) => b.performedAt - a.performedAt);
+    return await Promise.all(
+      entries.map(async (e) => {
+        const [performer, asset] = await Promise.all([
+          ctx.db.get(e.performedBy),
+          ctx.db.get(e.assetId),
+        ]);
+        return {
+          ...e,
+          assetName: asset?.name ?? "(deleted asset)",
+          assetCategory: asset?.category ?? null,
+          performerName: performer
+            ? `${performer.firstName ?? ""} ${performer.lastName ?? ""}`.trim()
+            : "Unknown",
+          fromCustodianName: e.fromCustodianMemberId
+            ? await memberName(ctx, e.fromCustodianMemberId)
+            : null,
+          toCustodianName: e.toCustodianMemberId
+            ? await memberName(ctx, e.toCustodianMemberId)
+            : null,
+        };
+      }),
+    );
+  },
+});
+
 /** Immutable audit history for an asset, newest first. */
 export const history = query({
   args: { assetId: v.id("assets") },
