@@ -43,6 +43,7 @@ function parseArgs(argv) {
     const k = argv[i];
     if (k === "--dump") out.dump = argv[++i];
     else if (k === "--owner-email") out.ownerEmail = argv[++i];
+    else if (k === "--owner-user-id") out.ownerUserId = argv[++i];
     else if (k === "--name") out.name = argv[++i];
     else if (k === "--slug") out.slug = argv[++i];
     else if (k === "--dry-run") out.dryRun = true;
@@ -134,8 +135,8 @@ async function main() {
     console.error("--dump <dir> is required");
     process.exit(1);
   }
-  if (!args.ownerEmail) {
-    console.error("--owner-email <email> is required");
+  if (!args.ownerEmail && !args.ownerUserId) {
+    console.error("--owner-email <email> or --owner-user-id <id> is required");
     process.exit(1);
   }
   const env = await readEnv(WEB_ENV);
@@ -180,6 +181,7 @@ async function main() {
     name: args.name ?? "Belwest Soccer Club",
     slug: args.slug ?? "belwest",
     ownerEmail: args.ownerEmail,
+    ownerUserId: args.ownerUserId,
   });
   const orgId = prov.orgId;
   console.log(`  orgId=${orgId}`);

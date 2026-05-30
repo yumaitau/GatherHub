@@ -11,24 +11,46 @@ import { seedAllDefaultsForOrg } from "../taxonomies";
  * in each function.
  */
 
+/** Temp helper: list every users row's email + id so the operator can pick
+ *  the right one when provisionOrg can't match an email. Remove with the
+ *  rest of this module once import is done. */
+export const whoami = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("users").collect();
+    return rows.map((r) => ({
+      id: r._id,
+      email: r.email ?? null,
+      firstName: r.firstName ?? null,
+      lastName: r.lastName ?? null,
+      clerkUserId: r.clerkUserId,
+    }));
+  },
+});
+
 // ---------- Provision target org -------------------------------------
 
 export const provisionOrg = mutation({
   args: {
     name: v.string(),
     slug: v.optional(v.string()),
-    ownerEmail: v.string(),
+    ownerEmail: v.optional(v.string()),
+    ownerUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    // Reuse-or-create an organisation owned by the user whose email matches.
-    const user = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("email"), args.ownerEmail.toLowerCase()))
-      .first();
+    let user: Doc<"users"> | null = null;
+    if (args.ownerUserId) {
+      user = await ctx.db.get(args.ownerUserId);
+    } else if (args.ownerEmail) {
+      user = await ctx.db
+        .query("users")
+        .filter((q) => q.eq(q.field("email"), args.ownerEmail!.toLowerCase()))
+        .first();
+    }
     if (!user) {
       throw new ConvexError({
         code: "owner_user_missing",
-        message: `No GatherHub user with email ${args.ownerEmail}. Sign in once first.`,
+        message: `No GatherHub user matched. Pass --owner-user-id or sign in first.`,
       });
     }
 
