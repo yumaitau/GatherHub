@@ -13,6 +13,7 @@ import {
   Archive,
   Printer,
   Nfc,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -69,7 +70,12 @@ export default function AssetDetailPage() {
       <PageHeader
         title={asset.name}
         description={`${humanise(asset.category)} · ${humanise(asset.condition)} condition`}
-        actions={<AssetStatusBadge status={asset.status} />}
+        actions={
+          <>
+            <AssetStatusBadge status={asset.status} />
+            {canManage && <EditAssetDialog asset={asset} />}
+          </>
+        }
       />
 
       {canManage && asset.status !== "retired" && (
@@ -638,6 +644,220 @@ function RegisterNfcDialog({ assetId }: { assetId: Id<"assets"> }) {
           </DialogClose>
           <Button onClick={submit} disabled={!nfc}>
             Register
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface EditableAsset {
+  _id: Id<"assets">;
+  name: string;
+  category: string;
+  condition: string;
+  description?: string;
+  serialNumber?: string;
+  purchaseDate?: string;
+  replacementValue?: number;
+  location?: string;
+  notes?: string;
+}
+
+function EditAssetDialog({ asset }: { asset: EditableAsset }) {
+  const update = useMutation(api.assets.update);
+  const categories = useQuery(api.taxonomies.list, {
+    kind: "asset_category",
+  });
+  const conditions = useQuery(api.taxonomies.list, {
+    kind: "asset_condition",
+  });
+  const formId = React.useId();
+  const [open, setOpen] = React.useState(false);
+  const [name, setName] = React.useState(asset.name);
+  const [category, setCategory] = React.useState(asset.category);
+  const [condition, setCondition] = React.useState(asset.condition);
+  const [serialNumber, setSerialNumber] = React.useState(
+    asset.serialNumber ?? "",
+  );
+  const [purchaseDate, setPurchaseDate] = React.useState(
+    asset.purchaseDate ?? "",
+  );
+  const [replacementValue, setReplacementValue] = React.useState(
+    asset.replacementValue !== undefined ? String(asset.replacementValue) : "",
+  );
+  const [location, setLocation] = React.useState(asset.location ?? "");
+  const [description, setDescription] = React.useState(asset.description ?? "");
+  const [notes, setNotes] = React.useState(asset.notes ?? "");
+  const [error, setError] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) {
+      setName(asset.name);
+      setCategory(asset.category);
+      setCondition(asset.condition);
+      setSerialNumber(asset.serialNumber ?? "");
+      setPurchaseDate(asset.purchaseDate ?? "");
+      setReplacementValue(
+        asset.replacementValue !== undefined
+          ? String(asset.replacementValue)
+          : "",
+      );
+      setLocation(asset.location ?? "");
+      setDescription(asset.description ?? "");
+      setNotes(asset.notes ?? "");
+      setError(null);
+    }
+  }, [open, asset]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    try {
+      const valueNum =
+        replacementValue.trim() === ""
+          ? undefined
+          : Number(replacementValue);
+      if (valueNum !== undefined && Number.isNaN(valueNum)) {
+        setError("Replacement value must be a number.");
+        return;
+      }
+      await update({
+        assetId: asset._id,
+        name: name.trim(),
+        category,
+        condition,
+        serialNumber: serialNumber.trim() || undefined,
+        purchaseDate: purchaseDate || undefined,
+        replacementValue: valueNum,
+        location: location.trim() || undefined,
+        description: description.trim() || undefined,
+        notes: notes.trim() || undefined,
+      });
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">
+          <Pencil className="h-4 w-4" />
+          Edit
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit asset</DialogTitle>
+        </DialogHeader>
+        <form id={formId} onSubmit={submit} className="grid gap-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor="ae-name">Name</Label>
+            <Input
+              id="ae-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(categories ?? []).map((c) => (
+                    <SelectItem key={c.key} value={c.key}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Condition</Label>
+              <Select value={condition} onValueChange={setCondition}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(conditions ?? []).map((c) => (
+                    <SelectItem key={c.key} value={c.key}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="ae-serial">Serial number</Label>
+              <Input
+                id="ae-serial"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                className="font-mono"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="ae-value">Replacement value</Label>
+              <Input
+                id="ae-value"
+                type="number"
+                value={replacementValue}
+                onChange={(e) => setReplacementValue(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="ae-purchase">Purchase date</Label>
+              <Input
+                id="ae-purchase"
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="ae-loc">Location</Label>
+              <Input
+                id="ae-loc"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ae-desc">Description</Label>
+            <Textarea
+              id="ae-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ae-notes">Notes</Label>
+            <Textarea
+              id="ae-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+          {error && <p className="text-caption text-danger">{error}</p>}
+        </form>
+        <DialogFooter>
+          <Button type="submit" form={formId} disabled={saving}>
+            {saving ? "Saving…" : "Save changes"}
           </Button>
         </DialogFooter>
       </DialogContent>
