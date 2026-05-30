@@ -159,7 +159,7 @@ export default function MembersPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Volunteer</TableHead>
+                <TableHead>Role</TableHead>
                 <TableHead>Email</TableHead>
               </TableRow>
             </TableHeader>
@@ -187,11 +187,17 @@ export default function MembersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {m.isVolunteer ? (
-                      <Badge variant="accent">Volunteer</Badge>
-                    ) : (
-                      <span className="text-ink-quiet">—</span>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {m.clubRole && (
+                        <Badge variant="muted">{humanise(m.clubRole)}</Badge>
+                      )}
+                      {m.isVolunteer && (
+                        <Badge variant="accent">Volunteer</Badge>
+                      )}
+                      {!m.clubRole && !m.isVolunteer && (
+                        <span className="text-ink-quiet">—</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-ink-soft">
                     {m.email ?? "—"}

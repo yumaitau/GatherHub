@@ -192,15 +192,19 @@ export const update = mutation({
     volunteerSkills: v.optional(v.array(v.string())),
     volunteerAvailability: v.optional(v.string()),
     volunteerNotes: v.optional(v.string()),
+    clubRole: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "coach");
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
-    const { memberId, ...rest } = args;
-    const patch = Object.fromEntries(
+    const { memberId, clubRole, ...rest } = args;
+    const patch: Record<string, unknown> = Object.fromEntries(
       Object.entries(rest).filter(([, v]) => v !== undefined),
     );
+    if (clubRole !== undefined) {
+      patch.clubRole = clubRole ?? undefined;
+    }
     await ctx.db.patch(memberId, patch);
   },
 });

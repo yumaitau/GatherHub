@@ -204,6 +204,10 @@ export default defineSchema({
     isLifetimeMember: v.optional(v.boolean()),
     lifetimeMemberSince: v.optional(v.string()), // year or ISO date
     lifetimeMemberNotes: v.optional(v.string()),
+    // Functional role in the club (separate from app-auth role). Free
+    // string so each org can extend it. Common values: "coach",
+    // "manager", "player", "parent", "committee", "volunteer".
+    clubRole: v.optional(v.string()),
   })
     .index("by_org", ["orgId"])
     .index("by_org_and_status", ["orgId", "status"])

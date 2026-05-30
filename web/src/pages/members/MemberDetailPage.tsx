@@ -28,7 +28,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader, LoadingState, RoleBadge } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
-import { formatDate } from "@/lib/utils";
+import { formatDate, humanise } from "@/lib/utils";
 
 type MemberData = NonNullable<ReturnType<typeof useMemberData>>;
 
@@ -112,6 +112,9 @@ export default function MemberDetailPage() {
         <Badge variant={member.status === "active" ? "success" : "muted"}>
           {member.status === "active" ? "Active" : "Inactive"}
         </Badge>
+        {member.clubRole && (
+          <Badge variant="muted">{humanise(member.clubRole)}</Badge>
+        )}
         {member.isVolunteer && <Badge variant="secondary">Volunteer</Badge>}
         {member.isLifetimeMember && (
           <Badge variant="accent" withDot>
