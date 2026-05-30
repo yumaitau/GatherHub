@@ -9,9 +9,7 @@ import Clerk
 /// Clerk handles password / email-code / OAuth / MFA / passkey, so we
 /// don't duplicate any of that here.
 struct SignInView: View {
-    /// Owned externally so this view shares the same observed instance the
-    /// RootView is tracking; SwiftUI will re-render both when Clerk updates.
-    let clerk: Clerk
+    @Environment(\.clerk) private var clerk
     @EnvironmentObject private var auth: AuthService
     @State private var isPresentingAuth = false
 
@@ -92,5 +90,5 @@ struct SignInView: View {
 }
 
 #Preview {
-    SignInView(clerk: Clerk.shared).environmentObject(AuthService())
+    SignInView().environmentObject(AuthService())
 }
