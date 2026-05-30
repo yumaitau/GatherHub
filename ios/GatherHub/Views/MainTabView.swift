@@ -1,11 +1,17 @@
 import SwiftUI
 
-/// The signed-in app shell: Scan, Assets, Events, Profile.
+/// The signed-in app shell: Dashboard, Scan, Assets, Events, Profile.
 struct MainTabView: View {
     let context: CurrentContext
+    @EnvironmentObject private var convex: ConvexService
 
     var body: some View {
         TabView {
+            NavigationStack {
+                DashboardView(context: context, convex: convex)
+            }
+            .tabItem { Label("Home", systemImage: "house") }
+
             ScanView()
                 .tabItem { Label("Scan", systemImage: "qrcode.viewfinder") }
 
@@ -18,5 +24,6 @@ struct MainTabView: View {
             ProfileView(context: context)
                 .tabItem { Label("Profile", systemImage: "person.crop.circle") }
         }
+        .tint(Color.gh.accent)
     }
 }

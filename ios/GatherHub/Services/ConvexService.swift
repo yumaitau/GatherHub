@@ -123,6 +123,19 @@ final class ConvexService: ObservableObject {
     func listMembers() async throws -> [Member] {
         try await client.query("members:list")
     }
+
+    // MARK: - Dashboard
+
+    /// `dashboard:stats` (query) — aggregate counters for the active org.
+    func dashboardStats() async throws -> DashboardStats {
+        try await client.query("dashboard:stats")
+    }
+
+    /// `soccer:dashboardStats` (query) — soccer-mode counters. Returns `nil`
+    /// when soccer mode is off, matching the web behaviour.
+    func soccerDashboardStats() async throws -> SoccerDashboardStats? {
+        try await client.query("soccer:dashboardStats")
+    }
 }
 
 // MARK: - Helper decode types
