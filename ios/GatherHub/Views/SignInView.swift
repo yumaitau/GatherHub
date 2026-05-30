@@ -17,7 +17,11 @@ struct SignInView: View {
             Spacer()
 
             VStack(spacing: GHSpacing.lg) {
-                Image("AppIcon-1024", bundle: nil)
+                // AppIcon assets cannot be loaded as regular images; iOS
+                // reserves them for the home-screen icon. We ship a parallel
+                // LogoMark imageset that contains the same artwork so we can
+                // render it in-app.
+                Image("LogoMark")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 96, height: 96)
