@@ -28,21 +28,32 @@ import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { formatDateTime, humanise } from "@/lib/utils";
 
-type EventType = "training" | "match" | "meeting";
+type ChipVariant = "accent" | "muted" | "warning" | "success" | "info";
 
-const TYPE_VARIANT: Record<
-  EventType,
-  "accent" | "muted" | "warning"
-> = {
+// Stable variant for well-known default keys; everything else falls back
+// to "muted" so org-added types render cleanly without configuration.
+const TYPE_VARIANT_DEFAULT: Record<string, ChipVariant> = {
   match: "accent",
   training: "muted",
   meeting: "warning",
+  social: "success",
+  working_bee: "info",
 };
+
+function variantForType(key: string): ChipVariant {
+  return TYPE_VARIANT_DEFAULT[key] ?? "muted";
+}
 
 export default function EventsPage() {
   const { can } = useGatherHub();
   const [upcomingOnly, setUpcomingOnly] = React.useState(true);
   const events = useQuery(api.events.list, { upcomingOnly });
+  const types = useQuery(api.taxonomies.list, { kind: "event_type" });
+  const typeLabel = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of types ?? []) m.set(t.key, t.label);
+    return (key: string) => m.get(key) ?? humanise(key);
+  }, [types]);
 
   return (
     <div>
@@ -95,8 +106,8 @@ export default function EventsPage() {
                   className="group/event block px-5 py-3.5 hover:bg-surface-sunk/60 transition-colors duration-fast ease-out focus-visible:outline-none focus-visible:shadow-focus"
                 >
                   <div className="flex items-baseline flex-wrap gap-x-3 gap-y-1">
-                    <Badge variant={TYPE_VARIANT[e.type as EventType]}>
-                      {humanise(e.type)}
+                    <Badge variant={variantForType(e.type)}>
+                      {typeLabel(e.type)}
                     </Badge>
                     <h3 className="text-body-strong text-ink-strong group-hover/event:text-primary">
                       {e.title}
@@ -148,9 +159,17 @@ export default function EventsPage() {
 function NewEventDialog() {
   const create = useMutation(api.events.create);
   const teams = useQuery(api.teams.list, {});
+  const types = useQuery(api.taxonomies.list, { kind: "event_type" });
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
-  const [type, setType] = React.useState<EventType>("training");
+  const [type, setType] = React.useState<string>("");
+
+  React.useEffect(() => {
+    if (!type && types && types.length > 0) {
+      const def = types.find((t) => t.isDefault) ?? types[0];
+      if (def) setType(def.key);
+    }
+  }, [types, type]);
   const [title, setTitle] = React.useState("");
   const [startTime, setStartTime] = React.useState("");
   const [location, setLocation] = React.useState("");
@@ -161,7 +180,8 @@ function NewEventDialog() {
   const [saving, setSaving] = React.useState(false);
 
   function reset() {
-    setType("training");
+    const def = types?.find((t) => t.isDefault) ?? types?.[0];
+    setType(def?.key ?? "");
     setTitle("");
     setStartTime("");
     setLocation("");
@@ -223,17 +243,16 @@ function NewEventDialog() {
         <form id={formId} onSubmit={submit} className="grid gap-4">
           <div className="grid gap-1.5">
             <Label>Type</Label>
-            <Select
-              value={type}
-              onValueChange={(v) => setType(v as EventType)}
-            >
+            <Select value={type} onValueChange={setType}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="training">Training</SelectItem>
-                <SelectItem value="match">Match</SelectItem>
-                <SelectItem value="meeting">Meeting</SelectItem>
+                {(types ?? []).map((t) => (
+                  <SelectItem key={t.key} value={t.key}>
+                    {t.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

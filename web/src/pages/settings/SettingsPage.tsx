@@ -1,6 +1,16 @@
 import * as React from "react";
 import { useQuery, useMutation } from "convex/react";
-import { Mail, RefreshCw, X } from "lucide-react";
+import {
+  Mail,
+  RefreshCw,
+  X,
+  Star,
+  ArrowUp,
+  ArrowDown,
+  RotateCw,
+  Trash2,
+  Plus,
+} from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -44,6 +54,9 @@ export default function SettingsPage() {
           {isAdmin && (
             <TabsTrigger value="invitations">Invitations</TabsTrigger>
           )}
+          {can("committee") && (
+            <TabsTrigger value="taxonomies">Lists & types</TabsTrigger>
+          )}
           <TabsTrigger value="public">Public website</TabsTrigger>
         </TabsList>
         <TabsContent value="roles">
@@ -52,6 +65,11 @@ export default function SettingsPage() {
         {isAdmin && (
           <TabsContent value="invitations">
             <InvitationsTab />
+          </TabsContent>
+        )}
+        {can("committee") && (
+          <TabsContent value="taxonomies">
+            <TaxonomiesTab />
           </TabsContent>
         )}
         <TabsContent value="public">
@@ -327,6 +345,310 @@ function RolesTab() {
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+type TaxonomyKind =
+  | "event_type"
+  | "asset_category"
+  | "asset_condition"
+  | "team_age_group";
+
+const KIND_LABEL: Record<TaxonomyKind, string> = {
+  event_type: "Event types",
+  asset_category: "Asset categories",
+  asset_condition: "Asset conditions",
+  team_age_group: "Team age groups",
+};
+
+const KIND_DESCRIPTION: Record<TaxonomyKind, string> = {
+  event_type:
+    "What kinds of events your organisation runs. Used in the Events create dialog and visible as a chip on each event row.",
+  asset_category:
+    "Categories you sort tracked items into in KitTrace. Used in the asset create dialog and as a filter on the assets list.",
+  asset_condition:
+    "Condition scale for tracked items. Used in the asset detail view and reports.",
+  team_age_group:
+    "Age groups available when creating a team. Used in the team create dialog.",
+};
+
+const KINDS: TaxonomyKind[] = [
+  "event_type",
+  "asset_category",
+  "asset_condition",
+  "team_age_group",
+];
+
+function TaxonomiesTab() {
+  return (
+    <Tabs defaultValue="event_type">
+      <TabsList className="flex-wrap">
+        {KINDS.map((k) => (
+          <TabsTrigger key={k} value={k}>
+            {KIND_LABEL[k]}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {KINDS.map((k) => (
+        <TabsContent key={k} value={k}>
+          <TaxonomyEditor kind={k} />
+        </TabsContent>
+      ))}
+    </Tabs>
+  );
+}
+
+function TaxonomyEditor({ kind }: { kind: TaxonomyKind }) {
+  const rows = useQuery(api.taxonomies.list, { kind, includeInactive: true });
+  const create = useMutation(api.taxonomies.create);
+  const updateRow = useMutation(api.taxonomies.update);
+  const setActive = useMutation(api.taxonomies.setActive);
+  const setDefault = useMutation(api.taxonomies.setDefault);
+  const reorder = useMutation(api.taxonomies.reorder);
+
+  const [newLabel, setNewLabel] = React.useState("");
+  const [adding, setAdding] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newLabel.trim()) return;
+    setError(null);
+    setAdding(true);
+    try {
+      await create({ kind, label: newLabel.trim() });
+      setNewLabel("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function move(id: Id<"taxonomies">, direction: -1 | 1) {
+    if (!rows) return;
+    const active = rows.filter((r) => r.active);
+    const idx = active.findIndex((r) => r.id === id);
+    if (idx === -1) return;
+    const nextIdx = idx + direction;
+    if (nextIdx < 0 || nextIdx >= active.length) return;
+    const reorderedActive = [...active];
+    const [moved] = reorderedActive.splice(idx, 1);
+    if (!moved) return;
+    reorderedActive.splice(nextIdx, 0, moved);
+    const inactive = rows.filter((r) => !r.active);
+    await reorder({
+      kind,
+      orderedIds: [...reorderedActive, ...inactive].map((r) => r.id),
+    });
+  }
+
+  if (rows === undefined) return <LoadingState />;
+
+  const active = rows.filter((r) => r.active);
+  const inactive = rows.filter((r) => !r.active);
+
+  return (
+    <div className="grid gap-4">
+      <p className="max-w-prose text-body text-ink-soft">
+        {KIND_DESCRIPTION[kind]} Items here become the choices in dropdowns
+        across the app.
+      </p>
+
+      <section className="rounded-md border border-hairline bg-surface overflow-hidden">
+        <header className="flex items-center justify-between px-4 py-2.5 border-b border-hairline">
+          <h3 className="text-title text-ink-strong">In use</h3>
+          <span className="text-caption text-ink-quiet">
+            <span data-numeric className="font-medium text-ink-soft">
+              {active.length}
+            </span>{" "}
+            active
+          </span>
+        </header>
+        {active.length === 0 ? (
+          <div className="px-5 py-6 text-body text-ink-quiet">
+            No active items yet.
+          </div>
+        ) : (
+          <ul className="divide-y divide-hairline">
+            {active.map((row, idx) => (
+              <li
+                key={row.id}
+                className="flex flex-wrap items-center gap-3 px-4 py-2.5"
+              >
+                <InlineLabelEditor
+                  initial={row.label}
+                  onSave={(label) => updateRow({ id: row.id, label })}
+                />
+                <code className="text-mono text-ink-quiet">{row.key}</code>
+                {row.isDefault && (
+                  <Badge variant="accent" withDot>
+                    Default
+                  </Badge>
+                )}
+                <div className="ml-auto flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Move up"
+                    disabled={idx === 0}
+                    onClick={() => move(row.id, -1)}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Move down"
+                    disabled={idx === active.length - 1}
+                    onClick={() => move(row.id, 1)}
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title={
+                      row.isDefault ? "Default item" : "Set as default"
+                    }
+                    onClick={() => setDefault({ id: row.id })}
+                    disabled={row.isDefault}
+                  >
+                    <Star
+                      className={`h-4 w-4 ${row.isDefault ? "fill-primary text-primary" : ""}`}
+                    />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Deactivate"
+                    onClick={() => setActive({ id: row.id, active: false })}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form
+          onSubmit={add}
+          className="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-hairline bg-surface-sunk/30"
+        >
+          <Input
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            placeholder={`Add a new ${KIND_LABEL[kind].toLowerCase().replace(/s$/, "")}`}
+            className="max-w-xs"
+            aria-label={`New ${KIND_LABEL[kind]} label`}
+          />
+          <Button type="submit" disabled={adding || !newLabel.trim()}>
+            <Plus className="h-4 w-4" />
+            {adding ? "Adding…" : "Add"}
+          </Button>
+          {error && <p className="text-caption text-danger">{error}</p>}
+        </form>
+      </section>
+
+      {inactive.length > 0 && (
+        <section className="rounded-md border border-hairline bg-surface-sunk/40 overflow-hidden">
+          <header className="px-4 py-2.5 border-b border-hairline">
+            <h3 className="text-title text-ink-strong">Hidden</h3>
+            <p className="text-caption text-ink-quiet mt-0.5">
+              Records using these labels still render. Hidden items are not
+              shown in create dropdowns.
+            </p>
+          </header>
+          <ul className="divide-y divide-hairline">
+            {inactive.map((row) => (
+              <li
+                key={row.id}
+                className="flex flex-wrap items-center gap-3 px-4 py-2.5"
+              >
+                <span className="text-body text-ink-quiet">{row.label}</span>
+                <code className="text-mono text-ink-quiet">{row.key}</code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => setActive({ id: row.id, active: true })}
+                >
+                  <RotateCw className="h-4 w-4" />
+                  Restore
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function InlineLabelEditor({
+  initial,
+  onSave,
+}: {
+  initial: string;
+  onSave: (label: string) => Promise<unknown>;
+}) {
+  const [value, setValue] = React.useState(initial);
+  const [editing, setEditing] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!editing) setValue(initial);
+  }, [initial, editing]);
+
+  async function commit() {
+    if (value === initial) {
+      setEditing(false);
+      return;
+    }
+    if (!value.trim()) {
+      setValue(initial);
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(value.trim());
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="text-body-strong text-ink-strong hover:text-primary text-left focus-visible:outline-none focus-visible:shadow-focus rounded-xs"
+      >
+        {initial}
+      </button>
+    );
+  }
+
+  return (
+    <Input
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commit();
+        } else if (e.key === "Escape") {
+          setValue(initial);
+          setEditing(false);
+        }
+      }}
+      disabled={saving}
+      autoFocus
+      className="max-w-[200px] h-7"
+    />
   );
 }
 

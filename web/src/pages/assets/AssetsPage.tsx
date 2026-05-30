@@ -40,20 +40,6 @@ import { useGatherHub } from "@/lib/gatherhub";
 import { canManageAssets } from "@/lib/roles";
 import { humanise, formatCurrency, toCsv, downloadCsv } from "@/lib/utils";
 
-const CATEGORIES = [
-  "apparel",
-  "equipment",
-  "tool",
-  "electronics",
-  "av_equipment",
-  "safety_equipment",
-  "furniture",
-  "vehicle",
-  "key",
-  "media",
-  "other",
-] as const;
-
 const STATUSES = [
   "available",
   "checked_out",
@@ -69,13 +55,19 @@ export default function AssetsPage() {
   const [status, setStatus] = React.useState<string>("all");
   const [category, setCategory] = React.useState<string>("all");
 
+  const categories = useQuery(api.taxonomies.list, {
+    kind: "asset_category",
+  });
+  const categoryLabel = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of categories ?? []) m.set(c.key, c.label);
+    return (key: string) => m.get(key) ?? humanise(key);
+  }, [categories]);
+
   const assets = useQuery(api.assets.list, {
     status:
       status === "all" ? undefined : (status as (typeof STATUSES)[number]),
-    category:
-      category === "all"
-        ? undefined
-        : (category as (typeof CATEGORIES)[number]),
+    category: category === "all" ? undefined : category,
     search: search || undefined,
   });
 
@@ -85,7 +77,7 @@ export default function AssetsPage() {
     if (!assets) return;
     const rows = assets.map((a) => ({
       name: a.name,
-      category: humanise(a.category),
+      category: categoryLabel(a.category),
       status: humanise(a.status),
       condition: humanise(a.condition),
       custodian: a.custodianName ?? "",
@@ -163,9 +155,9 @@ export default function AssetsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All categories</SelectItem>
-              {CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {humanise(c)}
+              {(categories ?? []).map((c) => (
+                <SelectItem key={c.key} value={c.key}>
+                  {c.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -213,7 +205,7 @@ export default function AssetsPage() {
                     </Link>
                   </TableCell>
                   <TableCell className="text-ink-soft">
-                    {humanise(a.category)}
+                    {categoryLabel(a.category)}
                   </TableCell>
                   <TableCell>
                     <AssetStatusBadge status={a.status} />
@@ -239,10 +231,19 @@ export default function AssetsPage() {
 
 function CreateAssetDialog() {
   const create = useMutation(api.assets.create);
+  const categories = useQuery(api.taxonomies.list, {
+    kind: "asset_category",
+  });
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
-  const [category, setCategory] =
-    React.useState<(typeof CATEGORIES)[number]>("other");
+  const [category, setCategory] = React.useState<string>("");
+
+  React.useEffect(() => {
+    if (!category && categories && categories.length > 0) {
+      const def = categories.find((c) => c.isDefault) ?? categories[0];
+      if (def) setCategory(def.key);
+    }
+  }, [categories, category]);
   const [value, setValue] = React.useState("");
   const [serial, setSerial] = React.useState("");
   const [location, setLocation] = React.useState("");
@@ -294,19 +295,14 @@ function CreateAssetDialog() {
           </div>
           <div className="grid gap-1.5">
             <Label>Category</Label>
-            <Select
-              value={category}
-              onValueChange={(v) =>
-                setCategory(v as (typeof CATEGORIES)[number])
-              }
-            >
+            <Select value={category} onValueChange={setCategory}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
-                {CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {humanise(c)}
+                {(categories ?? []).map((c) => (
+                  <SelectItem key={c.key} value={c.key}>
+                    {c.label}
                   </SelectItem>
                 ))}
               </SelectContent>

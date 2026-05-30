@@ -8,6 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -120,6 +127,7 @@ export default function TeamsPage() {
 
 function NewTeamDialog() {
   const create = useMutation(api.teams.create);
+  const ageGroups = useQuery(api.taxonomies.list, { kind: "team_age_group" });
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
@@ -144,7 +152,7 @@ function NewTeamDialog() {
     try {
       await create({
         name,
-        ageGroup: ageGroup.trim() || undefined,
+        ageGroup: ageGroup || undefined,
         season: season.trim() || undefined,
         description: description.trim() || undefined,
       });
@@ -189,12 +197,22 @@ function NewTeamDialog() {
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="team-age">Age group</Label>
-              <Input
-                id="team-age"
-                value={ageGroup}
-                onChange={(e) => setAgeGroup(e.target.value)}
-                placeholder="e.g. U12"
-              />
+              <Select
+                value={ageGroup || "__none__"}
+                onValueChange={(v) => setAgeGroup(v === "__none__" ? "" : v)}
+              >
+                <SelectTrigger id="team-age">
+                  <SelectValue placeholder="Optional" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {(ageGroups ?? []).map((a) => (
+                    <SelectItem key={a.key} value={a.key}>
+                      {a.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="team-season">Season</Label>
