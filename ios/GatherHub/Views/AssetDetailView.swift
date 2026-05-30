@@ -10,16 +10,29 @@ struct AssetDetailView: View {
     @EnvironmentObject private var convex: ConvexService
     @StateObject private var model = AssetDetailViewModel()
     @State private var showCustodianPicker = false
+    @State private var showAssetPicker = false
 
     var body: some View {
         content
             .navigationTitle("Asset")
             .navigationBarTitleDisplayMode(.inline)
-            .task { await model.load(tagId: tagId, convex: convex) }
+            .task {
+                await model.load(tagId: tagId, convex: convex)
+                if case .loaded = model.phase {
+                    // Background: log a sighting with geo coords.
+                    Task { await model.logScan(convex: convex) }
+                }
+            }
             .sheet(isPresented: $showCustodianPicker) {
                 MemberPickerView { member in
                     showCustodianPicker = false
                     Task { await model.checkOut(to: member, convex: convex) }
+                }
+            }
+            .sheet(isPresented: $showAssetPicker) {
+                AssetPickerSheet(tagId: tagId) { _ in
+                    showAssetPicker = false
+                    Task { await model.load(tagId: tagId, convex: convex) }
                 }
             }
     }
@@ -30,11 +43,22 @@ struct AssetDetailView: View {
         case .loading:
             ProgressView("Looking up tag…")
         case .notFound:
-            EmptyStateView(
-                title: "Tag not found",
-                systemImage: "questionmark.circle",
-                message: "This tag isn't registered to your club, or it's inactive."
-            )
+            VStack(spacing: 16) {
+                EmptyStateView(
+                    title: "Tag not registered",
+                    systemImage: "questionmark.circle",
+                    message: "This tag isn't bound to a club asset yet. Register it now so future scans recognise it."
+                )
+                Button {
+                    showAssetPicker = true
+                } label: {
+                    Label("Register this tag", systemImage: "tag.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.horizontal)
+            }
         case .failed(let message):
             OfflineStateView(
                 title: "Couldn't load asset",
@@ -161,6 +185,20 @@ final class AssetDetailViewModel: ObservableObject {
         await run {
             try await convex.checkIn(assetId: asset.id)
         } convex: { convex }
+    }
+
+    /// Log a passive sighting of the asset (action="scanned") with the
+    /// device's current geo coordinates if available. Failures are
+    /// swallowed so a network blip doesn't disrupt the detail view.
+    func logScan(convex: ConvexService) async {
+        guard case .loaded(let asset, _) = phase else { return }
+        let location = await LocationService.shared.currentLocation()
+        try? await convex.recordScan(
+            assetId: asset.id,
+            latitude: location?.coordinate.latitude,
+            longitude: location?.coordinate.longitude,
+            accuracy: location?.horizontalAccuracy
+        )
     }
 
     /// Run a mutation, then reload so the UI reflects the new status/custodian.

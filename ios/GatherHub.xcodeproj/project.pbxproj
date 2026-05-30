@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0E0428946F9B70F9E5248A90 /* GatherHubApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE26217E9DFE35619041376B /* GatherHubApp.swift */; };
 		1D2BBCF4B3325C6EC311AD3D /* TagParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D838F2B9AF76381AF73B99AE /* TagParser.swift */; };
+		29B1DE4F2D32C364922A405F /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25E5EB3C02E2EF1898D0EB9E /* LocationService.swift */; };
 		3097D6E2FEEE35867FA02AB9 /* ErrorBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3214A09CB829360A273289C7 /* ErrorBanner.swift */; };
 		371C85A42F08371E7E0D5F34 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EDF57A9EEF0F1FBA292366C /* MainTabView.swift */; };
 		375B0ECB1BA6B59E46FB789B /* AssetDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1A4FE83E0C58D340B764FA6 /* AssetDetailView.swift */; };
@@ -18,7 +19,9 @@
 		48E310381B7903DAB0A6E9E2 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 418689B6312BBD468F4B4921 /* DashboardViewModel.swift */; };
 		5B27BBA9F429694B94F4046E /* Clerk in Frameworks */ = {isa = PBXBuildFile; productRef = DAC9094F6106514E571E4EEC /* Clerk */; };
 		60C9FAC8A9F9749577D355EA /* GHEmptyState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3347AB260D456A4F1D9A9AE /* GHEmptyState.swift */; };
+		644088AC81A81D02DB0E6ED8 /* AssetPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0D7992BA19734D531A028B /* AssetPickerSheet.swift */; };
 		6580EA5FCA4118FAE9028C23 /* GHCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECC16AFBD77823C76C5E77E5 /* GHCard.swift */; };
+		6D6553A0FAEC89BDDAEF16F5 /* NFCRawReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEFDF80CDE0C30E6BD7BB35 /* NFCRawReader.swift */; };
 		6E28D9AF50D567D699FB7140 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03216C01838EB7D83545D41E /* Models.swift */; };
 		7328102E56EC2A950D3A5DEE /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85608C3EBF9D120C6CFC82CA /* AuthService.swift */; };
 		7358688D667F0B7C216412F2 /* GHPageHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDBB1B539812791E36FDB15 /* GHPageHeader.swift */; };
@@ -52,6 +55,7 @@
 		14566E0E86787CDF079AC46A /* Color+GatherHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+GatherHub.swift"; sourceTree = "<group>"; };
 		16C5023C6C8391B8A0EB214B /* GHBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GHBadge.swift; sourceTree = "<group>"; };
 		197FE6D524083509A84E6B4A /* AssetStatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetStatusBadge.swift; sourceTree = "<group>"; };
+		25E5EB3C02E2EF1898D0EB9E /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		2A13FA2653ACBDE78614FEC0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2EDF57A9EEF0F1FBA292366C /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		3195C2B7B050C5A1B7CAEDFB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -71,6 +75,7 @@
 		86F36A24C844B95312ACA3E4 /* DashboardStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardStats.swift; sourceTree = "<group>"; };
 		A1A4FE83E0C58D340B764FA6 /* AssetDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetDetailView.swift; sourceTree = "<group>"; };
 		A235D7FA320EE37A72CF0BD5 /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
+		AC0D7992BA19734D531A028B /* AssetPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetPickerSheet.swift; sourceTree = "<group>"; };
 		B3347AB260D456A4F1D9A9AE /* GHEmptyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GHEmptyState.swift; sourceTree = "<group>"; };
 		B7CF0F476BC4FA9A122CE751 /* Spacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spacing.swift; sourceTree = "<group>"; };
 		C62A97B23D4CA6EA3010800F /* ConvexService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexService.swift; sourceTree = "<group>"; };
@@ -82,6 +87,7 @@
 		ECC16AFBD77823C76C5E77E5 /* GHCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GHCard.swift; sourceTree = "<group>"; };
 		EE26217E9DFE35619041376B /* GatherHubApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatherHubApp.swift; sourceTree = "<group>"; };
 		F72BC294214B5C7500FDC0D0 /* MemberPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemberPickerView.swift; sourceTree = "<group>"; };
+		FBEFDF80CDE0C30E6BD7BB35 /* NFCRawReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFCRawReader.swift; sourceTree = "<group>"; };
 		FEDBB1B539812791E36FDB15 /* GHPageHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GHPageHeader.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -179,6 +185,8 @@
 			children = (
 				85608C3EBF9D120C6CFC82CA /* AuthService.swift */,
 				C62A97B23D4CA6EA3010800F /* ConvexService.swift */,
+				25E5EB3C02E2EF1898D0EB9E /* LocationService.swift */,
+				FBEFDF80CDE0C30E6BD7BB35 /* NFCRawReader.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -217,6 +225,7 @@
 			children = (
 				A1A4FE83E0C58D340B764FA6 /* AssetDetailView.swift */,
 				D8F870B9222413EDFE6A22FC /* AssetLookupView.swift */,
+				AC0D7992BA19734D531A028B /* AssetPickerSheet.swift */,
 				717202E7EDCC334CBAB12996 /* EventListView.swift */,
 				2EDF57A9EEF0F1FBA292366C /* MainTabView.swift */,
 				F72BC294214B5C7500FDC0D0 /* MemberPickerView.swift */,
@@ -313,6 +322,7 @@
 			files = (
 				375B0ECB1BA6B59E46FB789B /* AssetDetailView.swift in Sources */,
 				97306B54633D1F0DBB977E59 /* AssetLookupView.swift in Sources */,
+				644088AC81A81D02DB0E6ED8 /* AssetPickerSheet.swift in Sources */,
 				D2325B06F25DBF19F409A690 /* AssetStatusBadge.swift in Sources */,
 				7328102E56EC2A950D3A5DEE /* AuthService.swift in Sources */,
 				D27B8FDDEEC64D7920B51AAF /* Color+GatherHub.swift in Sources */,
@@ -329,10 +339,12 @@
 				60C9FAC8A9F9749577D355EA /* GHEmptyState.swift in Sources */,
 				7358688D667F0B7C216412F2 /* GHPageHeader.swift in Sources */,
 				0E0428946F9B70F9E5248A90 /* GatherHubApp.swift in Sources */,
+				29B1DE4F2D32C364922A405F /* LocationService.swift in Sources */,
 				371C85A42F08371E7E0D5F34 /* MainTabView.swift in Sources */,
 				8E4A5A55731C36C321F07BC0 /* MemberPickerView.swift in Sources */,
 				6E28D9AF50D567D699FB7140 /* Models.swift in Sources */,
 				C35B6F51F8D7DFDF7DBD1567 /* Motion.swift in Sources */,
+				6D6553A0FAEC89BDDAEF16F5 /* NFCRawReader.swift in Sources */,
 				96A2CF8631EA66D5A5F05C22 /* OfflineStateView.swift in Sources */,
 				CAE31ABC63680BE3CDC2EAF4 /* OrgPickerView.swift in Sources */,
 				96074F4591E0AD6415EC0908 /* ProfileView.swift in Sources */,

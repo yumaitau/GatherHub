@@ -37,6 +37,11 @@
 	<key>NFCReaderUsageDescription</key>
 	<string>GatherHub reads NFC tags on club equipment so you can check kit in and out by tapping the item.</string>
 
+	<!-- Required so the scan flow can attach the device's location to a
+	     "sighting" audit log when staff scan kit in the field. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GatherHub attaches the device location to asset scans so committee can trace where kit was last seen.</string>
+
 	<!-- Deep links: gatherhub://asset/tag_xxx are handled in GatherHubApp. -->
 	<key>CFBundleURLTypes</key>
 	<array>

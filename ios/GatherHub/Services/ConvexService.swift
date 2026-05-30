@@ -125,6 +125,41 @@ final class ConvexService: ObservableObject {
         try await once("members:list")
     }
 
+    // MARK: - Scan + asset registration
+
+    /// `assetOps:recordScan` (mutation). Logs a "scanned" audit entry
+    /// against an asset with optional geo coordinates. No state change.
+    func recordScan(
+        assetId: String,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        accuracy: Double? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = ["assetId": assetId]
+        if let latitude { args["geoLatitude"] = latitude }
+        if let longitude { args["geoLongitude"] = longitude }
+        if let accuracy { args["geoAccuracy"] = accuracy }
+        try await client.mutation("assetOps:recordScan", with: args)
+    }
+
+    /// `assets:registerNfc` (mutation) — bind an NFC tag UID to an
+    /// existing asset within the caller's org. Used after a scan
+    /// returns "not found" so the user can attach the physical tag to
+    /// a known asset record.
+    func registerNfc(assetId: String, nfcTagId: String) async throws {
+        try await client.mutation(
+            "assets:registerNfc",
+            with: ["assetId": assetId, "nfcTagId": nfcTagId]
+        )
+    }
+
+    /// `assets:list` (query) — list of assets for the active org, used
+    /// by the register-new-tag picker. The exact return shape depends
+    /// on the function; this method decodes a minimal subset.
+    func listAssets() async throws -> [AssetSummary] {
+        try await once("assets:list")
+    }
+
     // MARK: - Dashboard
 
     /// `dashboard:stats` (query) — aggregate counters for the active org.

@@ -84,6 +84,18 @@ enum MemberStatus: String, Codable, Hashable {
     case active, inactive
 }
 
+/// Slim asset row used by pickers (e.g. "register tag against which asset?").
+struct AssetSummary: Codable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let category: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case name, category
+    }
+}
+
 // MARK: - Assets
 
 /// Mirrors `assetStatusValidator` in schema.ts.

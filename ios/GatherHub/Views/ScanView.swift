@@ -2,24 +2,29 @@ import SwiftUI
 import AVFoundation
 import CoreNFC
 
-/// Scan a club asset by QR (camera) or NFC (tap). On a successful tag id
-/// extraction, navigates to the asset detail.
+/// Field-ops scan surface. Auto-starts an NFC raw-UID read on appear so
+/// staff can tap-and-go without hunting for a button; falls back to a
+/// live QR camera preview underneath. Mirrors the Kit-Trace flow:
+///   1. Open screen → NFC session begins.
+///   2. Tag tapped → raw hardware UID captured.
+///   3. Look up the asset via `tags:lookupAuthed`; recordScan with
+///      geolocation if found; offer "register tag" if not.
 ///
-/// QR codes encode either `https://app.gatherhub.au/a/tag_xxx` or the deep link
-/// `gatherhub://asset/tag_xxx`; NFC NDEF records typically carry the same URL.
-/// `TagParser.extractTagId(from:)` normalises all forms to the bare id.
+/// QR codes encoded as `https://app.gatherhub.au/a/tag_xxx` or
+/// `gatherhub://asset/tag_xxx` are normalised through `TagParser`.
 struct ScanView: View {
+    @EnvironmentObject private var convex: ConvexService
     @StateObject private var camera = QRScannerController()
-    @StateObject private var nfc = NFCScanner()
+    @StateObject private var nfcRaw = NFCRawReader()
+    @StateObject private var nfcNdef = NFCScanner()
 
-    /// Tag id to push detail for. Drives navigation.
     @State private var scannedTagId: String?
     @State private var showError = false
+    @State private var autoStartedNfc = false
 
     var body: some View {
         NavigationStack {
             ZStack {
-                // Live camera preview for QR scanning.
                 QRScannerView(controller: camera)
                     .ignoresSafeArea()
 
@@ -32,26 +37,30 @@ struct ScanView: View {
             }
             .navigationTitle("Scan kit")
             .navigationBarTitleDisplayMode(.inline)
-            // iOS 16 navigation: drive a hidden link from `scannedTagId`.
-            .background(
-                NavigationLink(
-                    isActive: Binding(
-                        get: { scannedTagId != nil },
-                        set: { if !$0 { scannedTagId = nil } }
-                    )
-                ) {
-                    if let tagId = scannedTagId {
-                        AssetDetailView(tagId: tagId)
-                    }
-                } label: { EmptyView() }
-                .hidden()
-            )
-            .onAppear { camera.start() }
+            .navigationDestination(
+                isPresented: Binding(
+                    get: { scannedTagId != nil },
+                    set: { if !$0 { scannedTagId = nil } }
+                )
+            ) {
+                if let tagId = scannedTagId {
+                    AssetDetailView(tagId: tagId)
+                }
+            }
+            .onAppear {
+                camera.start()
+                // Auto-start an NFC session the first time the tab appears
+                // in a session, mirroring Kit-Trace's "tap to scan" feel.
+                if !autoStartedNfc, NFCTagReaderSession.readingAvailable {
+                    autoStartedNfc = true
+                    nfcRaw.beginScanning()
+                }
+            }
             .onDisappear { camera.stop() }
-            .onChange(of: camera.lastScanned) { value in handleScanned(value) }
-            .onChange(of: nfc.lastScanned) { value in handleScanned(value) }
+            .onChange(of: camera.lastScanned) { _, value in handleScanned(value) }
+            .onChange(of: nfcNdef.lastScanned) { _, value in handleScanned(value) }
+            .onChange(of: nfcRaw.lastUid) { _, uid in handleScanned(uid) }
             .onReceive(DeepLinkRouter.shared.$pendingTagId) { tagId in
-                // A gatherhub://asset/tag_xxx deep link arrived.
                 if let tagId {
                     scannedTagId = tagId
                     DeepLinkRouter.shared.pendingTagId = nil
@@ -65,15 +74,13 @@ struct ScanView: View {
         }
     }
 
-    // MARK: - Subviews
-
     private var scanReticle: some View {
         RoundedRectangle(cornerRadius: 16)
             .stroke(.white.opacity(0.9), lineWidth: 3)
             .frame(width: 240, height: 240)
             .shadow(radius: 8)
             .overlay(
-                Text("Point at a QR code")
+                Text("Point at a QR code or tap a tag")
                     .font(.footnote)
                     .foregroundStyle(.white)
                     .padding(.top, 8),
@@ -81,29 +88,38 @@ struct ScanView: View {
             )
     }
 
+    @ViewBuilder
     private var controls: some View {
         VStack(spacing: 12) {
-            if NFCNDEFReaderSession.readingAvailable {
+            if NFCTagReaderSession.readingAvailable {
                 Button {
-                    nfc.beginScanning()
+                    nfcRaw.beginScanning()
                 } label: {
-                    Label("Tap an NFC tag", systemImage: "wave.3.right")
-                        .frame(maxWidth: .infinity)
+                    Label(
+                        nfcRaw.isScanning ? "Scanning…" : "Tap an NFC tag",
+                        systemImage: "wave.3.right"
+                    )
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .disabled(nfcRaw.isScanning)
             }
         }
         .padding()
         .background(.ultraThinMaterial)
     }
 
-    // MARK: - Handling
-
     private func handleScanned(_ raw: String?) {
         guard let raw, !raw.isEmpty else { return }
         if let tagId = TagParser.extractTagId(from: raw) {
             scannedTagId = tagId
+            camera.stop()
+        } else if raw.count <= 64,
+                  raw.range(of: "^[0-9A-Fa-f]+$", options: .regularExpression) != nil {
+            // Looks like a raw NFC hex UID. The server stores tag ids as
+            // opaque strings, so pass it through.
+            scannedTagId = raw.uppercased()
             camera.stop()
         } else {
             showError = true
@@ -113,8 +129,6 @@ struct ScanView: View {
 
 // MARK: - QR scanning (AVFoundation)
 
-/// Drives an `AVCaptureSession` configured for QR metadata. Publishes the most
-/// recently decoded string.
 final class QRScannerController: NSObject, ObservableObject, AVCaptureMetadataOutputObjectsDelegate {
     @Published var lastScanned: String?
 
@@ -170,22 +184,19 @@ final class QRScannerController: NSObject, ObservableObject, AVCaptureMetadataOu
             let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
             let value = object.stringValue
         else { return }
-        // Publish only when the value changes to avoid repeated navigations.
         if value != lastScanned {
             lastScanned = value
-            AudioServicesPlayHaptic()
+            haptic()
         }
     }
 }
 
-/// Light haptic helper (best-effort; no-op if unavailable).
-private func AudioServicesPlayHaptic() {
+private func haptic() {
     #if canImport(UIKit)
     UINotificationFeedbackGenerator().notificationOccurred(.success)
     #endif
 }
 
-/// SwiftUI host for the camera preview layer.
 struct QRScannerView: UIViewRepresentable {
     let controller: QRScannerController
 
@@ -198,7 +209,6 @@ struct QRScannerView: UIViewRepresentable {
 
     func updateUIView(_ uiView: PreviewView, context: Context) {}
 
-    /// A UIView whose backing layer is an `AVCaptureVideoPreviewLayer`.
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var videoPreviewLayer: AVCaptureVideoPreviewLayer {
@@ -207,12 +217,10 @@ struct QRScannerView: UIViewRepresentable {
     }
 }
 
-// MARK: - NFC scanning (Core NFC)
+// MARK: - NFC NDEF scanning (Core NFC)
 
-/// Reads NDEF messages from an NFC tag and extracts the GatherHub tag id from
-/// the first URI/text record. Requires the
-/// `com.apple.developer.nfc.readersession.formats` entitlement and the
-/// `NFCReaderUsageDescription` Info.plist key.
+/// NDEF reader retained for tags provisioned with a club URL. Newer
+/// blank tags emit only a UID — handled by `NFCRawReader` above.
 final class NFCScanner: NSObject, ObservableObject, NFCNDEFReaderSessionDelegate {
     @Published var lastScanned: String?
 
@@ -240,23 +248,15 @@ final class NFCScanner: NSObject, ObservableObject, NFCNDEFReaderSessionDelegate
     }
 
     func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {
-        // User cancel / timeout / read error: nothing to surface aggressively.
         self.session = nil
     }
 
-    /// Decode an NDEF record into a string (URI records and Text records).
     private static func string(from record: NFCNDEFPayload) -> String? {
-        // Well Known URI record (type "U"): first byte is a URI prefix code.
         if record.typeNameFormat == .nfcWellKnown,
            let type = String(data: record.type, encoding: .utf8) {
-            if type == "U" {
-                return uriString(from: record.payload)
-            }
-            if type == "T" {
-                return textString(from: record.payload)
-            }
+            if type == "U" { return uriString(from: record.payload) }
+            if type == "T" { return textString(from: record.payload) }
         }
-        // Fallback: raw UTF-8 of the payload.
         return String(data: record.payload, encoding: .utf8)
     }
 

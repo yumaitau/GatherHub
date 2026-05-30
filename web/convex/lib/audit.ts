@@ -25,6 +25,9 @@ export async function writeAudit(
     fromLocation?: string;
     toLocation?: string;
     notes?: string;
+    geoLatitude?: number;
+    geoLongitude?: number;
+    geoAccuracy?: number;
   },
 ): Promise<Id<"assetAuditLog">> {
   return await ctx.db.insert("assetAuditLog", {
@@ -38,6 +41,9 @@ export async function writeAudit(
     fromLocation: params.fromLocation,
     toLocation: params.toLocation,
     notes: params.notes,
+    geoLatitude: params.geoLatitude,
+    geoLongitude: params.geoLongitude,
+    geoAccuracy: params.geoAccuracy,
     performedBy: params.performedBy,
     performedAt: Date.now(),
   });

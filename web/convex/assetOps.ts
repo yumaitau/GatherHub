@@ -217,3 +217,35 @@ export const overdue = query({
     );
   },
 });
+
+/**
+ * Record a field "sighting" of an asset by tag scan. Does not change
+ * custodian or status — purely an audit-log breadcrumb with optional
+ * geo coordinates so committee can trace where club kit was seen.
+ *
+ * Mirrors the Kit-Trace mobile scan flow: every NFC / QR scan from the
+ * field writes one row here.
+ */
+export const recordScan = mutation({
+  args: {
+    assetId: v.id("assets"),
+    geoLatitude: v.optional(v.number()),
+    geoLongitude: v.optional(v.number()),
+    geoAccuracy: v.optional(v.number()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const asset = await loadAsset(ctx, auth, args.assetId);
+    await writeAudit(ctx, {
+      orgId: auth.org._id,
+      assetId: asset._id,
+      action: "scanned",
+      performedBy: auth.user._id,
+      geoLatitude: args.geoLatitude,
+      geoLongitude: args.geoLongitude,
+      geoAccuracy: args.geoAccuracy,
+      notes: args.notes,
+    });
+  },
+});

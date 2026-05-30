@@ -88,6 +88,10 @@ export const assetActionValidator = v.union(
   v.literal("retired"),
   v.literal("tag_registered"),
   v.literal("tag_reassigned"),
+  // A field "sighting" — someone scanned the tag without changing
+  // custodian or status. Used by the mobile scan flow to log
+  // "the U13 jersey was seen at training on Tuesday".
+  v.literal("scanned"),
 );
 
 export const tagTypeValidator = v.union(v.literal("qr"), v.literal("nfc"));
@@ -416,6 +420,10 @@ export default defineSchema({
     fromLocation: v.optional(v.string()),
     toLocation: v.optional(v.string()),
     notes: v.optional(v.string()),
+    // Optional geo capture written by the mobile scan flow.
+    geoLatitude: v.optional(v.number()),
+    geoLongitude: v.optional(v.number()),
+    geoAccuracy: v.optional(v.number()),
     performedBy: v.id("users"),
     performedAt: v.number(),
   })
