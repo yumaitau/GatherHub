@@ -1,87 +1,80 @@
 import SwiftUI
+import Clerk
 
 /// Sign-in entry point.
 ///
-/// This scaffold ships a minimal email/password form wired to
-/// `AuthService.signIn`. For production, prefer Clerk's prebuilt SwiftUI auth
-/// experience, which handles OAuth, email codes, MFA, and sign-up out of the
-/// box. To use it, replace the body with Clerk's component, e.g.:
-///
-/// ```swift
-/// import Clerk
-/// // Present Clerk's prebuilt flow:
-/// AuthView()   // exact type name depends on the SDK version
-/// ```
+/// Authentication is fully delegated to Clerk's prebuilt SwiftUI
+/// component (`AuthView`). The local screen is just a branded splash +
+/// a single "Sign in" button that presents Clerk's flow as a sheet.
+/// Clerk handles password / email-code / OAuth / MFA / passkey, so we
+/// don't duplicate any of that here.
 struct SignInView: View {
     @EnvironmentObject private var auth: AuthService
-
-    @State private var email = ""
-    @State private var password = ""
-    @State private var isSubmitting = false
+    @State private var isPresentingAuth = false
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: GHSpacing.huge) {
             Spacer()
 
-            VStack(spacing: 8) {
-                Image(systemName: "shippingbox.and.arrow.backward.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.tint)
+            VStack(spacing: GHSpacing.lg) {
+                Image("AppIcon-1024", bundle: nil)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 96, height: 96)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(Color.gh.hairline, lineWidth: 1)
+                    )
                 Text("GatherHub")
-                    .font(.largeTitle.bold())
-                Text("Field ops for your club")
-                    .foregroundStyle(.secondary)
+                    .font(.gh.display)
+                    .foregroundStyle(Color.gh.inkStrong)
+                Text("Field ops for your club.")
+                    .font(.gh.body)
+                    .foregroundStyle(Color.gh.inkSoft)
             }
 
-            VStack(spacing: 12) {
-                TextField("Email", text: $email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .textFieldStyle(.roundedBorder)
-
-                SecureField("Password", text: $password)
-                    .textContentType(.password)
-                    .textFieldStyle(.roundedBorder)
-
+            VStack(spacing: GHSpacing.md) {
                 Button {
-                    Task {
-                        isSubmitting = true
-                        await auth.signIn(email: email, password: password)
-                        isSubmitting = false
-                    }
+                    isPresentingAuth = true
                 } label: {
-                    if isSubmitting {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("Sign in")
-                            .frame(maxWidth: .infinity)
-                    }
+                    Text("Sign in")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(email.isEmpty || password.isEmpty || isSubmitting)
-            }
-            .padding(.horizontal)
+                .buttonStyle(.gh(.primary))
 
-            if let error = auth.lastError {
-                Text(error)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                if let error = auth.lastError {
+                    Text(error)
+                        .font(.gh.caption)
+                        .foregroundStyle(Color.gh.danger)
+                        .multilineTextAlignment(.center)
+                }
             }
+            .padding(.horizontal, GHSpacing.pageInset)
 
             Spacer()
+
             Text("Use your club account. Ask a committee member for an invite.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.gh.caption)
+                .foregroundStyle(Color.gh.inkQuiet)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                .padding(.horizontal, GHSpacing.pageInset)
         }
-        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.gh.paper.ignoresSafeArea())
+        .sheet(isPresented: $isPresentingAuth) {
+            // Clerk's hosted experience handles every credential type
+            // configured for the tenant (password, email code, OAuth,
+            // SSO, passkeys, MFA). Dismisses itself on success; we then
+            // re-poll the session from AuthService.
+            NavigationStack {
+                AuthView(mode: .signInOrUp, isDismissable: true)
+            }
+            .onDisappear {
+                Task { await auth.refreshFromClerk() }
+            }
+        }
     }
 }
 
