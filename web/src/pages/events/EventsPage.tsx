@@ -115,16 +115,7 @@ export default function EventsPage() {
       {events === undefined ? (
         <LoadingState />
       ) : view === "calendar" ? (
-        events.length === 0 ? (
-          <EmptyState
-            icon={CalendarDays}
-            title="No events"
-            description="No events have been created yet."
-            action={can("coach") ? <NewEventDialog /> : undefined}
-          />
-        ) : (
-          <EventsCalendar events={calendarEvents} />
-        )
+        <EventsCalendar events={calendarEvents} />
       ) : (
         <section className="rounded-md border border-hairline bg-surface overflow-hidden">
           <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-hairline">
