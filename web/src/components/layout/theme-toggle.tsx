@@ -1,8 +1,9 @@
 import * as React from "react";
-import { Moon, Sun, Monitor } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ThemeChoice = "light" | "dark" | "system";
+type ResolvedTheme = "light" | "dark";
 
 const STORAGE_KEY = "gatherhub:theme";
 
@@ -19,20 +20,33 @@ function systemPrefersDark(): boolean {
   );
 }
 
-function applyChoice(choice: ThemeChoice): void {
-  const root = document.documentElement;
-  const useDark = choice === "dark" || (choice === "system" && systemPrefersDark());
-  root.classList.toggle("dark", useDark);
+function resolve(choice: ThemeChoice): ResolvedTheme {
+  if (choice === "dark") return "dark";
+  if (choice === "light") return "light";
+  return systemPrefersDark() ? "dark" : "light";
+}
+
+function applyResolved(resolved: ResolvedTheme): void {
+  document.documentElement.classList.toggle("dark", resolved === "dark");
 }
 
 export function useTheme() {
   const [choice, setChoice] = React.useState<ThemeChoice>(() => readChoice());
+  const [resolved, setResolved] = React.useState<ResolvedTheme>(() =>
+    resolve(readChoice()),
+  );
 
   React.useEffect(() => {
-    applyChoice(choice);
+    const r = resolve(choice);
+    setResolved(r);
+    applyResolved(r);
     if (choice === "system" && typeof window !== "undefined") {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const handler = () => applyChoice("system");
+      const handler = () => {
+        const next = systemPrefersDark() ? "dark" : "light";
+        setResolved(next);
+        applyResolved(next);
+      };
       mq.addEventListener("change", handler);
       return () => mq.removeEventListener("change", handler);
     }
@@ -46,28 +60,24 @@ export function useTheme() {
     }
   }, []);
 
-  return { choice, setChoice: update };
+  return { choice, resolved, setChoice: update };
 }
 
 export function ThemeToggle({ className }: { className?: string }) {
-  const { choice, setChoice } = useTheme();
+  const { resolved, setChoice } = useTheme();
 
-  const next: ThemeChoice =
-    choice === "light" ? "dark" : choice === "dark" ? "system" : "light";
-
-  const Icon = choice === "dark" ? Moon : choice === "light" ? Sun : Monitor;
-  const labelMap: Record<ThemeChoice, string> = {
-    light: "Light theme",
-    dark: "Dark theme",
-    system: "System theme",
-  };
+  // Binary flip based on what's currently rendered, not on the stored choice.
+  // Previously the cycle was light → dark → system → light, which produced a
+  // no-op-looking click when "system" happened to resolve to the same theme.
+  const nextResolved: ResolvedTheme = resolved === "dark" ? "light" : "dark";
+  const Icon = resolved === "dark" ? Moon : Sun;
 
   return (
     <button
       type="button"
-      onClick={() => setChoice(next)}
-      aria-label={`Switch to ${labelMap[next].toLowerCase()}`}
-      title={`Theme: ${labelMap[choice]}. Click for ${labelMap[next].toLowerCase()}.`}
+      onClick={() => setChoice(nextResolved)}
+      aria-label={`Switch to ${nextResolved} theme`}
+      title={`Switch to ${nextResolved} theme`}
       className={cn(
         "inline-flex h-8 w-8 items-center justify-center",
         "rounded-sm text-ink-soft hover:text-ink hover:bg-surface-sunk",
