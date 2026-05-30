@@ -232,7 +232,9 @@ function Panel({
   );
 }
 
-type EventRow = NonNullable<ReturnType<typeof useUpcomingEvents>>[number];
+type EventRow = NonNullable<
+  ReturnType<typeof useQuery<typeof api.events.list>>
+>[number];
 
 function UpcomingEventsBody({ events }: { events: EventRow[] | undefined }) {
   if (events === undefined) return <LoadingState />;
@@ -307,7 +309,9 @@ function formatEventTime(ms: number): string {
   });
 }
 
-type AuditEntry = NonNullable<ReturnType<typeof useRecentAudit>>[number];
+type AuditEntry = NonNullable<
+  ReturnType<typeof useQuery<typeof api.dashboard.recentAudit>>
+>[number];
 
 function RecentActivityBody({ audit }: { audit: AuditEntry[] | undefined }) {
   if (audit === undefined) return <LoadingState />;
@@ -438,7 +442,7 @@ function PendingInvitesBlock() {
 function GlanceStrip({
   stats,
 }: {
-  stats: NonNullable<ReturnType<typeof useDashboardStats>>;
+  stats: NonNullable<ReturnType<typeof useQuery<typeof api.dashboard.stats>>>;
 }) {
   const cells = [
     { label: "Members", value: stats.memberCount, to: "/members" },
@@ -483,16 +487,4 @@ function GlanceStrip({
       </dl>
     </section>
   );
-}
-
-function useDashboardStats() {
-  return useQuery(api.dashboard.stats);
-}
-
-function useUpcomingEvents() {
-  return useQuery(api.events.list, { upcomingOnly: true });
-}
-
-function useRecentAudit() {
-  return useQuery(api.dashboard.recentAudit);
 }

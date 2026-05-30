@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { SignIn } from "@clerk/clerk-react";
 import { useSearchParams } from "react-router-dom";
 import { AuthShell } from "@/pages/auth/AuthShell";

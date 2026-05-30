@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import * as React from "react";
 import { useConvex } from "convex/react";
 import { useNavigate } from "react-router-dom";
