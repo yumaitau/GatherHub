@@ -309,28 +309,63 @@ function NavSection({
   }
 
   return (
-    <div className="mb-1.5">
+    <div className="mb-1.5 mt-2">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        title={open ? "Hide section" : "Show section"}
         className={cn(
-          "w-full flex items-center gap-1.5 px-3 pt-3 pb-1.5",
-          "text-label text-ink-quiet hover:text-ink-soft",
+          "group/sec w-full flex items-center gap-2 mx-1 h-8 px-2.5 rounded-sm",
+          "border border-hairline bg-paper",
+          "text-body-strong text-ink-strong",
           "transition-colors duration-fast ease-out",
-          "focus-visible:outline-none focus-visible:shadow-focus rounded-sm",
+          "hover:bg-surface-sunk hover:border-ink-soft/30",
+          "focus-visible:outline-none focus-visible:shadow-focus",
+          "cursor-pointer",
         )}
       >
         <ChevronRight
           className={cn(
-            "h-3 w-3 shrink-0 transition-transform duration-fast ease-out",
+            "h-4 w-4 shrink-0 text-ink-soft",
+            "transition-transform duration-fast ease-out",
             open && "rotate-90",
+            "group-hover/sec:text-ink-strong",
           )}
           aria-hidden="true"
         />
-        <span className="flex-1 text-left">{group.label}</span>
+        <span className="flex-1 text-left tracking-[-0.005em]">
+          {group.label}
+        </span>
+        <span
+          className={cn(
+            "inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5",
+            "rounded-xs bg-surface-sunk text-label text-ink-quiet",
+            "group-hover/sec:bg-paper group-hover/sec:text-ink-soft",
+            "transition-colors duration-fast ease-out",
+          )}
+          aria-hidden="true"
+          data-numeric
+        >
+          {items.length}
+        </span>
+        <span
+          className={cn(
+            "text-caption text-ink-quiet",
+            "group-hover/sec:text-ink-soft",
+            "transition-colors duration-fast ease-out",
+          )}
+        >
+          {open ? "Hide" : "Show"}
+        </span>
       </button>
-      {open && items.map((item) => <NavRow key={item.to} item={item} />)}
+      {open && (
+        <div className="mt-1">
+          {items.map((item) => (
+            <NavRow key={item.to} item={item} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
