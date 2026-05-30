@@ -2,14 +2,7 @@ import * as React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
-import {
-  Plus,
-  Package,
-  ScanLine,
-  Download,
-  Search,
-  Printer,
-} from "lucide-react";
+import { Plus, Package, ScanLine, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,14 +22,8 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+import { DataTable } from "@/components/ui/data-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import {
   PageHeader,
   LoadingState,
@@ -58,7 +45,6 @@ const STATUSES = [
 
 export default function AssetsPage() {
   const { role } = useGatherHub();
-  const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState<string>("all");
   const [category, setCategory] = React.useState<string>("all");
 
@@ -75,7 +61,6 @@ export default function AssetsPage() {
     status:
       status === "all" ? undefined : (status as (typeof STATUSES)[number]),
     category: category === "all" ? undefined : category,
-    search: search || undefined,
   });
 
   const canManage = role ? canManageAssets(role) : false;
@@ -128,7 +113,6 @@ export default function AssetsPage() {
                   search: new URLSearchParams({
                     ...(status !== "all" ? { status } : {}),
                     ...(category !== "all" ? { category } : {}),
-                    ...(search ? { search } : {}),
                   }).toString(),
                 }}
                 target="_blank"
@@ -145,109 +129,109 @@ export default function AssetsPage() {
         }
       />
 
-      <section className="rounded-md border border-hairline bg-surface overflow-hidden">
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-hairline">
-          <div className="relative w-full max-w-xs">
-            <Search
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-quiet pointer-events-none"
-              aria-hidden="true"
+      {assets === undefined ? (
+        <LoadingState />
+      ) : (
+        <DataTable
+          data={assets}
+          columns={
+            [
+              {
+                accessorKey: "name",
+                header: "Name",
+                cell: ({ row }) => (
+                  <Link
+                    to={`/assets/${row.original._id}`}
+                    className="font-semi text-ink-strong hover:text-primary"
+                  >
+                    {row.original.name}
+                  </Link>
+                ),
+              },
+              {
+                accessorFn: (a) => categoryLabel(a.category),
+                id: "category",
+                header: "Category",
+                cell: ({ getValue }) => (
+                  <span className="text-ink-soft">{String(getValue())}</span>
+                ),
+              },
+              {
+                accessorKey: "status",
+                header: "Status",
+                cell: ({ row }) => (
+                  <AssetStatusBadge status={row.original.status} />
+                ),
+              },
+              {
+                accessorKey: "custodianName",
+                header: "Custodian",
+                cell: ({ row }) => (
+                  <span className="text-ink-soft">
+                    {row.original.custodianName ?? "—"}
+                  </span>
+                ),
+              },
+              {
+                accessorKey: "location",
+                header: "Location",
+                cell: ({ row }) => (
+                  <span className="text-ink-soft">
+                    {row.original.location ?? "—"}
+                  </span>
+                ),
+              },
+              {
+                accessorKey: "replacementValue",
+                header: "Value",
+                meta: { numeric: true },
+                cell: ({ row }) =>
+                  formatCurrency(row.original.replacementValue),
+              },
+            ] as ColumnDef<(typeof assets)[number]>[]
+          }
+          getRowId={(r) => r._id}
+          searchPlaceholder="Search name, serial, tag, custodian, location"
+          emptyState={
+            <EmptyState
+              icon={Package}
+              title="No items yet"
+              description="Add your first item to start tracking it with QR codes."
+              action={canManage ? <CreateAssetDialog /> : undefined}
             />
-            <Input
-              placeholder="Search name, serial, tag"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {humanise(s)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              {(categories ?? []).map((c) => (
-                <SelectItem key={c.key} value={c.key}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {assets && (
-            <span className="ml-auto text-caption text-ink-quiet">
-              <span data-numeric className="font-medium text-ink-soft">
-                {assets.length}
-              </span>{" "}
-              {assets.length === 1 ? "asset" : "assets"}
-            </span>
-          )}
-        </div>
-
-        {assets === undefined ? (
-          <LoadingState />
-        ) : assets.length === 0 ? (
-          <EmptyState
-            icon={Package}
-            title="No items yet"
-            description="Add your first item to start tracking it with QR codes."
-            action={canManage ? <CreateAssetDialog /> : undefined}
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Custodian</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead numeric>Value</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {assets.map((a) => (
-                <TableRow key={a._id}>
-                  <TableCell>
-                    <Link
-                      to={`/assets/${a._id}`}
-                      className="font-semi text-ink-strong hover:text-primary"
-                    >
-                      {a.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-ink-soft">
-                    {categoryLabel(a.category)}
-                  </TableCell>
-                  <TableCell>
-                    <AssetStatusBadge status={a.status} />
-                  </TableCell>
-                  <TableCell className="text-ink-soft">
-                    {a.custodianName ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-ink-soft">
-                    {a.location ?? "—"}
-                  </TableCell>
-                  <TableCell numeric>
-                    {formatCurrency(a.replacementValue)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+          }
+          toolbar={
+            <>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  {STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {humanise(s)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All categories</SelectItem>
+                  {(categories ?? []).map((c) => (
+                    <SelectItem key={c.key} value={c.key}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          }
+        />
+      )}
     </div>
   );
 }

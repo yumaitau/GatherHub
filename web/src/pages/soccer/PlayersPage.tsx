@@ -4,14 +4,8 @@ import { Users, Download } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable } from "@/components/ui/data-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { downloadCsv, toCsv } from "@/lib/utils";
@@ -79,96 +73,127 @@ export default function SoccerPlayersPage() {
           </Button>
         }
       />
-      <section className="rounded-md border border-hairline bg-surface overflow-hidden">
-        {rows === undefined ? (
-          <LoadingState />
-        ) : rows.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="No members yet"
-            description="Add members and assign registrations to populate the player roster."
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Player</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Team</TableHead>
-                <TableHead>Division</TableHead>
-                <TableHead numeric>Grade</TableHead>
-                <TableHead>Progress</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.memberId}>
-                  <TableCell>
+      {rows === undefined ? (
+        <LoadingState />
+      ) : (
+        <DataTable
+          data={rows}
+          columns={
+            [
+              {
+                accessorKey: "name",
+                header: "Player",
+                cell: ({ row }) => (
+                  <>
                     <Link
-                      to={`/members/${r.memberId}`}
+                      to={`/members/${row.original.memberId}`}
                       className="font-semi text-ink-strong hover:text-primary"
                     >
-                      {r.name}
+                      {row.original.name}
                     </Link>
-                    {r.email && (
+                    {row.original.email && (
                       <p className="text-caption text-ink-quiet truncate max-w-[24ch]">
-                        {r.email}
+                        {row.original.email}
                       </p>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    {!r.hasRegistration ? (
-                      <Badge variant="outline">No rego</Badge>
-                    ) : r.registered && r.paid ? (
-                      <Badge variant="success">Active</Badge>
-                    ) : r.registered ? (
-                      r.paymentPlan ? (
-                        <Badge variant="warning">Plan</Badge>
-                      ) : (
-                        <Badge variant="destructive">Unpaid</Badge>
-                      )
+                  </>
+                ),
+              },
+              {
+                id: "status",
+                accessorFn: (r) =>
+                  !r.hasRegistration
+                    ? "norego"
+                    : r.registered && r.paid
+                      ? "active"
+                      : r.registered
+                        ? r.paymentPlan
+                          ? "plan"
+                          : "unpaid"
+                        : "pending",
+                header: "Status",
+                cell: ({ row }) =>
+                  !row.original.hasRegistration ? (
+                    <Badge variant="outline">No rego</Badge>
+                  ) : row.original.registered && row.original.paid ? (
+                    <Badge variant="success">Active</Badge>
+                  ) : row.original.registered ? (
+                    row.original.paymentPlan ? (
+                      <Badge variant="warning">Plan</Badge>
                     ) : (
-                      <Badge variant="muted">Pending</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-ink-soft">
-                    {r.teamName ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    {r.divisionName ? (
-                      <span className="inline-flex items-center gap-2">
-                        <span
-                          aria-hidden="true"
-                          className="inline-block h-3 w-3 rounded-xs"
-                          style={{
-                            background: r.divisionColor ?? "transparent",
-                          }}
-                        />
-                        {r.divisionName}
-                      </span>
-                    ) : (
-                      <span className="text-ink-quiet">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell numeric>
-                    {r.grade != null ? r.grade.toFixed(1) : "—"}
-                  </TableCell>
-                  <TableCell className="text-ink-soft">
-                    <Link
-                      to={`/soccer/grading/${r.memberId}`}
-                      className="hover:text-primary"
-                    >
-                      <span data-numeric>{r.scoredCount}</span>
-                      {" / "}
-                      <span data-numeric>{r.totalSkills}</span>
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+                      <Badge variant="destructive">Unpaid</Badge>
+                    )
+                  ) : (
+                    <Badge variant="muted">Pending</Badge>
+                  ),
+              },
+              {
+                accessorKey: "teamName",
+                header: "Team",
+                cell: ({ row }) => (
+                  <span className="text-ink-soft">
+                    {row.original.teamName ?? "—"}
+                  </span>
+                ),
+              },
+              {
+                accessorKey: "divisionName",
+                header: "Division",
+                cell: ({ row }) =>
+                  row.original.divisionName ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className="inline-block h-3 w-3 rounded-xs"
+                        style={{
+                          background:
+                            row.original.divisionColor ?? "transparent",
+                        }}
+                      />
+                      {row.original.divisionName}
+                    </span>
+                  ) : (
+                    <span className="text-ink-quiet">—</span>
+                  ),
+              },
+              {
+                accessorFn: (r) => r.grade ?? -1,
+                id: "grade",
+                header: "Grade",
+                meta: { numeric: true },
+                cell: ({ row }) =>
+                  row.original.grade != null
+                    ? row.original.grade.toFixed(1)
+                    : "—",
+              },
+              {
+                accessorFn: (r) => r.scoredCount,
+                id: "progress",
+                header: "Progress",
+                cell: ({ row }) => (
+                  <Link
+                    to={`/soccer/grading/${row.original.memberId}`}
+                    className="text-ink-soft hover:text-primary"
+                  >
+                    <span data-numeric>{row.original.scoredCount}</span>
+                    {" / "}
+                    <span data-numeric>{row.original.totalSkills}</span>
+                  </Link>
+                ),
+              },
+            ] as ColumnDef<(typeof rows)[number]>[]
+          }
+          getRowId={(r) => String(r.memberId)}
+          searchPlaceholder="Search player, email, team, division"
+          emptyState={
+            <EmptyState
+              icon={Users}
+              title="No members yet"
+              description="Add members and assign registrations to populate the player roster."
+            />
+          }
+        />
+      )}
     </div>
   );
 }

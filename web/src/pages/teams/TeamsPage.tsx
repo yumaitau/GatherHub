@@ -23,14 +23,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable } from "@/components/ui/data-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 
@@ -47,80 +41,88 @@ export default function TeamsPage() {
         actions={can("committee") ? <NewTeamDialog /> : undefined}
       />
 
-      <section className="rounded-md border border-hairline bg-surface overflow-hidden">
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-hairline">
-          <label className="flex items-center gap-2 text-body text-ink-soft">
-            <input
-              type="checkbox"
-              checked={includeInactive}
-              onChange={(e) => setIncludeInactive(e.target.checked)}
-              className="h-4 w-4 accent-primary"
+      {teams === undefined ? (
+        <LoadingState />
+      ) : (
+        <DataTable
+          data={teams}
+          columns={
+            [
+              {
+                accessorKey: "name",
+                header: "Name",
+                cell: ({ row }) => (
+                  <Link
+                    to={`/teams/${row.original._id}`}
+                    className="font-semi text-ink-strong hover:text-primary"
+                  >
+                    {row.original.name}
+                  </Link>
+                ),
+              },
+              {
+                accessorKey: "ageGroup",
+                header: "Age group",
+                cell: ({ row }) => (
+                  <span className="text-ink-soft">
+                    {row.original.ageGroup ?? "—"}
+                  </span>
+                ),
+              },
+              {
+                accessorKey: "season",
+                header: "Season",
+                cell: ({ row }) => (
+                  <span className="text-ink-soft">
+                    {row.original.season ?? "—"}
+                  </span>
+                ),
+              },
+              {
+                accessorKey: "playerCount",
+                header: "Players",
+                meta: { numeric: true },
+              },
+              {
+                accessorKey: "staffCount",
+                header: "Staff",
+                meta: { numeric: true },
+              },
+              {
+                accessorKey: "isActive",
+                header: "Status",
+                cell: ({ row }) =>
+                  row.original.isActive ? (
+                    <Badge variant="success">Active</Badge>
+                  ) : (
+                    <Badge variant="muted">Inactive</Badge>
+                  ),
+              },
+            ] as ColumnDef<(typeof teams)[number]>[]
+          }
+          getRowId={(r) => r._id}
+          searchPlaceholder="Search name, age group, season"
+          emptyState={
+            <EmptyState
+              icon={Shield}
+              title="No teams yet"
+              description="Create your first team to start organising members."
+              action={can("committee") ? <NewTeamDialog /> : undefined}
             />
-            Show inactive
-          </label>
-          {teams && (
-            <span className="ml-auto text-caption text-ink-quiet">
-              <span data-numeric className="font-medium text-ink-soft">
-                {teams.length}
-              </span>{" "}
-              {teams.length === 1 ? "team" : "teams"}
-            </span>
-          )}
-        </div>
-
-        {teams === undefined ? (
-          <LoadingState />
-        ) : teams.length === 0 ? (
-          <EmptyState
-            icon={Shield}
-            title="No teams yet"
-            description="Create your first team to start organising members."
-            action={can("committee") ? <NewTeamDialog /> : undefined}
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Age group</TableHead>
-                <TableHead>Season</TableHead>
-                <TableHead numeric>Players</TableHead>
-                <TableHead numeric>Staff</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {teams.map((t) => (
-                <TableRow key={t._id}>
-                  <TableCell>
-                    <Link
-                      to={`/teams/${t._id}`}
-                      className="font-semi text-ink-strong hover:text-primary"
-                    >
-                      {t.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-ink-soft">
-                    {t.ageGroup ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-ink-soft">
-                    {t.season ?? "—"}
-                  </TableCell>
-                  <TableCell numeric>{t.playerCount}</TableCell>
-                  <TableCell numeric>{t.staffCount}</TableCell>
-                  <TableCell>
-                    {t.isActive ? (
-                      <Badge variant="success">Active</Badge>
-                    ) : (
-                      <Badge variant="muted">Inactive</Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+          }
+          toolbar={
+            <label className="flex items-center gap-2 text-body text-ink-soft">
+              <input
+                type="checkbox"
+                checked={includeInactive}
+                onChange={(e) => setIncludeInactive(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              Show inactive
+            </label>
+          }
+        />
+      )}
     </div>
   );
 }

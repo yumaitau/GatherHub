@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { Link } from "react-router-dom";
-import { Users, Plus, Download, Mail, X, Search } from "lucide-react";
+import { Users, Plus, Download, Mail, X } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { DataTable } from "@/components/ui/data-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import {
   Table,
   TableBody,
@@ -38,17 +40,91 @@ import type { Role } from "@/lib/roles";
 
 type StatusFilter = "all" | "active" | "inactive";
 
+interface MemberRow {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  status: "active" | "inactive";
+  isVolunteer: boolean;
+  isLifetimeMember?: boolean;
+  clubRole?: string;
+}
+
 export default function MembersPage() {
   const { can } = useGatherHub();
-  const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState<StatusFilter>("all");
   const [lifetimeOnly, setLifetimeOnly] = React.useState(false);
 
   const members = useQuery(api.members.list, {
-    search: search.trim() || undefined,
     status: status === "all" ? undefined : status,
     lifetimeOnly: lifetimeOnly || undefined,
   });
+
+  const columns: ColumnDef<MemberRow>[] = React.useMemo(
+    () => [
+      {
+        accessorFn: (m) => `${m.lastName}, ${m.firstName}`,
+        id: "name",
+        header: "Name",
+        cell: ({ row }) => (
+          <>
+            <Link
+              to={`/members/${row.original._id}`}
+              className="font-semi text-ink-strong hover:text-primary"
+            >
+              {row.original.firstName} {row.original.lastName}
+            </Link>
+            {row.original.isLifetimeMember && (
+              <Badge variant="accent" className="ml-2 align-middle">
+                Lifetime
+              </Badge>
+            )}
+          </>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <Badge
+            variant={row.original.status === "active" ? "success" : "muted"}
+          >
+            {row.original.status === "active" ? "Active" : "Inactive"}
+          </Badge>
+        ),
+      },
+      {
+        id: "role",
+        accessorFn: (m) =>
+          [m.clubRole, m.isVolunteer ? "volunteer" : ""]
+            .filter(Boolean)
+            .join(" "),
+        header: "Role",
+        cell: ({ row }) => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {row.original.clubRole && (
+              <Badge variant="muted">{humanise(row.original.clubRole)}</Badge>
+            )}
+            {row.original.isVolunteer && (
+              <Badge variant="accent">Volunteer</Badge>
+            )}
+            {!row.original.clubRole && !row.original.isVolunteer && (
+              <span className="text-ink-quiet">—</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "email",
+        header: "Email",
+        cell: ({ row }) => (
+          <span className="text-ink-soft">{row.original.email ?? "—"}</span>
+        ),
+      },
+    ],
+    [],
+  );
 
   function exportCsv() {
     if (!members) return;
@@ -94,120 +170,54 @@ export default function MembersPage() {
 
       {can("admin") && <PendingInvitesPanel />}
 
-      <section className="rounded-md border border-hairline bg-surface overflow-hidden">
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-hairline">
-          <div className="relative w-full max-w-xs">
-            <Search
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-quiet pointer-events-none"
-              aria-hidden="true"
+      {members === undefined ? (
+        <LoadingState />
+      ) : (
+        <DataTable<MemberRow>
+          data={members as MemberRow[]}
+          columns={columns}
+          searchPlaceholder="Search by name, email, role"
+          getRowId={(r) => r._id}
+          emptyState={
+            <EmptyState
+              icon={Users}
+              title="No members found"
+              description={
+                status !== "all"
+                  ? "Try adjusting your filters."
+                  : "Add your first member to get started."
+              }
+              action={can("coach") ? <AddMemberDialog /> : undefined}
             />
-            <Input
-              placeholder="Search by name or email"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-          <Select
-            value={status}
-            onValueChange={(v) => setStatus(v as StatusFilter)}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-          <label className="inline-flex items-center gap-2 text-body text-ink-soft">
-            <input
-              type="checkbox"
-              checked={lifetimeOnly}
-              onChange={(e) => setLifetimeOnly(e.target.checked)}
-              className="h-4 w-4 accent-primary"
-            />
-            Lifetime members only
-          </label>
-          {members && (
-            <span className="ml-auto text-caption text-ink-quiet">
-              <span data-numeric className="font-medium text-ink-soft">
-                {members.length}
-              </span>{" "}
-              {members.length === 1 ? "result" : "results"}
-            </span>
-          )}
-        </div>
-
-        {members === undefined ? (
-          <LoadingState />
-        ) : members.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="No members found"
-            description={
-              search || status !== "all"
-                ? "Try adjusting your search or filters."
-                : "Add your first member to get started."
-            }
-            action={can("coach") ? <AddMemberDialog /> : undefined}
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Email</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.map((m) => (
-                <TableRow key={m._id}>
-                  <TableCell>
-                    <Link
-                      to={`/members/${m._id}`}
-                      className="font-semi text-ink-strong hover:text-primary"
-                    >
-                      {m.firstName} {m.lastName}
-                    </Link>
-                    {m.isLifetimeMember && (
-                      <Badge variant="accent" className="ml-2 align-middle">
-                        Lifetime
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={m.status === "active" ? "success" : "muted"}
-                    >
-                      {m.status === "active" ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {m.clubRole && (
-                        <Badge variant="muted">{humanise(m.clubRole)}</Badge>
-                      )}
-                      {m.isVolunteer && (
-                        <Badge variant="accent">Volunteer</Badge>
-                      )}
-                      {!m.clubRole && !m.isVolunteer && (
-                        <span className="text-ink-quiet">—</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-ink-soft">
-                    {m.email ?? "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+          }
+          toolbar={
+            <>
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v as StatusFilter)}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+              <label className="inline-flex items-center gap-2 text-body text-ink-soft">
+                <input
+                  type="checkbox"
+                  checked={lifetimeOnly}
+                  onChange={(e) => setLifetimeOnly(e.target.checked)}
+                  className="h-4 w-4 accent-primary"
+                />
+                Lifetime only
+              </label>
+            </>
+          }
+        />
+      )}
     </div>
   );
 }

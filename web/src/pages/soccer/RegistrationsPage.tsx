@@ -23,14 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable } from "@/components/ui/data-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { downloadCsv, formatDateTime, toCsv } from "@/lib/utils";
@@ -112,90 +106,123 @@ export default function RegistrationsPage() {
         }
       />
 
-      <section className="rounded-md border border-hairline bg-surface overflow-hidden">
-        {rows === undefined ? (
-          <LoadingState />
-        ) : rows.length === 0 ? (
-          <EmptyState
-            icon={ClipboardList}
-            title="No registrations yet"
-            description="Add a registration for a member to track their status."
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Member</TableHead>
-                <TableHead>Registered</TableHead>
-                <TableHead>Paid</TableHead>
-                <TableHead>FFA #</TableHead>
-                <TableHead>Team</TableHead>
-                <TableHead>Division</TableHead>
-                {canEdit && <TableHead className="w-16" />}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r._id}>
-                  <TableCell>
+      {rows === undefined ? (
+        <LoadingState />
+      ) : (
+        <DataTable
+          data={rows}
+          columns={
+            [
+              {
+                accessorKey: "memberName",
+                header: "Member",
+                cell: ({ row }) => (
+                  <>
                     <Link
-                      to={`/members/${r.memberId}`}
+                      to={`/members/${row.original.memberId}`}
                       className="font-semi text-ink-strong hover:text-primary"
                     >
-                      {r.memberName}
+                      {row.original.memberName}
                     </Link>
-                    {r.memberEmail && (
+                    {row.original.memberEmail && (
                       <p className="text-caption text-ink-quiet">
-                        {r.memberEmail}
+                        {row.original.memberEmail}
                       </p>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    {r.registered ? (
+                  </>
+                ),
+              },
+              {
+                accessorKey: "registered",
+                header: "Registered",
+                cell: ({ row }) => (
+                  <>
+                    {row.original.registered ? (
                       <Badge variant="success">Registered</Badge>
                     ) : (
                       <Badge variant="muted">Pending</Badge>
                     )}
-                    {r.registered && r.registeredAt && (
+                    {row.original.registered && row.original.registeredAt && (
                       <p className="text-caption text-ink-quiet">
-                        {formatDateTime(r.registeredAt)}
+                        {formatDateTime(row.original.registeredAt)}
                       </p>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    {r.paid ? (
-                      <Badge variant="success">Paid</Badge>
-                    ) : r.paymentPlan ? (
-                      <Badge variant="warning">Plan</Badge>
-                    ) : (
-                      <Badge variant="destructive">Unpaid</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-mono text-ink-soft">
-                    {r.ffaNumber ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-ink-soft">
-                    {r.teamName ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-ink-soft">
-                    {r.divisionName ?? "—"}
-                  </TableCell>
-                  {canEdit && (
-                    <TableCell>
-                      <RegistrationDialog
-                        existing={r}
-                        members={members ?? []}
-                        teams={teams ?? []}
-                        competitions={competitions ?? []}
-                      />
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+                  </>
+                ),
+              },
+              {
+                accessorKey: "paid",
+                header: "Paid",
+                cell: ({ row }) =>
+                  row.original.paid ? (
+                    <Badge variant="success">Paid</Badge>
+                  ) : row.original.paymentPlan ? (
+                    <Badge variant="warning">Plan</Badge>
+                  ) : (
+                    <Badge variant="destructive">Unpaid</Badge>
+                  ),
+              },
+              {
+                accessorKey: "ffaNumber",
+                header: "FFA #",
+                cell: ({ row }) => (
+                  <span className="text-mono text-ink-soft">
+                    {row.original.ffaNumber ?? "—"}
+                  </span>
+                ),
+              },
+              {
+                accessorKey: "teamName",
+                header: "Team",
+                cell: ({ row }) => (
+                  <span className="text-ink-soft">
+                    {row.original.teamName ?? "—"}
+                  </span>
+                ),
+              },
+              {
+                accessorKey: "divisionName",
+                header: "Division",
+                cell: ({ row }) => (
+                  <span className="text-ink-soft">
+                    {row.original.divisionName ?? "—"}
+                  </span>
+                ),
+              },
+              ...(canEdit
+                ? ([
+                    {
+                      id: "actions",
+                      header: "",
+                      enableSorting: false,
+                      cell: ({
+                        row,
+                      }: {
+                        row: { original: (typeof rows)[number] };
+                      }) => (
+                        <RegistrationDialog
+                          existing={row.original}
+                          members={members ?? []}
+                          teams={teams ?? []}
+                          competitions={competitions ?? []}
+                        />
+                      ),
+                    },
+                  ] as ColumnDef<(typeof rows)[number]>[])
+                : []),
+            ] as ColumnDef<(typeof rows)[number]>[]
+          }
+          getRowId={(r) => r._id}
+          searchPlaceholder="Search member, email, team, division, FFA"
+          emptyState={
+            <EmptyState
+              icon={ClipboardList}
+              title="No registrations yet"
+              description="Add a registration for a member to track their status."
+            />
+          }
+        />
+      )}
     </div>
   );
 }
