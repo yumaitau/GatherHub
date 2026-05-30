@@ -86,6 +86,14 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    if (args.competitionId !== undefined) {
+      const comp = await ctx.db.get(args.competitionId);
+      assertSameOrg(auth, comp);
+    }
+    if (args.divisionId !== undefined) {
+      const div = await ctx.db.get(args.divisionId);
+      assertSameOrg(auth, div);
+    }
     return await ctx.db.insert("teams", {
       orgId: auth.org._id,
       name: args.name.trim(),
@@ -142,6 +150,14 @@ export const update = mutation({
     const auth = await requireRole(ctx, "committee");
     const team = await ctx.db.get(args.teamId);
     assertSameOrg(auth, team);
+    if (args.competitionId !== undefined) {
+      const comp = await ctx.db.get(args.competitionId);
+      assertSameOrg(auth, comp);
+    }
+    if (args.divisionId !== undefined) {
+      const div = await ctx.db.get(args.divisionId);
+      assertSameOrg(auth, div);
+    }
     const { teamId, ...rest } = args;
     const patch = Object.fromEntries(
       Object.entries(rest).filter(([, v]) => v !== undefined),

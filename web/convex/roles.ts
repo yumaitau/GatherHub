@@ -46,6 +46,12 @@ export const updateRole = mutation({
       throw new Error("Only an owner can grant the owner role.");
     }
 
+    // Only an owner may mutate another owner's role (demote, transfer).
+    // Admins must not be able to remove owners.
+    if (target.role === "owner" && auth.role !== "owner") {
+      throw new Error("Only an owner can change another owner's role.");
+    }
+
     if (target.role === "owner" && args.role !== "owner") {
       const owners = (
         await ctx.db

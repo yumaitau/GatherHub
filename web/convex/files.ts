@@ -1,5 +1,4 @@
-import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { mutation } from "./_generated/server";
 import { requireRole } from "./lib/auth";
 
 /**
@@ -21,10 +20,8 @@ export const generateUploadUrl = mutation({
   },
 });
 
-/** Resolve a storageId to a served URL. */
-export const getUrl = query({
-  args: { storageId: v.id("_storage") },
-  handler: async (ctx, args) => {
-    return await ctx.storage.getUrl(args.storageId);
-  },
-});
+// Note: there is no public storageId → URL resolver. Callers that need a
+// served URL for an attached file (sponsor logo, news cover image) get it
+// back from the owning record's query, which performs the org check.
+// Exposing a generic resolver would oracle every storageId in the deployment
+// to any client. See security review (Critical #1) for context.

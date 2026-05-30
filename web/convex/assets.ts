@@ -305,13 +305,18 @@ export const reassignTag = mutation({
       .query("assetTags")
       .withIndex("by_tag", (q) => q.eq("tagId", args.tagId))
       .unique();
-    if (!tag) throw new Error("Tag not found.");
-    assertSameOrg(auth, tag);
+    // Collapse "absent" and "belongs to another org" into one opaque error
+    // so a tag id can't be used to probe other tenants.
+    if (!tag || tag.orgId !== auth.org._id) {
+      throw new Error("Tag not found in your organisation.");
+    }
     if (tag.assetId === args.toAssetId) return;
 
     const fromAsset = await ctx.db.get(tag.assetId);
     if (fromAsset && fromAsset.orgId !== auth.org._id) {
-      throw new Error("Source asset not in this organisation.");
+      // Shouldn't be reachable given the tag-org check above, but keep the
+      // same opaque wording to avoid leaking via timing or future changes.
+      throw new Error("Tag not found in your organisation.");
     }
 
     await ctx.db.patch(tag._id, { assetId: args.toAssetId });
@@ -354,14 +359,19 @@ export const registerNfc = mutation({
     const tagId = args.nfcTagId.trim();
     if (!tagId) throw new Error("NFC tag id required.");
 
-    // Ensure the NFC id isn't already bound to a different asset (any org-safe;
-    // tags are globally unique by id).
+    // tagId is globally unique. If a clash exists in *another* org we must
+    // not disclose that fact (it would oracle NFC ids across tenants).
+    // Return the same opaque error as an in-org clash so the two cases are
+    // indistinguishable. See security review (High #5).
     const clash = await ctx.db
       .query("assetTags")
       .withIndex("by_tag", (q) => q.eq("tagId", tagId))
       .unique();
+    if (clash && clash.orgId !== auth.org._id) {
+      throw new Error("That NFC tag is not available.");
+    }
     if (clash && clash.assetId !== args.assetId) {
-      throw new Error("That NFC tag is already registered to another asset.");
+      throw new Error("That NFC tag is not available.");
     }
 
     if (!clash) {

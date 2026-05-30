@@ -1,7 +1,7 @@
 import { mutation, query, internalAction } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
-import { requireRole, requireUser } from "./lib/auth";
+import { requireRole, requireUser, hasAtLeastRole } from "./lib/auth";
 import { roleValidator } from "./schema";
 import { generateTagId } from "./lib/ids";
 
@@ -174,8 +174,12 @@ export const accept = mutation({
       )
       .unique();
     if (existingMembership) {
-      // Upgrade role only if invitation grants higher privilege; never demote.
-      await ctx.db.patch(existingMembership._id, { role: inv.role });
+      // Upgrade only — never silently demote an existing membership. An
+      // admin can craft an invite with a lower role for a current owner;
+      // accepting it must not strip privileges.
+      if (hasAtLeastRole(inv.role, existingMembership.role)) {
+        await ctx.db.patch(existingMembership._id, { role: inv.role });
+      }
     } else {
       await ctx.db.insert("memberships", {
         orgId: inv.orgId,

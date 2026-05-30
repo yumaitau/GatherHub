@@ -182,6 +182,14 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_org_and_email", ["orgId", "email"]),
 
+  // Per-user attempt log for org join-by-invite-code, used to rate-limit
+  // brute-force grinding of the 10-char invite code. Append-only.
+  joinAttempts: defineTable({
+    userId: v.id("users"),
+    attemptedAt: v.number(),
+    success: v.boolean(),
+  }).index("by_user_and_time", ["userId", "attemptedAt"]),
+
   // People in a club. A member may or may not be a Clerk user (e.g. a child).
   members: defineTable({
     orgId: v.id("organizations"),

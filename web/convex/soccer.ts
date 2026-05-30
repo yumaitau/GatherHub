@@ -399,6 +399,21 @@ export const upsertRegistration = mutation({
     await assertSoccerMode(ctx, auth.org._id);
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
+    // Each FK must resolve to a record in the caller's org. Otherwise a
+    // committee member could write cross-org references and violate the
+    // tenant-isolation invariant.
+    if (args.competitionId !== undefined) {
+      const comp = await ctx.db.get(args.competitionId);
+      assertSameOrg(auth, comp);
+    }
+    if (args.divisionId !== undefined) {
+      const div = await ctx.db.get(args.divisionId);
+      assertSameOrg(auth, div);
+    }
+    if (args.teamId !== undefined) {
+      const team = await ctx.db.get(args.teamId);
+      assertSameOrg(auth, team);
+    }
     const existing = await ctx.db
       .query("soccerRegistrations")
       .withIndex("by_org_member", (q) =>

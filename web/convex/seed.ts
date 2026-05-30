@@ -1,6 +1,11 @@
-import { mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { generateTagId, generateSlug } from "./lib/ids";
+
+// Both entry points below are `internalMutation` — callable from
+// `npx convex run` with a deploy key, never reachable from the client
+// API surface. Previously plain `mutation`, which let any signed-in
+// user grant themselves ownership of the demo org via the public API.
 
 /**
  * Seed a self-contained demo club ("Demo United FC") with members, teams,
@@ -17,7 +22,7 @@ import { generateTagId, generateSlug } from "./lib/ids";
 
 const DEMO_SLUG = "demo-united";
 
-export const run = mutation({
+export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
     const existing = await ctx.db
@@ -381,7 +386,7 @@ export const run = mutation({
  * it as their active club. Call once after signing in to explore the seeded
  * data in the authenticated app.
  */
-export const claimDemo = mutation({
+export const claimDemo = internalMutation({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();

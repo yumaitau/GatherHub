@@ -48,9 +48,17 @@ export const create = mutation({
   },
 });
 
+// Rate-limit policy for joinByCode: max 5 attempts per user per minute.
+// The 10-char Crockford code is ~50 bits offline-strong, but Convex
+// performs no per-IP throttling on its own, so we cap server-side.
+const JOIN_RL_WINDOW_MS = 60_000;
+const JOIN_RL_MAX_ATTEMPTS = 5;
+
 /**
  * Join an existing club using its current invite code. The caller is added as
  * a `player` (admins can promote later) and the club becomes their active org.
+ *
+ * Rate-limited per user to prevent brute-forcing the invite code.
  */
 export const joinByCode = mutation({
   args: { code: v.string() },
@@ -59,11 +67,32 @@ export const joinByCode = mutation({
     const code = args.code.trim().toUpperCase();
     if (!code) throw new ConvexError("Enter an invite code.");
 
+    const now = Date.now();
+    const windowStart = now - JOIN_RL_WINDOW_MS;
+    const recent = await ctx.db
+      .query("joinAttempts")
+      .withIndex("by_user_and_time", (q) =>
+        q.eq("userId", user._id).gt("attemptedAt", windowStart),
+      )
+      .collect();
+    if (recent.length >= JOIN_RL_MAX_ATTEMPTS) {
+      throw new ConvexError(
+        "Too many attempts. Wait a minute before trying again.",
+      );
+    }
+
     const org = await ctx.db
       .query("organizations")
       .withIndex("by_invite_code", (q) => q.eq("inviteCode", code))
       .unique();
-    if (!org) throw new ConvexError("Invalid invite code.");
+    if (!org) {
+      await ctx.db.insert("joinAttempts", {
+        userId: user._id,
+        attemptedAt: now,
+        success: false,
+      });
+      throw new ConvexError("Invalid invite code.");
+    }
 
     const existing = await ctx.db
       .query("memberships")
@@ -79,6 +108,11 @@ export const joinByCode = mutation({
       });
     }
     await ctx.db.patch(user._id, { activeOrgId: org._id });
+    await ctx.db.insert("joinAttempts", {
+      userId: user._id,
+      attemptedAt: now,
+      success: true,
+    });
     return { orgId: org._id };
   },
 });
