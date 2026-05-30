@@ -92,6 +92,33 @@ final class SyncCoordinator {
                     longitude: args.longitude,
                     accuracy: args.accuracy
                 )
+            case .assetRegisterNfc:
+                let args = try JSONDecoder().decode(RegisterNfcPayload.self, from: op.payload)
+                try await convex.registerNfc(
+                    assetId: args.assetId,
+                    nfcTagId: args.nfcTagId
+                )
+            case .announcementRead:
+                let args = try JSONDecoder().decode(AnnouncementReadPayload.self, from: op.payload)
+                try await convex.markAnnouncementRead(args.announcementId)
+            case .soccerEvaluation:
+                let args = try JSONDecoder().decode(EvaluationPayload.self, from: op.payload)
+                try await convex.upsertEvaluation(
+                    memberId: args.memberId,
+                    skillId: args.skillId,
+                    score: args.score,
+                    notes: args.notes
+                )
+            case .soccerAssignment:
+                let args = try JSONDecoder().decode(AssignmentPayload.self, from: op.payload)
+                try await convex.updatePlayerAssignment(
+                    memberId: args.memberId,
+                    teamId: args.teamId,
+                    divisionId: args.divisionId,
+                    clearTeam: args.clearTeam,
+                    clearDivision: args.clearDivision,
+                    kitColour: args.kitColour
+                )
             }
             op.transition(to: .applied)
             try? store.save()
@@ -133,4 +160,29 @@ struct ScanPayload: Codable {
     let latitude: Double?
     let longitude: Double?
     let accuracy: Double?
+}
+
+struct RegisterNfcPayload: Codable {
+    let assetId: String
+    let nfcTagId: String
+}
+
+struct AnnouncementReadPayload: Codable {
+    let announcementId: String
+}
+
+struct EvaluationPayload: Codable {
+    let memberId: String
+    let skillId: String
+    let score: Double
+    let notes: String?
+}
+
+struct AssignmentPayload: Codable {
+    let memberId: String
+    let teamId: String?
+    let divisionId: String?
+    let clearTeam: Bool
+    let clearDivision: Bool
+    let kitColour: String?
 }

@@ -72,3 +72,19 @@ targets:
     # one, so the camera/NFC usage strings and entitlement are visible and
     # editable in source control. Do not add an `info:` block here or XcodeGen
     # will overwrite that file on every `generate`.
+    #
+    # NFC capability checklist (required for the system NFC sheet to
+    # appear on a real device):
+    #
+    # 1. Apple Developer portal → Identifiers → au.com.gatherhub →
+    #    Capabilities → enable "Near Field Communication Tag Reading".
+    # 2. Re-generate / re-download the provisioning profile so it embeds
+    #    the entitlement (Automatic signing in Xcode handles this on the
+    #    next build, but the team must own the App ID).
+    #
+    # The CODE_SIGN_ENTITLEMENTS file above declares the format array
+    # ([TAG] since iOS 17 SDK 26.5 disallows NDEF). The
+    # NFCReaderUsageDescription string lives in Info.plist. Without the
+    # portal-side capability the entitlement is stripped during signing
+    # and NFCTagReaderSession.begin() returns silently — the symptom the
+    # user reports.

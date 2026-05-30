@@ -4,6 +4,7 @@ import SwiftUI
 /// pushes the full body and marks it read via `announcements:markRead`.
 struct AnnouncementsListView: View {
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @State private var announcements: [Announcement] = []
     @State private var loading = true
     @State private var error: String?
@@ -95,35 +96,49 @@ struct AnnouncementsListView: View {
     }
 
     private func load() async {
-        loading = announcements.isEmpty
-        error = nil
-        defer { loading = false }
-        do {
-            announcements = try await convex.listAnnouncements()
-        } catch let err {
-            error = err.localizedDescription
+        if let cached = try? sync.store?.cachedAnnouncements(), !cached.isEmpty {
+            announcements = cached
+            loading = false
+        } else if announcements.isEmpty {
+            loading = true
         }
+        error = nil
+        do {
+            let fresh = try await convex.listAnnouncements()
+            announcements = fresh
+            try? sync.store?.replaceAnnouncements(fresh)
+        } catch let err {
+            if announcements.isEmpty { error = err.localizedDescription }
+        }
+        loading = false
     }
 
     private func markRead(_ id: String) async {
-        do {
-            try await convex.markAnnouncementRead(id)
-            // Optimistically update the local copy.
-            if let idx = announcements.firstIndex(where: { $0.id == id }) {
-                let a = announcements[idx]
-                announcements[idx] = Announcement(
-                    id: a.id,
-                    title: a.title,
-                    body: a.body,
-                    pinned: a.pinned,
-                    teamName: a.teamName,
-                    authorName: a.authorName,
-                    isRead: true,
-                    creationTime: a.creationTime
-                )
-            }
-        } catch {
-            // Swallow — read state is best-effort.
+        // Optimistic local update.
+        if let idx = announcements.firstIndex(where: { $0.id == id }) {
+            let a = announcements[idx]
+            announcements[idx] = Announcement(
+                id: a.id,
+                title: a.title,
+                body: a.body,
+                pinned: a.pinned,
+                teamName: a.teamName,
+                authorName: a.authorName,
+                isRead: true,
+                creationTime: a.creationTime
+            )
+            try? sync.store?.replaceAnnouncements(announcements)
+        }
+        // Queue the read receipt so it survives offline.
+        guard let store = sync.store else { return }
+        let payload = AnnouncementReadPayload(announcementId: id)
+        if let data = try? JSONEncoder().encode(payload) {
+            try? store.enqueue(
+                kind: .announcementRead,
+                title: "Mark announcement read",
+                payload: data
+            )
+            await sync.coordinator?.syncIfOnline()
         }
     }
 }

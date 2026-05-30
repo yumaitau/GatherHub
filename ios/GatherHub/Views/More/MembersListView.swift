@@ -5,9 +5,11 @@ import SwiftUI
 /// role server-side; we just render whatever the server returns.
 struct MembersListView: View {
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @State private var members: [Member] = []
     @State private var loading = true
     @State private var error: String?
+    @State private var isStale = false
     @State private var query = ""
     @State private var statusFilter: StatusFilter = .active
     @State private var volunteerOnly = false
@@ -94,14 +96,24 @@ struct MembersListView: View {
     }
 
     private func load() async {
-        loading = members.isEmpty
-        error = nil
-        defer { loading = false }
-        do {
-            members = try await convex.listMembers()
-        } catch let err {
-            error = err.localizedDescription
+        if let cached = try? sync.store?.cachedMembers(), !cached.isEmpty {
+            members = cached
+            isStale = true
+            loading = false
+        } else if members.isEmpty {
+            loading = true
         }
+        error = nil
+        do {
+            let fresh = try await convex.listMembers()
+            members = fresh
+            try? sync.store?.replaceMembers(fresh)
+            isStale = false
+        } catch let err {
+            if members.isEmpty { error = err.localizedDescription }
+            else { isStale = true }
+        }
+        loading = false
     }
 }
 

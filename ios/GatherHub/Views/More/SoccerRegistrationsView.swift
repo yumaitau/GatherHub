@@ -5,6 +5,7 @@ import SwiftUI
 /// phone-friendly row + filter chips.
 struct SoccerRegistrationsView: View {
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @State private var rows: [PlayerListingRow] = []
     @State private var loading = true
     @State private var error: String?
@@ -13,6 +14,7 @@ struct SoccerRegistrationsView: View {
     @State private var team: String = "All"
     @State private var division: String = "All"
     @State private var paymentPlanOnly = false
+    @State private var editingRow: PlayerListingRow?
 
     enum StatusFilter: String, CaseIterable, Identifiable {
         case all = "All"
@@ -123,21 +125,38 @@ struct SoccerRegistrationsView: View {
             .background(Color.gh.surface)
             Divider()
             List(filtered) { row in
-                RegistrationRow(row: row)
+                Button {
+                    editingRow = row
+                } label: {
+                    RegistrationRow(row: row)
+                }
+                .buttonStyle(.plain)
             }
             .listStyle(.plain)
+        }
+        .sheet(item: $editingRow) { row in
+            PlayerAssignmentSheet(row: row) {
+                Task { await load() }
+            }
         }
     }
 
     private func load() async {
-        loading = rows.isEmpty
-        error = nil
-        defer { loading = false }
-        do {
-            rows = try await convex.listPlayerRegistrations()
-        } catch let err {
-            error = err.localizedDescription
+        if let cached = try? sync.store?.cachedPlayerListings(), !cached.isEmpty {
+            rows = cached
+            loading = false
+        } else if rows.isEmpty {
+            loading = true
         }
+        error = nil
+        do {
+            let fresh = try await convex.listPlayerRegistrations()
+            rows = fresh
+            try? sync.store?.replacePlayerListings(fresh)
+        } catch let err {
+            if rows.isEmpty { error = err.localizedDescription }
+        }
+        loading = false
     }
 }
 

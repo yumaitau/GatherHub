@@ -171,6 +171,32 @@ final class ConvexService: ObservableObject {
         try await once("soccer:playerListing")
     }
 
+    /// `soccer:listDivisions` (query).
+    func listSoccerDivisions() async throws -> [SoccerDivision] {
+        try await once("soccer:listDivisions")
+    }
+
+    /// `soccer:upsertRegistration` (mutation) — minimal assignment
+    /// surface for the iOS quick-edit sheet. `teamId` / `divisionId`
+    /// nil + the respective `clear*` flag explicitly removes the
+    /// assignment (so auto grade-banding kicks in).
+    func updatePlayerAssignment(
+        memberId: String,
+        teamId: String?,
+        divisionId: String?,
+        clearTeam: Bool,
+        clearDivision: Bool,
+        kitColour: String?
+    ) async throws {
+        var args: [String: ConvexEncodable?] = ["memberId": memberId]
+        if let teamId { args["teamId"] = teamId }
+        if let divisionId { args["divisionId"] = divisionId }
+        if clearTeam { args["clearTeam"] = true }
+        if clearDivision { args["clearDivision"] = true }
+        if let kitColour { args["kitColour"] = kitColour }
+        try await client.mutation("soccer:upsertRegistration", with: args)
+    }
+
     /// `soccer:coachesAndManagers` (query).
     func listCoachesManagers() async throws -> [CoachManagerRow] {
         try await once("soccer:coachesAndManagers")

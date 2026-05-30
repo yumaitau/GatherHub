@@ -17,20 +17,31 @@ final class NFCRawReader: NSObject, ObservableObject {
     private var session: NFCTagReaderSession?
 
     func beginScanning() {
+        // Drop any stale session so a previous "no tag detected" timeout
+        // doesn't block a re-arm.
+        invalidate()
+        lastError = nil
+
         guard NFCTagReaderSession.readingAvailable else {
-            lastError = "NFC isn't available on this device."
+            lastError = "NFC isn't available on this device or hasn't been turned on. iOS only allows NFC reading on iPhone 7 and later, and the simulator doesn't support it."
             return
         }
-        let session = NFCTagReaderSession(
+        guard let session = NFCTagReaderSession(
             pollingOption: [.iso14443, .iso15693, .iso18092],
             delegate: self,
             queue: nil
-        )
+        ) else {
+            // The initialiser only returns nil when the entitlement is
+            // missing or the App ID hasn't been enabled for Near Field
+            // Communication Tag Reading in the Apple Developer portal.
+            lastError = "Couldn't start an NFC session. Make sure 'Near Field Communication Tag Reading' is enabled for the App ID in the Apple Developer portal and that the signed app embeds the com.apple.developer.nfc.readersession.formats entitlement."
+            return
+        }
         // Wording mirrors Kit-Trace's flutter_nfc_kit prompts exactly so
         // the system NFC sheet reads the same in both apps.
-        session?.alertMessage = "Hold your iPhone near the NFC tag"
+        session.alertMessage = "Hold your iPhone near the NFC tag"
         self.session = session
-        session?.begin()
+        session.begin()
         isScanning = true
     }
 
@@ -83,10 +94,37 @@ extension NFCRawReader: NFCTagReaderSessionDelegate {
         _ session: NFCTagReaderSession,
         didInvalidateWithError error: Error
     ) {
+        // CoreNFC error codes — most relevant for "sheet never appeared":
+        //   readerSessionInvalidationErrorSessionTimeout (203) — normal idle.
+        //   readerSessionInvalidationErrorUserCanceled (200)  — user dismissed.
+        //   readerSessionInvalidationErrorSystemIsBusy (203)  — another reader is up.
+        //   readerSessionInvalidationErrorFirstNDEFTagRead    — not relevant here.
+        //   readerError.securityViolation                     — missing entitlement / capability.
+        let nfcError = error as NSError
+        let message: String?
+        if let code = NFCReaderError.Code(rawValue: nfcError.code) {
+            switch code {
+            case .readerSessionInvalidationErrorUserCanceled:
+                message = nil
+            case .readerSessionInvalidationErrorSessionTimeout:
+                message = nil
+            case .readerSessionInvalidationErrorSystemIsBusy:
+                message = "iOS NFC reader is busy. Close any other NFC apps and try again."
+            case .readerErrorSecurityViolation:
+                message = "NFC was blocked at the OS level. The Apple Developer portal App ID likely doesn't have 'Near Field Communication Tag Reading' enabled, or the provisioning profile is stale. Re-generate the profile after enabling the capability."
+            case .readerErrorUnsupportedFeature:
+                message = "This iPhone doesn't support NFC tag reading."
+            default:
+                message = error.localizedDescription
+            }
+        } else {
+            message = error.localizedDescription
+        }
         Task { @MainActor [weak self] in
             guard let self else { return }
             self.session = nil
             self.isScanning = false
+            if let message { self.lastError = message }
         }
     }
 

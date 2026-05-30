@@ -47,6 +47,86 @@ final class LocalStore {
         return try context.fetch(descriptor).compactMap { try? $0.decoded() }
     }
 
+    // MARK: - Members
+
+    func replaceMembers(_ members: [Member]) throws {
+        let key = scopeKey
+        try context.delete(model: CachedMember.self, where: #Predicate { $0.scopeKey == key })
+        for m in members {
+            context.insert(try CachedMember(member: m, scopeKey: key))
+        }
+        try context.save()
+    }
+
+    func cachedMembers() throws -> [Member] {
+        let key = scopeKey
+        let descriptor = FetchDescriptor<CachedMember>(
+            predicate: #Predicate { $0.scopeKey == key },
+            sortBy: [SortDescriptor(\.lastName), SortDescriptor(\.firstName)]
+        )
+        return try context.fetch(descriptor).compactMap { try? $0.decoded() }
+    }
+
+    // MARK: - Teams
+
+    func replaceTeams(_ teams: [Team]) throws {
+        let key = scopeKey
+        try context.delete(model: CachedTeam.self, where: #Predicate { $0.scopeKey == key })
+        for t in teams {
+            context.insert(try CachedTeam(team: t, scopeKey: key))
+        }
+        try context.save()
+    }
+
+    func cachedTeams() throws -> [Team] {
+        let key = scopeKey
+        let descriptor = FetchDescriptor<CachedTeam>(
+            predicate: #Predicate { $0.scopeKey == key },
+            sortBy: [SortDescriptor(\.name)]
+        )
+        return try context.fetch(descriptor).compactMap { try? $0.decoded() }
+    }
+
+    // MARK: - Announcements
+
+    func replaceAnnouncements(_ rows: [Announcement]) throws {
+        let key = scopeKey
+        try context.delete(model: CachedAnnouncement.self, where: #Predicate { $0.scopeKey == key })
+        for a in rows {
+            context.insert(try CachedAnnouncement(announcement: a, scopeKey: key))
+        }
+        try context.save()
+    }
+
+    func cachedAnnouncements() throws -> [Announcement] {
+        let key = scopeKey
+        let descriptor = FetchDescriptor<CachedAnnouncement>(
+            predicate: #Predicate { $0.scopeKey == key },
+            sortBy: [SortDescriptor(\.creationTime, order: .reverse)]
+        )
+        return try context.fetch(descriptor).compactMap { try? $0.decoded() }
+    }
+
+    // MARK: - Soccer registrations
+
+    func replacePlayerListings(_ rows: [PlayerListingRow]) throws {
+        let key = scopeKey
+        try context.delete(model: CachedPlayerListing.self, where: #Predicate { $0.scopeKey == key })
+        for r in rows {
+            context.insert(try CachedPlayerListing(row: r, scopeKey: key))
+        }
+        try context.save()
+    }
+
+    func cachedPlayerListings() throws -> [PlayerListingRow] {
+        let key = scopeKey
+        let descriptor = FetchDescriptor<CachedPlayerListing>(
+            predicate: #Predicate { $0.scopeKey == key },
+            sortBy: [SortDescriptor(\.name)]
+        )
+        return try context.fetch(descriptor).compactMap { try? $0.decoded() }
+    }
+
     // MARK: - Sync queue
 
     @discardableResult
@@ -100,6 +180,10 @@ final class LocalStore {
     func purgeScope() throws {
         let key = scopeKey
         try context.delete(model: CachedEvent.self, where: #Predicate { $0.scopeKey == key })
+        try context.delete(model: CachedMember.self, where: #Predicate { $0.scopeKey == key })
+        try context.delete(model: CachedTeam.self, where: #Predicate { $0.scopeKey == key })
+        try context.delete(model: CachedAnnouncement.self, where: #Predicate { $0.scopeKey == key })
+        try context.delete(model: CachedPlayerListing.self, where: #Predicate { $0.scopeKey == key })
         try context.delete(model: PendingSyncOperation.self, where: #Predicate { $0.scopeKey == key })
         try context.save()
     }

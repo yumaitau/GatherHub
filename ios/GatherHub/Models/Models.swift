@@ -161,12 +161,30 @@ struct PlayerListingRow: Codable, Identifiable, Hashable {
     let paid: Bool
     let paymentPlan: Bool
     let ffaNumber: String?
+    let teamId: String?
     let teamName: String?
+    let divisionId: String?
     let divisionName: String?
     let divisionColor: String?
+    let kitColour: String?
     let grade: Double?
 
     var id: String { memberId }
+}
+
+/// Row returned by `soccer:listDivisions`.
+struct SoccerDivision: Codable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let minGrade: Double
+    let maxGrade: Double
+    let color: String?
+    let active: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case name, minGrade, maxGrade, color, active
+    }
 }
 
 /// Row returned by `soccer:coachesAndManagers`.

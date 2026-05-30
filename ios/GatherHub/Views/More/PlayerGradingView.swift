@@ -12,6 +12,7 @@ struct PlayerGradingView: View {
     let memberName: String
 
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
 
     @State private var skills: [SoccerSkill] = []
     @State private var grade: PlayerGrade?
@@ -194,16 +195,27 @@ struct PlayerGradingView: View {
         guard let value = scores[skill.id] else { return }
         savingSkillId = skill.id
         defer { savingSkillId = nil }
-        do {
-            try await convex.upsertEvaluation(
-                memberId: memberId,
-                skillId: skill.id,
-                score: value
+        // Queue the write. Coordinator drains immediately if we're
+        // online; otherwise the score sits in the queue.
+        let payload = EvaluationPayload(
+            memberId: memberId,
+            skillId: skill.id,
+            score: value,
+            notes: nil
+        )
+        if let store = sync.store,
+           let data = try? JSONEncoder().encode(payload) {
+            try? store.enqueue(
+                kind: .soccerEvaluation,
+                title: "Score \(skill.name)",
+                payload: data
             )
-            // Reload the grade so the header reflects the change.
-            grade = try await convex.playerGrade(memberId: memberId)
-        } catch let err {
-            error = err.localizedDescription
+            await sync.coordinator?.syncIfOnline()
+        }
+        // Best-effort grade refresh — if we're offline the value will
+        // come from the next online drain + reload cycle.
+        if sync.monitor.isOnline {
+            grade = try? await convex.playerGrade(memberId: memberId)
         }
     }
 }

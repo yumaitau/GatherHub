@@ -24,6 +24,16 @@
 	<string>????</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
+
+	<!--
+	  Export-compliance shortcut. The app uses only Apple-provided
+	  encryption (HTTPS, Keychain, standard SDK auth flows) which is
+	  exempt under US export rules (EAR 740.17(b)(1)). Setting this to
+	  NO skips the TestFlight / App Store Connect prompt on every
+	  build upload.
+	-->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchScreen</key>

@@ -13,6 +13,14 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     case assetCheckIn
     /// `assetOps:recordScan` — { assetId, lat?, lng?, accuracy? }
     case assetScan
+    /// `assets:registerNfc` — { assetId, nfcTagId }
+    case assetRegisterNfc
+    /// `announcements:markRead` — { announcementId }
+    case announcementRead
+    /// `soccer:upsertEvaluation` — { memberId, skillId, score, notes? }
+    case soccerEvaluation
+    /// `soccer:upsertRegistration` — assignment quick-edit payload.
+    case soccerAssignment
 
     var label: String {
         switch self {
@@ -20,6 +28,10 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
         case .assetCheckOut: return "Asset check-out"
         case .assetCheckIn: return "Asset check-in"
         case .assetScan: return "Asset scan"
+        case .assetRegisterNfc: return "NFC tag bind"
+        case .announcementRead: return "Read receipt"
+        case .soccerEvaluation: return "Skill score"
+        case .soccerAssignment: return "Player assignment"
         }
     }
 }

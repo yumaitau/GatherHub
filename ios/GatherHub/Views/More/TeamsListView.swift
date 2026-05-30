@@ -4,6 +4,7 @@ import SwiftUI
 /// counts. Tap to drill into the team detail (player list).
 struct TeamsListView: View {
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @State private var teams: [Team] = []
     @State private var loading = true
     @State private var error: String?
@@ -82,14 +83,21 @@ struct TeamsListView: View {
     }
 
     private func load() async {
-        loading = teams.isEmpty
-        error = nil
-        defer { loading = false }
-        do {
-            teams = try await convex.listTeams()
-        } catch let err {
-            error = err.localizedDescription
+        if let cached = try? sync.store?.cachedTeams(), !cached.isEmpty {
+            teams = cached
+            loading = false
+        } else if teams.isEmpty {
+            loading = true
         }
+        error = nil
+        do {
+            let fresh = try await convex.listTeams()
+            teams = fresh
+            try? sync.store?.replaceTeams(fresh)
+        } catch let err {
+            if teams.isEmpty { error = err.localizedDescription }
+        }
+        loading = false
     }
 }
 

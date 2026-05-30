@@ -11,9 +11,16 @@
 	  Reading" is enabled for the App ID in the Apple Developer portal /
 	  Signing & Capabilities. See README.md.
 	-->
+	<!--
+	  iOS 17 SDK 26.5 disallows the "NDEF" value here. Keep only "TAG"
+	  so the entitlement validates. We use NFCTagReaderSession (raw UID
+	  read) in NFCRawReader, so NDEF isn't required. NFCNDEFReaderSession
+	  in the legacy NFCScanner class still compiles but won't run a
+	  session without the entitlement — call sites have already moved
+	  to NFCRawReader.
+	-->
 	<key>com.apple.developer.nfc.readersession.formats</key>
 	<array>
-		<string>NDEF</string>
 		<string>TAG</string>
 	</array>
 </dict>

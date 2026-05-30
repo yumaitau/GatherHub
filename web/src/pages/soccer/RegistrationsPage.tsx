@@ -36,6 +36,7 @@ export default function RegistrationsPage() {
   const teams = useQuery(api.teams.list, {});
   const members = useQuery(api.members.list, { status: "active" });
   const ageGroups = useQuery(api.taxonomies.list, { kind: "team_age_group" });
+  const divisions = useQuery(api.soccer.listDivisions, {});
   const canEdit = can("committee");
 
   if (!org?.soccerMode) {
@@ -106,6 +107,7 @@ export default function RegistrationsPage() {
                 teams={teams ?? []}
                 competitions={competitions ?? []}
                 ageGroups={ageGroups ?? []}
+                divisions={divisions ?? []}
               />
             )}
           </>
@@ -246,6 +248,7 @@ export default function RegistrationsPage() {
                           teams={teams ?? []}
                           competitions={competitions ?? []}
                           ageGroups={ageGroups ?? []}
+                          divisions={divisions ?? []}
                         />
                       ),
                     },
@@ -272,6 +275,7 @@ type MemberOpt = { _id: Id<"members">; firstName: string; lastName: string };
 type TeamOpt = { _id: Id<"teams">; name: string };
 type CompOpt = { _id: Id<"soccerCompetitions">; name: string };
 type AgeGroupOpt = { key: string; label: string };
+type DivisionOpt = { _id: Id<"soccerDivisions">; name: string };
 
 interface RegistrationDialogRow {
   memberId: Id<"members">;
@@ -279,6 +283,7 @@ interface RegistrationDialogRow {
   hasRegistration: boolean;
   competitionId: Id<"soccerCompetitions"> | null;
   teamId: Id<"teams"> | null;
+  divisionId: Id<"soccerDivisions"> | null;
   ffaNumber: string | null;
   gender: string | null;
   schoolName: string | null;
@@ -289,6 +294,7 @@ interface RegistrationDialogRow {
   paymentPlanEnd: string | null;
   comments: string | null;
   ageGroupKey: string | null;
+  kitColour: string | null;
 }
 
 function RegistrationDialog({
@@ -297,12 +303,14 @@ function RegistrationDialog({
   teams,
   competitions,
   ageGroups,
+  divisions,
 }: {
   row?: RegistrationDialogRow;
   members: MemberOpt[];
   teams: TeamOpt[];
   competitions: CompOpt[];
   ageGroups: AgeGroupOpt[];
+  divisions: DivisionOpt[];
 }) {
   const upsert = useMutation(api.soccer.upsertRegistration);
   const formId = React.useId();
@@ -313,6 +321,12 @@ function RegistrationDialog({
   );
   const [teamId, setTeamId] = React.useState<string>(
     row?.teamId ? String(row.teamId) : "",
+  );
+  const [divisionId, setDivisionId] = React.useState<string>(
+    row?.divisionId ? String(row.divisionId) : "__auto__",
+  );
+  const [kitColour, setKitColour] = React.useState<string>(
+    row?.kitColour ?? "",
   );
   const [compId, setCompId] = React.useState<string>(
     row?.competitionId ? String(row.competitionId) : "",
@@ -350,6 +364,13 @@ function RegistrationDialog({
           : undefined,
         ageGroupKey: ageGroupKey || undefined,
         teamId: teamId ? (teamId as Id<"teams">) : undefined,
+        clearTeam: !teamId,
+        divisionId:
+          divisionId && divisionId !== "__auto__"
+            ? (divisionId as Id<"soccerDivisions">)
+            : undefined,
+        clearDivision: divisionId === "__auto__",
+        kitColour: kitColour.trim() || undefined,
         ffaNumber: ffaNumber || undefined,
         gender: gender || undefined,
         schoolName: schoolName || undefined,
@@ -450,6 +471,33 @@ function RegistrationDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Division</Label>
+              <Select value={divisionId} onValueChange={setDivisionId}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__auto__">Auto (from grade)</SelectItem>
+                  {divisions.map((d) => (
+                    <SelectItem key={d._id} value={d._id}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="rg-kit">Kit colour</Label>
+              <Input
+                id="rg-kit"
+                value={kitColour}
+                onChange={(e) => setKitColour(e.target.value)}
+                placeholder="e.g. #bf0000 or Home"
+              />
             </div>
           </div>
           <div className="grid gap-1.5">

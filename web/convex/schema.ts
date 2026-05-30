@@ -565,6 +565,11 @@ export default defineSchema({
     paymentPlanStart: v.optional(v.string()), // ISO yyyy-mm-dd
     paymentPlanEnd: v.optional(v.string()),
     comments: v.optional(v.string()),
+    // Per-player kit colour override. Optional — when unset, the
+    // player inherits the kit colour from `teams.kitColour` of their
+    // assigned team. Free string so admins can store a hex, a name
+    // ("home"), or anything the club recognises.
+    kitColour: v.optional(v.string()),
   })
     .index("by_org", ["orgId"])
     .index("by_org_member", ["orgId", "memberId"])

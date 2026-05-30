@@ -1,5 +1,11 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server";
+import {
+  mutation,
+  query,
+  internalMutation,
+  MutationCtx,
+  QueryCtx,
+} from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
 
@@ -214,6 +220,105 @@ export const restoreGradingDefaults = mutation({
     }
 
     return { skillsAdded, divisionsAdded };
+  },
+});
+
+/**
+ * Backfill: walk every soccer-mode organisation and ensure the Belwest
+ * defaults (DEFAULT_SKILLS + DEFAULT_DIVISIONS) exist for each. Tops up
+ * only what's missing — never overwrites a committee's custom skills,
+ * weights, divisions, or band edges. Idempotent.
+ *
+ * Internal: callable from `npx convex run soccer:applyBelwestDefaultsToAllSoccerOrgs`
+ * with the deploy key, not from the public client surface.
+ *
+ * Returns per-org counts so the operator can see what changed.
+ */
+export const applyBelwestDefaultsToAllSoccerOrgs = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const orgs = await ctx.db.query("organizations").collect();
+    const results: Array<{
+      orgId: string;
+      orgName: string;
+      skillsAdded: number;
+      divisionsAdded: number;
+    }> = [];
+    let orgsTouched = 0;
+
+    for (const org of orgs) {
+      if (!org.soccerMode) continue;
+      orgsTouched++;
+
+      // Skills top-up.
+      const existingSkills = await ctx.db
+        .query("soccerSkills")
+        .withIndex("by_org_order", (q) => q.eq("orgId", org._id))
+        .collect();
+      const existingSkillNames = new Set(
+        existingSkills.map((s) => s.name.toLowerCase()),
+      );
+      const lastSkillOrder = existingSkills.reduce(
+        (m, r) => (r.order > m ? r.order : m),
+        -1,
+      );
+      let nextSkillOrder = lastSkillOrder + 1;
+      let skillsAdded = 0;
+      for (const s of DEFAULT_SKILLS) {
+        if (existingSkillNames.has(s.name.toLowerCase())) continue;
+        await ctx.db.insert("soccerSkills", {
+          orgId: org._id,
+          name: s.name,
+          description: s.description,
+          maxScore: 10,
+          weight: s.weight,
+          order: nextSkillOrder++,
+          active: true,
+        });
+        skillsAdded++;
+      }
+
+      // Divisions top-up.
+      const existingDivisions = await ctx.db
+        .query("soccerDivisions")
+        .withIndex("by_org_order", (q) => q.eq("orgId", org._id))
+        .collect();
+      const existingDivisionNames = new Set(
+        existingDivisions.map((d) => d.name.toLowerCase()),
+      );
+      const lastDivisionOrder = existingDivisions.reduce(
+        (m, r) => (r.order > m ? r.order : m),
+        -1,
+      );
+      let nextDivisionOrder = lastDivisionOrder + 1;
+      let divisionsAdded = 0;
+      for (const d of DEFAULT_DIVISIONS) {
+        if (existingDivisionNames.has(d.name.toLowerCase())) continue;
+        await ctx.db.insert("soccerDivisions", {
+          orgId: org._id,
+          name: d.name,
+          minGrade: d.minGrade,
+          maxGrade: d.maxGrade,
+          color: d.color,
+          order: nextDivisionOrder++,
+          active: true,
+        });
+        divisionsAdded++;
+      }
+
+      results.push({
+        orgId: String(org._id),
+        orgName: org.name,
+        skillsAdded,
+        divisionsAdded,
+      });
+    }
+
+    return {
+      orgsScanned: orgs.length,
+      orgsTouched,
+      results,
+    };
   },
 });
 
@@ -467,6 +572,12 @@ export const upsertRegistration = mutation({
     paymentPlanStart: v.optional(v.string()),
     paymentPlanEnd: v.optional(v.string()),
     comments: v.optional(v.string()),
+    kitColour: v.optional(v.string()),
+    /// Pass `true` to explicitly clear divisionId (so the auto
+    /// grade-banding takes over). `divisionId` alone is treated as
+    /// "leave unchanged" when undefined, so we need a separate flag.
+    clearDivision: v.optional(v.boolean()),
+    clearTeam: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
@@ -511,6 +622,9 @@ export const upsertRegistration = mutation({
       k("paymentPlanStart");
       k("paymentPlanEnd");
       k("comments");
+      k("kitColour");
+      if (args.clearDivision) patch.divisionId = undefined;
+      if (args.clearTeam) patch.teamId = undefined;
       if (args.registered !== undefined) {
         patch.registered = args.registered;
         if (args.registered && !existing.registeredAt) {
@@ -531,8 +645,8 @@ export const upsertRegistration = mutation({
       memberId: args.memberId,
       competitionId: args.competitionId,
       ageGroupKey: args.ageGroupKey,
-      divisionId: args.divisionId,
-      teamId: args.teamId,
+      divisionId: args.clearDivision ? undefined : args.divisionId,
+      teamId: args.clearTeam ? undefined : args.teamId,
       ffaNumber: args.ffaNumber,
       gender: args.gender,
       schoolName: args.schoolName,
@@ -544,6 +658,7 @@ export const upsertRegistration = mutation({
       paymentPlanStart: args.paymentPlanStart,
       paymentPlanEnd: args.paymentPlanEnd,
       comments: args.comments,
+      kitColour: args.kitColour,
     });
   },
 });
@@ -966,6 +1081,7 @@ export const playerListing = query({
           divisionColor: division?.color,
           paymentPlanStart: reg?.paymentPlanStart ?? null,
           paymentPlanEnd: reg?.paymentPlanEnd ?? null,
+          kitColour: reg?.kitColour ?? team?.kitColour ?? null,
           grade: evs.length > 0 ? grade : null,
           scoredCount: evs.length,
           totalSkills: skills.filter((s) => s.active).length,

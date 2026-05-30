@@ -8,6 +8,7 @@ struct AssetDetailView: View {
     let tagId: String
 
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @StateObject private var model = AssetDetailViewModel()
     @State private var showCustodianPicker = false
     @State private var showAssetPicker = false
@@ -20,13 +21,13 @@ struct AssetDetailView: View {
                 await model.load(tagId: tagId, convex: convex)
                 if case .loaded = model.phase {
                     // Background: log a sighting with geo coords.
-                    Task { await model.logScan(convex: convex) }
+                    Task { await model.logScan(convex: convex, sync: sync) }
                 }
             }
             .sheet(isPresented: $showCustodianPicker) {
                 MemberPickerView { member in
                     showCustodianPicker = false
-                    Task { await model.checkOut(to: member, convex: convex) }
+                    Task { await model.checkOut(to: member, convex: convex, sync: sync) }
                 }
             }
             .sheet(isPresented: $showAssetPicker) {
@@ -128,7 +129,7 @@ struct AssetDetailView: View {
 
         case .checkedOut, .inUse:
             Button {
-                Task { await model.checkIn(convex: convex) }
+                Task { await model.checkIn(convex: convex, sync: sync) }
             } label: {
                 Label("Check in", systemImage: "arrow.down.forward.square")
             }
@@ -173,48 +174,82 @@ final class AssetDetailViewModel: ObservableObject {
         }
     }
 
-    func checkOut(to member: Member, convex: ConvexService) async {
+    func checkOut(to member: Member, convex: ConvexService, sync: SyncEnvironment) async {
         guard case .loaded(let asset, _) = phase else { return }
-        await run {
-            try await convex.checkOut(assetId: asset.id, custodianMemberId: member.id)
-        } convex: { convex }
+        await enqueueWrite(
+            kind: .assetCheckOut,
+            title: "Check out \(asset.name) to \(member.fullName)",
+            payload: CheckOutPayload(
+                assetId: asset.id,
+                custodianMemberId: member.id,
+                location: nil,
+                dueBack: nil,
+                notes: nil
+            ),
+            convex: convex,
+            sync: sync
+        )
     }
 
-    func checkIn(convex: ConvexService) async {
+    func checkIn(convex: ConvexService, sync: SyncEnvironment) async {
         guard case .loaded(let asset, _) = phase else { return }
-        await run {
-            try await convex.checkIn(assetId: asset.id)
-        } convex: { convex }
+        await enqueueWrite(
+            kind: .assetCheckIn,
+            title: "Check in \(asset.name)",
+            payload: CheckInPayload(
+                assetId: asset.id,
+                location: nil,
+                notes: nil
+            ),
+            convex: convex,
+            sync: sync
+        )
     }
 
-    /// Log a passive sighting of the asset (action="scanned") with the
-    /// device's current geo coordinates if available. Failures are
-    /// swallowed so a network blip doesn't disrupt the detail view.
-    func logScan(convex: ConvexService) async {
+    func logScan(convex: ConvexService, sync: SyncEnvironment) async {
         guard case .loaded(let asset, _) = phase else { return }
         let location = await LocationService.shared.currentLocation()
-        try? await convex.recordScan(
+        let payload = ScanPayload(
             assetId: asset.id,
             latitude: location?.coordinate.latitude,
             longitude: location?.coordinate.longitude,
             accuracy: location?.horizontalAccuracy
         )
+        if let store = sync.store,
+           let data = try? JSONEncoder().encode(payload) {
+            try? store.enqueue(
+                kind: .assetScan,
+                title: "Scan \(asset.name)",
+                payload: data
+            )
+            await sync.coordinator?.syncIfOnline()
+        }
     }
 
-    /// Run a mutation, then reload so the UI reflects the new status/custodian.
-    private func run(
-        _ work: () async throws -> Void,
-        convex: () -> ConvexService
+    private func enqueueWrite<P: Encodable>(
+        kind: SyncOperationKind,
+        title: String,
+        payload: P,
+        convex: ConvexService,
+        sync: SyncEnvironment
     ) async {
         guard let tagId = currentTagId else { return }
         isBusy = true
         actionError = nil
         defer { isBusy = false }
         do {
-            try await work()
-            await load(tagId: tagId, convex: convex())
+            if let store = sync.store {
+                let data = try JSONEncoder().encode(payload)
+                try store.enqueue(kind: kind, title: title, payload: data)
+                await sync.coordinator?.syncIfOnline()
+            }
+            // Re-load from server so the view reflects new state. If
+            // we're offline this fails silently and we'll show the
+            // previous detail until reconnect.
+            await load(tagId: tagId, convex: convex)
         } catch {
             actionError = error.localizedDescription
         }
     }
+
 }
