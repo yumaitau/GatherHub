@@ -94,6 +94,7 @@ export default function SponsorsPage() {
 function NewSponsorDialog() {
   const create = useMutation(api.sponsors.create);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [contactName, setContactName] = React.useState("");
@@ -181,7 +182,7 @@ function NewSponsorDialog() {
             Add a sponsor or partner organisation.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4">
+        <form id={formId} onSubmit={submit} className="grid gap-4">
           <div className="grid gap-1.5">
             <Label htmlFor="sp-name">Name</Label>
             <Input
@@ -257,7 +258,7 @@ function NewSponsorDialog() {
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>
         <DialogFooter>
-          <Button type="submit" onClick={submit} disabled={saving}>
+          <Button type="submit" form={formId} disabled={saving}>
             {saving ? "Saving…" : "Create sponsor"}
           </Button>
         </DialogFooter>

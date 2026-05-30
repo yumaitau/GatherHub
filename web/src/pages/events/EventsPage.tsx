@@ -148,6 +148,7 @@ export default function EventsPage() {
 function NewEventDialog() {
   const create = useMutation(api.events.create);
   const teams = useQuery(api.teams.list, {});
+  const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [type, setType] = React.useState<EventType>("training");
   const [title, setTitle] = React.useState("");
@@ -219,7 +220,7 @@ function NewEventDialog() {
             Schedule a training, match or meeting.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4">
+        <form id={formId} onSubmit={submit} className="grid gap-4">
           <div className="grid gap-1.5">
             <Label>Type</Label>
             <Select
@@ -300,7 +301,7 @@ function NewEventDialog() {
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>
         <DialogFooter>
-          <Button type="submit" onClick={submit} disabled={saving}>
+          <Button type="submit" form={formId} disabled={saving}>
             {saving ? "Saving…" : "Create event"}
           </Button>
         </DialogFooter>

@@ -209,6 +209,7 @@ export default function VolunteersPage() {
 }
 
 function AddCertificationDialog() {
+  const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const add = useMutation(api.volunteers.addCertification);
   const members = useQuery(api.members.list, open ? {} : "skip");
@@ -275,7 +276,7 @@ function AddCertificationDialog() {
             Record a certification for a volunteer.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4">
+        <form id={formId} onSubmit={submit} className="grid gap-4">
           <div className="grid gap-1.5">
             <Label>Member</Label>
             <Select value={memberId} onValueChange={setMemberId}>
@@ -338,7 +339,7 @@ function AddCertificationDialog() {
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>
         <DialogFooter>
-          <Button type="submit" onClick={submit} disabled={saving}>
+          <Button type="submit" form={formId} disabled={saving}>
             {saving ? "Saving…" : "Add"}
           </Button>
         </DialogFooter>

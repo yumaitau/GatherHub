@@ -211,6 +211,7 @@ function NewAnnouncementDialog() {
   const create = useMutation(api.announcements.create);
   const teams = useQuery(api.teams.list, {});
   const canOrgWide = can("committee");
+  const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [title, setTitle] = React.useState("");
   const [body, setBody] = React.useState("");
@@ -272,7 +273,7 @@ function NewAnnouncementDialog() {
             Post an update to your organisation or a specific team.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4">
+        <form id={formId} onSubmit={submit} className="grid gap-4">
           <div className="grid gap-1.5">
             <Label htmlFor="ann-title">Title</Label>
             <Input
@@ -321,7 +322,7 @@ function NewAnnouncementDialog() {
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>
         <DialogFooter>
-          <Button type="submit" onClick={submit} disabled={saving}>
+          <Button type="submit" form={formId} disabled={saving}>
             {saving ? "Posting…" : "Post"}
           </Button>
         </DialogFooter>

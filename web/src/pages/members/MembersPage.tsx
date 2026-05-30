@@ -192,6 +192,7 @@ export default function MembersPage() {
 
 function AddMemberDialog() {
   const create = useMutation(api.members.create);
+  const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [firstName, setFirstName] = React.useState("");
   const [lastName, setLastName] = React.useState("");
@@ -252,7 +253,7 @@ function AddMemberDialog() {
             Create a new person record for your organisation.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4">
+        <form id={formId} onSubmit={submit} className="grid gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="firstName">First name</Label>
@@ -302,7 +303,7 @@ function AddMemberDialog() {
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>
         <DialogFooter>
-          <Button type="submit" onClick={submit} disabled={saving}>
+          <Button type="submit" form={formId} disabled={saving}>
             {saving ? "Saving…" : "Add member"}
           </Button>
         </DialogFooter>
@@ -323,6 +324,7 @@ const INVITE_ROLES: Role[] = [
 
 function InviteUserDialog() {
   const send = useMutation(api.invitations.send);
+  const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [role, setRole] = React.useState<Role>("player");
@@ -361,7 +363,7 @@ function InviteUserDialog() {
             organisation with the chosen role.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4">
+        <form id={formId} onSubmit={submit} className="grid gap-4">
           <div className="grid gap-1.5">
             <Label htmlFor="invite-email">Email</Label>
             <Input
@@ -392,7 +394,7 @@ function InviteUserDialog() {
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>
         <DialogFooter>
-          <Button type="submit" onClick={submit} disabled={busy || !email.trim()}>
+          <Button type="submit" form={formId} disabled={busy || !email.trim()}>
             {busy ? "Sending…" : "Send invitation"}
           </Button>
         </DialogFooter>

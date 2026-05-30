@@ -120,6 +120,7 @@ export default function TeamsPage() {
 
 function NewTeamDialog() {
   const create = useMutation(api.teams.create);
+  const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [ageGroup, setAgeGroup] = React.useState("");
@@ -175,7 +176,7 @@ function NewTeamDialog() {
           <DialogTitle>New team</DialogTitle>
           <DialogDescription>Create a new team or squad.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4">
+        <form id={formId} onSubmit={submit} className="grid gap-4">
           <div className="grid gap-1.5">
             <Label htmlFor="team-name">Name</Label>
             <Input
@@ -216,7 +217,7 @@ function NewTeamDialog() {
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>
         <DialogFooter>
-          <Button type="submit" onClick={submit} disabled={saving}>
+          <Button type="submit" form={formId} disabled={saving}>
             {saving ? "Saving…" : "Create team"}
           </Button>
         </DialogFooter>

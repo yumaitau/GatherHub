@@ -143,6 +143,7 @@ export function OrgSwitcher({ compact = false }: { compact?: boolean }) {
 
 function CreateClubAction({ onDone }: { onDone: () => void }) {
   const create = useMutation(api.organizations.create);
+  const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -189,7 +190,7 @@ function CreateClubAction({ onDone }: { onDone: () => void }) {
             You will become its owner and can invite others with a code.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-3 px-6 pb-4">
+        <form id={formId} onSubmit={submit} className="grid gap-3 px-6 pb-4">
           <div className="grid gap-1.5">
             <Label htmlFor="org-name">Organisation name</Label>
             <Input
@@ -206,7 +207,7 @@ function CreateClubAction({ onDone }: { onDone: () => void }) {
         <DialogFooter>
           <Button
             type="submit"
-            onClick={submit}
+            form={formId}
             disabled={busy || !name.trim()}
           >
             {busy ? "Creating…" : "Create organisation"}
@@ -219,6 +220,7 @@ function CreateClubAction({ onDone }: { onDone: () => void }) {
 
 function JoinClubAction({ onDone }: { onDone: () => void }) {
   const join = useMutation(api.organizations.joinByCode);
+  const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [code, setCode] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -263,7 +265,7 @@ function JoinClubAction({ onDone }: { onDone: () => void }) {
             Paste the invite code an admin shared with you.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-3 px-6 pb-4">
+        <form id={formId} onSubmit={submit} className="grid gap-3 px-6 pb-4">
           <div className="grid gap-1.5">
             <Label htmlFor="invite-code">Invite code</Label>
             <Input
@@ -281,7 +283,7 @@ function JoinClubAction({ onDone }: { onDone: () => void }) {
         <DialogFooter>
           <Button
             type="submit"
-            onClick={submit}
+            form={formId}
             disabled={busy || !code.trim()}
           >
             {busy ? "Joining…" : "Join organisation"}
