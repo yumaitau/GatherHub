@@ -246,6 +246,64 @@ export const update = mutation({
   },
 });
 
+/**
+ * Reassign an existing tag (QR or NFC) from one asset to another within the
+ * same org. The physical tag is being moved or repurposed. The tag stays
+ * the same; only the asset link changes. Audit-logs both assets.
+ */
+export const reassignTag = mutation({
+  args: {
+    tagId: v.string(),
+    toAssetId: v.id("assets"),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const target = await ctx.db.get(args.toAssetId);
+    assertSameOrg(auth, target);
+    if (!target) throw new Error("Target asset not found.");
+
+    const tag = await ctx.db
+      .query("assetTags")
+      .withIndex("by_tag", (q) => q.eq("tagId", args.tagId))
+      .unique();
+    if (!tag) throw new Error("Tag not found.");
+    assertSameOrg(auth, tag);
+    if (tag.assetId === args.toAssetId) return;
+
+    const fromAsset = await ctx.db.get(tag.assetId);
+    if (fromAsset && fromAsset.orgId !== auth.org._id) {
+      throw new Error("Source asset not in this organisation.");
+    }
+
+    await ctx.db.patch(tag._id, { assetId: args.toAssetId });
+
+    // Sync the denormalised qrTagId / nfcTagId fields on both assets.
+    const field = tag.type === "qr" ? "qrTagId" : "nfcTagId";
+    if (fromAsset && fromAsset[field] === args.tagId) {
+      await ctx.db.patch(fromAsset._id, { [field]: undefined });
+    }
+    await ctx.db.patch(args.toAssetId, { [field]: args.tagId });
+
+    const tagLabel = tag.type === "qr" ? "QR tag" : "NFC tag";
+    if (fromAsset) {
+      await writeAudit(ctx, {
+        orgId: auth.org._id,
+        assetId: fromAsset._id,
+        action: "tag_reassigned",
+        performedBy: auth.user._id,
+        notes: `${tagLabel} ${args.tagId} reassigned to ${target.name}.`,
+      });
+    }
+    await writeAudit(ctx, {
+      orgId: auth.org._id,
+      assetId: args.toAssetId,
+      action: "tag_reassigned",
+      performedBy: auth.user._id,
+      notes: `${tagLabel} ${args.tagId} reassigned${fromAsset ? ` from ${fromAsset.name}` : ""}.`,
+    });
+  },
+});
+
 /** Register an NFC tag id for an asset. */
 export const registerNfc = mutation({
   args: { assetId: v.id("assets"), nfcTagId: v.string() },

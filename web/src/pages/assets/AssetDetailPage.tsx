@@ -221,6 +221,13 @@ export default function AssetDetailPage() {
                     >
                       <Printer className="h-4 w-4" /> Print
                     </Button>
+                    {canManage && (
+                      <ReassignTagDialog
+                        tagId={asset.qrTagId}
+                        tagType="qr"
+                        currentAssetId={id}
+                      />
+                    )}
                   </div>
                 </div>
               ) : (
@@ -242,8 +249,15 @@ export default function AssetDetailPage() {
                   </p>
                 )}
                 {canManage && (
-                  <div className="mt-3">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     <RegisterNfcDialog assetId={id} />
+                    {asset.nfcTagId && (
+                      <ReassignTagDialog
+                        tagId={asset.nfcTagId}
+                        tagType="nfc"
+                        currentAssetId={id}
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -858,6 +872,113 @@ function EditAssetDialog({ asset }: { asset: EditableAsset }) {
         <DialogFooter>
           <Button type="submit" form={formId} disabled={saving}>
             {saving ? "Saving…" : "Save changes"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ReassignTagDialog({
+  tagId,
+  tagType,
+  currentAssetId,
+}: {
+  tagId: string;
+  tagType: "qr" | "nfc";
+  currentAssetId: Id<"assets">;
+}) {
+  const reassign = useMutation(api.assets.reassignTag);
+  const assets = useQuery(
+    api.assets.list,
+    {},
+  );
+  const formId = React.useId();
+  const [open, setOpen] = React.useState(false);
+  const [toAssetId, setToAssetId] = React.useState<string>("");
+  const [error, setError] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) {
+      setToAssetId("");
+      setError(null);
+    }
+  }, [open]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!toAssetId) {
+      setError("Choose a target asset.");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    try {
+      await reassign({
+        tagId,
+        toAssetId: toAssetId as Id<"assets">,
+      });
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const candidates = (assets ?? []).filter((a) => a._id !== currentAssetId);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <ArrowRightLeft className="h-4 w-4" />
+          Reassign tag
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            Reassign {tagType === "qr" ? "QR" : "NFC"} tag
+          </DialogTitle>
+        </DialogHeader>
+        <form id={formId} onSubmit={submit} className="grid gap-3">
+          <p className="text-body text-ink-soft">
+            Move{" "}
+            <code className="text-mono text-ink">{tagId}</code> to another
+            asset. The current asset will lose its{" "}
+            {tagType === "qr" ? "QR" : "NFC"} link; the physical tag
+            continues to scan to whichever asset you choose here.
+          </p>
+          <div className="grid gap-1.5">
+            <Label>New asset</Label>
+            <Select value={toAssetId} onValueChange={setToAssetId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pick an asset" />
+              </SelectTrigger>
+              <SelectContent>
+                {candidates.map((a) => (
+                  <SelectItem key={a._id} value={a._id}>
+                    {a.name}
+                    {a.serialNumber ? ` · ${a.serialNumber}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {error && <p className="text-caption text-danger">{error}</p>}
+        </form>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button
+            type="submit"
+            form={formId}
+            disabled={busy || !toAssetId}
+          >
+            {busy ? "Reassigning…" : "Reassign"}
           </Button>
         </DialogFooter>
       </DialogContent>
