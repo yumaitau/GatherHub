@@ -178,16 +178,14 @@ struct ClerkConvexAuthProvider: AuthProvider {
         // to do here for token state — the Clerk session is already gone.
     }
 
-    /// Fetch a fresh "convex" JWT from Clerk. Returns "" when no signed-in
-    /// session exists so Convex falls back to unauthenticated calls (e.g.
-    /// `tags:lookupPublic`).
+    /// Fetch a fresh JWT from Clerk for the configured Convex template.
+    /// Returns "" when no signed-in session exists so Convex falls back
+    /// to unauthenticated calls (e.g. `tags:lookupPublic`).
     private func currentToken() async throws -> String {
-        // TODO: replace with the real Clerk session-token API once verified
-        // against the installed SDK version, e.g.:
-        //   let resource = try await clerk.session?.getToken(
-        //     .init(template: template)
-        //   )
-        //   return resource?.jwt ?? ""
-        return ""
+        guard let session = await clerk.session else { return "" }
+        let resource = try await session.getToken(
+            .init(template: template)
+        )
+        return resource?.jwt ?? ""
     }
 }
