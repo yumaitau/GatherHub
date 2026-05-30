@@ -86,9 +86,15 @@ export const setPinned = mutation({
 export const remove = mutation({
   args: { announcementId: v.id("announcements") },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    // Mirror `create`: org-wide announcements are a committee+ artefact, so
+    // only committee+ can remove them. Team-scoped announcements remain
+    // coach+. Prevents a coach in another team from nuking an
+    // organisation-wide notice they had no role authoring.
+    const auth = await requireOrgMember(ctx);
     const a = await ctx.db.get(args.announcementId);
     assertSameOrg(auth, a);
+    const requires = a && a.teamId ? "coach" : "committee";
+    await requireRole(ctx, requires);
     await ctx.db.delete(args.announcementId);
   },
 });

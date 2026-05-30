@@ -160,8 +160,14 @@ export const accept = mutation({
     if (inv.expiresAt < Date.now())
       throw new ConvexError("Invitation expired.");
 
-    const userEmail = (user.email ?? "").trim().toLowerCase();
-    if (userEmail !== inv.email) {
+    // Compare BOTH the Convex users mirror and the Clerk JWT identity
+    // claim. The mirror is webhook-populated, so could in theory lag or
+    // be stale; the JWT claim is signed by Clerk and reflects the live
+    // session. Both must match the invited email.
+    const identity = await ctx.auth.getUserIdentity();
+    const mirrorEmail = (user.email ?? "").trim().toLowerCase();
+    const claimEmail = (identity?.email ?? "").trim().toLowerCase();
+    if (mirrorEmail !== inv.email || (claimEmail && claimEmail !== inv.email)) {
       throw new ConvexError(
         `This invitation was sent to ${inv.email}. Sign in with that email to accept.`,
       );

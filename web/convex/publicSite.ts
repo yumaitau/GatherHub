@@ -1,12 +1,17 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireOrgMember, requireRole } from "./lib/auth";
+import { requireRole } from "./lib/auth";
 
-/** Admin: read the public site settings for the caller's org. */
+/**
+ * Read the public site settings for the caller's org. Admin+: matches the
+ * editor mutation, and these settings are only consumed by the Settings UI.
+ * The public-facing site reads them via `publicProfile` (which exposes only
+ * the public-safe subset).
+ */
 export const getSettings = query({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireOrgMember(ctx);
+    const auth = await requireRole(ctx, "admin");
     return await ctx.db
       .query("publicSiteSettings")
       .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))

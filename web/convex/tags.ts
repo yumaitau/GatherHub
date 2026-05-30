@@ -30,12 +30,16 @@ export const lookupPublic = query({
     if (!asset) return { found: false as const };
     const org = await ctx.db.get(asset.orgId);
 
+    // Collapse internal status values ("lost"/"retired"/"in_use" etc.) into
+    // a binary "is this item currently expected to be in service?" flag so
+    // we don't leak operational state to the public.
+    const inService = asset.status === "available" || asset.status === "in_use";
     return {
       found: true as const,
       tagId: tag.tagId,
       assetName: asset.name,
       category: asset.category,
-      status: asset.status,
+      inService,
       orgName: org?.name ?? "a GatherHub club",
       message:
         "If you have found this item, please return it to the club using the details on the item or contact the club directly.",

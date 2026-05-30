@@ -80,7 +80,9 @@ export default function PublicAssetPage() {
 
             <div className="px-5 py-4 flex flex-wrap items-center gap-2 border-b border-hairline">
               <Badge variant="muted">{humanise(data.category)}</Badge>
-              <Badge variant="outline">{humanise(data.status)}</Badge>
+              {!data.inService && (
+                <Badge variant="outline">Out of service</Badge>
+              )}
             </div>
 
             <div

@@ -1,6 +1,12 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
+import {
+  requireOrgMember,
+  requireRole,
+  assertSameOrg,
+  hasAtLeastRole,
+} from "./lib/auth";
+import { ConvexError } from "convex/values";
 import { rsvpStatusValidator } from "./schema";
 import { assertTaxonomyKey } from "./taxonomies";
 
@@ -167,7 +173,13 @@ export const remove = mutation({
   },
 });
 
-/** Set an RSVP for a member on an event. */
+/**
+ * Set an RSVP for a member on an event.
+ *
+ * Authorisation: caller must be (a) the member themselves (member.userId
+ * matches caller), (b) a registered guardian of the member, or (c) coach+.
+ * Otherwise any member could flip another member's RSVP.
+ */
 export const setRsvp = mutation({
   args: {
     eventId: v.id("events"),
@@ -180,6 +192,38 @@ export const setRsvp = mutation({
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, event);
     assertSameOrg(auth, member);
+
+    const isSelf = member?.userId && member.userId === auth.user._id;
+    const isCoachPlus = hasAtLeastRole(auth.role, "coach");
+    let isGuardian = false;
+    if (!isSelf && !isCoachPlus) {
+      // Caller is a member of this org but doesn't own the target member
+      // record. Check whether they are a registered guardian.
+      const callerSelfMembers = (
+        await ctx.db
+          .query("members")
+          .withIndex("by_user", (q) => q.eq("userId", auth.user._id))
+          .collect()
+      ).filter((m) => m.orgId === auth.org._id);
+      for (const m of callerSelfMembers) {
+        const link = await ctx.db
+          .query("guardians")
+          .withIndex("by_member", (q) => q.eq("memberId", args.memberId))
+          .filter((q) => q.eq(q.field("guardianMemberId"), m._id))
+          .first();
+        if (link) {
+          isGuardian = true;
+          break;
+        }
+      }
+    }
+    if (!isSelf && !isGuardian && !isCoachPlus) {
+      throw new ConvexError({
+        code: "forbidden",
+        message:
+          "You can only RSVP for yourself, your dependants, or as a coach.",
+      });
+    }
 
     const existing = await ctx.db
       .query("rsvps")
