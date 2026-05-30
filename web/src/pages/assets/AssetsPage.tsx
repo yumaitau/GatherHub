@@ -2,7 +2,14 @@ import * as React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
-import { Plus, Package, ScanLine, Download, Search } from "lucide-react";
+import {
+  Plus,
+  Package,
+  ScanLine,
+  Download,
+  Search,
+  Printer,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -112,6 +119,22 @@ export default function AssetsPage() {
             <Button variant="outline" asChild>
               <Link to="/assets/scan">
                 <ScanLine className="h-4 w-4" /> Scan
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link
+                to={{
+                  pathname: "/assets/qr-sheet",
+                  search: new URLSearchParams({
+                    ...(status !== "all" ? { status } : {}),
+                    ...(category !== "all" ? { category } : {}),
+                    ...(search ? { search } : {}),
+                  }).toString(),
+                }}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Printer className="h-4 w-4" /> Print QR sheet
               </Link>
             </Button>
             <Button variant="outline" onClick={exportCsv} disabled={!assets}>
