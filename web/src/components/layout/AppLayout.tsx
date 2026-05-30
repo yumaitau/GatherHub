@@ -51,7 +51,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-function buildNav(soccerMode: boolean): NavGroup[] {
+function buildNav(_soccerMode: boolean): NavGroup[] {
   return [
     {
       label: "Workspace",
@@ -68,12 +68,7 @@ function buildNav(soccerMode: boolean): NavGroup[] {
     {
       label: "Operations",
       items: [
-        {
-          to: "/members",
-          label: soccerMode ? "Players" : "Members",
-          icon: Users,
-          shortcut: "M",
-        },
+        { to: "/members", label: "Members", icon: Users, shortcut: "M" },
         { to: "/teams", label: "Teams", icon: Shield, shortcut: "T" },
         { to: "/events", label: "Events", icon: CalendarDays, shortcut: "E" },
         { to: "/announcements", label: "Announcements", icon: Megaphone },
@@ -101,7 +96,6 @@ function buildNav(soccerMode: boolean): NavGroup[] {
 const SOCCER_NAV: NavGroup = {
   label: "Soccer",
   items: [
-    { to: "/soccer/players", label: "Player Roster", icon: Trophy },
     {
       to: "/soccer/registrations",
       label: "Player Registrations",

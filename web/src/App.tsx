@@ -26,7 +26,6 @@ import NewsAdminPage from "@/pages/NewsAdminPage";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import RegistrationsPage from "@/pages/soccer/RegistrationsPage";
 import GradingPage, { PlayerEvaluationPage } from "@/pages/soccer/GradingPage";
-import SoccerPlayersPage from "@/pages/soccer/PlayersPage";
 import SoccerDivisionsPage from "@/pages/soccer/DivisionsPage";
 import CoachesManagersPage from "@/pages/soccer/CoachesManagersPage";
 import CompetitionsPage from "@/pages/soccer/CompetitionsPage";
@@ -94,7 +93,11 @@ function AuthedApp() {
                 element={<SponsorDetailPage />}
               />
               <Route path="/news" element={<NewsAdminPage />} />
-              <Route path="/soccer/players" element={<SoccerPlayersPage />} />
+              {/* /soccer/players merged into Player Registrations */}
+              <Route
+                path="/soccer/players"
+                element={<Navigate to="/soccer/registrations" replace />}
+              />
               <Route
                 path="/soccer/registrations"
                 element={<RegistrationsPage />}

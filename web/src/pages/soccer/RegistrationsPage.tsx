@@ -27,11 +27,11 @@ import { DataTable } from "@/components/ui/data-table";
 import { type ColumnDef } from "@tanstack/react-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
-import { downloadCsv, formatDateTime, toCsv } from "@/lib/utils";
+import { downloadCsv, toCsv } from "@/lib/utils";
 
 export default function RegistrationsPage() {
   const { org, can } = useGatherHub();
-  const rows = useQuery(api.soccer.listRegistrations, {});
+  const rows = useQuery(api.soccer.playerListing, {});
   const competitions = useQuery(api.soccer.listCompetitions, {});
   const teams = useQuery(api.teams.list, {});
   const members = useQuery(api.members.list, { status: "active" });
@@ -55,8 +55,8 @@ export default function RegistrationsPage() {
   function exportCsv() {
     if (!rows) return;
     const out = rows.map((r) => ({
-      name: r.memberName,
-      email: r.memberEmail ?? "",
+      name: r.name,
+      email: r.email ?? "",
       registered: r.registered ? "yes" : "no",
       paid: r.paid ? "yes" : "no",
       paymentPlan: r.paymentPlan ? "yes" : "no",
@@ -64,9 +64,11 @@ export default function RegistrationsPage() {
       gender: r.gender ?? "",
       team: r.teamName ?? "",
       division: r.divisionName ?? "",
+      grade: r.grade != null ? r.grade.toFixed(1) : "",
+      scored: `${r.scoredCount}/${r.totalSkills}`,
     }));
     downloadCsv(
-      "registrations.csv",
+      "player-registrations.csv",
       toCsv(out, [
         "name",
         "email",
@@ -77,6 +79,8 @@ export default function RegistrationsPage() {
         "gender",
         "team",
         "division",
+        "grade",
+        "scored",
       ]),
     );
   }
@@ -114,52 +118,50 @@ export default function RegistrationsPage() {
           columns={
             [
               {
-                accessorKey: "memberName",
-                header: "Member",
+                accessorKey: "name",
+                header: "Player",
                 cell: ({ row }) => (
                   <>
                     <Link
                       to={`/members/${row.original.memberId}`}
                       className="font-semi text-ink-strong hover:text-primary"
                     >
-                      {row.original.memberName}
+                      {row.original.name}
                     </Link>
-                    {row.original.memberEmail && (
-                      <p className="text-caption text-ink-quiet">
-                        {row.original.memberEmail}
+                    {row.original.email && (
+                      <p className="text-caption text-ink-quiet truncate max-w-[24ch]">
+                        {row.original.email}
                       </p>
                     )}
                   </>
                 ),
               },
               {
-                accessorKey: "registered",
-                header: "Registered",
-                cell: ({ row }) => (
-                  <>
-                    {row.original.registered ? (
-                      <Badge variant="success">Registered</Badge>
-                    ) : (
-                      <Badge variant="muted">Pending</Badge>
-                    )}
-                    {row.original.registered && row.original.registeredAt && (
-                      <p className="text-caption text-ink-quiet">
-                        {formatDateTime(row.original.registeredAt)}
-                      </p>
-                    )}
-                  </>
-                ),
-              },
-              {
-                accessorKey: "paid",
-                header: "Paid",
+                id: "status",
+                accessorFn: (r) =>
+                  !r.hasRegistration
+                    ? "norego"
+                    : r.registered && r.paid
+                      ? "active"
+                      : r.registered
+                        ? r.paymentPlan
+                          ? "plan"
+                          : "unpaid"
+                        : "pending",
+                header: "Status",
                 cell: ({ row }) =>
-                  row.original.paid ? (
-                    <Badge variant="success">Paid</Badge>
-                  ) : row.original.paymentPlan ? (
-                    <Badge variant="warning">Plan</Badge>
+                  !row.original.hasRegistration ? (
+                    <Badge variant="outline">No rego</Badge>
+                  ) : row.original.registered && row.original.paid ? (
+                    <Badge variant="success">Active</Badge>
+                  ) : row.original.registered ? (
+                    row.original.paymentPlan ? (
+                      <Badge variant="warning">Plan</Badge>
+                    ) : (
+                      <Badge variant="destructive">Unpaid</Badge>
+                    )
                   ) : (
-                    <Badge variant="destructive">Unpaid</Badge>
+                    <Badge variant="muted">Pending</Badge>
                   ),
               },
               {
@@ -183,10 +185,46 @@ export default function RegistrationsPage() {
               {
                 accessorKey: "divisionName",
                 header: "Division",
+                cell: ({ row }) =>
+                  row.original.divisionName ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className="inline-block h-3 w-3 rounded-xs"
+                        style={{
+                          background:
+                            row.original.divisionColor ?? "transparent",
+                        }}
+                      />
+                      {row.original.divisionName}
+                    </span>
+                  ) : (
+                    <span className="text-ink-quiet">—</span>
+                  ),
+              },
+              {
+                accessorFn: (r) => r.grade ?? -1,
+                id: "grade",
+                header: "Grade",
+                meta: { numeric: true },
+                cell: ({ row }) =>
+                  row.original.grade != null
+                    ? row.original.grade.toFixed(1)
+                    : "—",
+              },
+              {
+                accessorFn: (r) => r.scoredCount,
+                id: "progress",
+                header: "Skills",
                 cell: ({ row }) => (
-                  <span className="text-ink-soft">
-                    {row.original.divisionName ?? "—"}
-                  </span>
+                  <Link
+                    to={`/soccer/grading/${row.original.memberId}`}
+                    className="text-ink-soft hover:text-primary"
+                  >
+                    <span data-numeric>{row.original.scoredCount}</span>
+                    {" / "}
+                    <span data-numeric>{row.original.totalSkills}</span>
+                  </Link>
                 ),
               },
               ...(canEdit
@@ -201,7 +239,7 @@ export default function RegistrationsPage() {
                         row: { original: (typeof rows)[number] };
                       }) => (
                         <RegistrationDialog
-                          existing={row.original}
+                          row={row.original}
                           members={members ?? []}
                           teams={teams ?? []}
                           competitions={competitions ?? []}
@@ -212,13 +250,13 @@ export default function RegistrationsPage() {
                 : []),
             ] as ColumnDef<(typeof rows)[number]>[]
           }
-          getRowId={(r) => r._id}
-          searchPlaceholder="Search member, email, team, division, FFA"
+          getRowId={(r) => String(r.memberId)}
+          searchPlaceholder="Search player, email, team, division, FFA"
           emptyState={
             <EmptyState
               icon={ClipboardList}
-              title="No registrations yet"
-              description="Add a registration for a member to track their status."
+              title="No players yet"
+              description="Add members to your club to start tracking registrations."
             />
           }
         />
@@ -231,28 +269,30 @@ type MemberOpt = { _id: Id<"members">; firstName: string; lastName: string };
 type TeamOpt = { _id: Id<"teams">; name: string };
 type CompOpt = { _id: Id<"soccerCompetitions">; name: string };
 
-interface ExistingReg {
+interface RegistrationDialogRow {
   memberId: Id<"members">;
-  competitionId?: Id<"soccerCompetitions">;
-  teamId?: Id<"teams">;
-  ffaNumber?: string;
-  gender?: string;
-  schoolName?: string;
+  name: string;
+  hasRegistration: boolean;
+  competitionId: Id<"soccerCompetitions"> | null;
+  teamId: Id<"teams"> | null;
+  ffaNumber: string | null;
+  gender: string | null;
+  schoolName: string | null;
   registered: boolean;
   paid: boolean;
-  paymentPlan?: boolean;
-  paymentPlanStart?: string;
-  paymentPlanEnd?: string;
-  comments?: string;
+  paymentPlan: boolean;
+  paymentPlanStart: string | null;
+  paymentPlanEnd: string | null;
+  comments: string | null;
 }
 
 function RegistrationDialog({
-  existing,
+  row,
   members,
   teams,
   competitions,
 }: {
-  existing?: ExistingReg;
+  row?: RegistrationDialogRow;
   members: MemberOpt[];
   teams: TeamOpt[];
   competitions: CompOpt[];
@@ -260,30 +300,27 @@ function RegistrationDialog({
   const upsert = useMutation(api.soccer.upsertRegistration);
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
+  const lockedMember = Boolean(row);
   const [memberId, setMemberId] = React.useState<string>(
-    existing?.memberId ?? "",
+    row ? String(row.memberId) : "",
   );
-  const [teamId, setTeamId] = React.useState<string>(existing?.teamId ?? "");
+  const [teamId, setTeamId] = React.useState<string>(
+    row?.teamId ? String(row.teamId) : "",
+  );
   const [compId, setCompId] = React.useState<string>(
-    existing?.competitionId ?? "",
+    row?.competitionId ? String(row.competitionId) : "",
   );
-  const [ffaNumber, setFfaNumber] = React.useState(existing?.ffaNumber ?? "");
-  const [gender, setGender] = React.useState(existing?.gender ?? "");
-  const [schoolName, setSchoolName] = React.useState(
-    existing?.schoolName ?? "",
-  );
-  const [registered, setRegistered] = React.useState(
-    existing?.registered ?? false,
-  );
-  const [paid, setPaid] = React.useState(existing?.paid ?? false);
+  const [ffaNumber, setFfaNumber] = React.useState(row?.ffaNumber ?? "");
+  const [gender, setGender] = React.useState(row?.gender ?? "");
+  const [schoolName, setSchoolName] = React.useState(row?.schoolName ?? "");
+  const [registered, setRegistered] = React.useState(row?.registered ?? false);
+  const [paid, setPaid] = React.useState(row?.paid ?? false);
   const [paymentPlan, setPaymentPlan] = React.useState(
-    existing?.paymentPlan ?? false,
+    row?.paymentPlan ?? false,
   );
-  const [planStart, setPlanStart] = React.useState(
-    existing?.paymentPlanStart ?? "",
-  );
-  const [planEnd, setPlanEnd] = React.useState(existing?.paymentPlanEnd ?? "");
-  const [comments, setComments] = React.useState(existing?.comments ?? "");
+  const [planStart, setPlanStart] = React.useState(row?.paymentPlanStart ?? "");
+  const [planEnd, setPlanEnd] = React.useState(row?.paymentPlanEnd ?? "");
+  const [comments, setComments] = React.useState(row?.comments ?? "");
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
@@ -323,9 +360,14 @@ function RegistrationDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {existing ? (
-          <Button variant="ghost" size="icon" title="Edit">
+        {row ? (
+          <Button
+            variant={row.hasRegistration ? "ghost" : "outline"}
+            size="sm"
+            title={row.hasRegistration ? "Edit registration" : "Register"}
+          >
             <Pencil className="h-4 w-4" />
+            {row.hasRegistration ? "Edit" : "Register"}
           </Button>
         ) : (
           <Button>New registration</Button>
@@ -334,11 +376,15 @@ function RegistrationDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {existing ? "Edit registration" : "New registration"}
+            {row?.hasRegistration
+              ? `Edit registration · ${row.name}`
+              : row
+                ? `Register ${row.name}`
+                : "New registration"}
           </DialogTitle>
         </DialogHeader>
         <form id={formId} onSubmit={submit} className="grid gap-3">
-          {!existing && (
+          {!lockedMember && (
             <div className="grid gap-1.5">
               <Label>Member</Label>
               <Select value={memberId} onValueChange={setMemberId}>
@@ -494,7 +540,7 @@ function RegistrationDialog({
         </form>
         <DialogFooter>
           <Button type="submit" form={formId} disabled={saving}>
-            {saving ? "Saving…" : existing ? "Save" : "Create"}
+            {saving ? "Saving…" : row?.hasRegistration ? "Save" : "Create"}
           </Button>
         </DialogFooter>
       </DialogContent>
