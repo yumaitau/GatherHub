@@ -2,22 +2,20 @@ import * as React from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Gauge } from "lucide-react";
+import { type ColumnDef } from "@tanstack/react-table";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable } from "@/components/ui/data-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+
+type RosterRow = NonNullable<
+  ReturnType<typeof useQuery<typeof api.soccer.playerRoster>>
+>[number];
 
 export default function GradingPage() {
   const { org } = useGatherHub();
@@ -38,79 +36,95 @@ export default function GradingPage() {
     );
   }
 
+  const columns: ColumnDef<RosterRow>[] = [
+    {
+      accessorKey: "name",
+      header: "Player",
+      cell: ({ row }) => (
+        <span className="font-semi text-ink-strong">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorFn: (r) => (r.scoredCount === 0 ? -1 : r.grade),
+      id: "grade",
+      header: "Grade",
+      meta: { numeric: true },
+      cell: ({ row }) =>
+        row.original.scoredCount === 0 ? (
+          <span className="text-ink-quiet">—</span>
+        ) : (
+          <span className="font-strong text-ink-strong">
+            {row.original.grade.toFixed(1)}
+          </span>
+        ),
+    },
+    {
+      accessorFn: (r) => r.division?.name ?? "",
+      id: "division",
+      header: "Division",
+      cell: ({ row }) =>
+        row.original.division ? (
+          <span className="inline-flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="inline-block h-3 w-3 rounded-xs"
+              style={{
+                background: row.original.division.color ?? "transparent",
+              }}
+            />
+            {row.original.division.name}
+          </span>
+        ) : (
+          <span className="text-ink-quiet">unassigned</span>
+        ),
+    },
+    {
+      accessorFn: (r) => r.scoredCount,
+      id: "progress",
+      header: "Progress",
+      cell: ({ row }) => (
+        <span className="text-ink-soft">
+          <span data-numeric>{row.original.scoredCount}</span>
+          {" / "}
+          <span data-numeric>{row.original.totalSkills}</span>
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Button asChild size="sm" variant="outline">
+          <Link to={`/soccer/grading/${row.original.memberId}`}>Evaluate</Link>
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div>
       <PageHeader
-        title="Grading"
+        title={`Grading (${roster?.length ?? 0})`}
         description="Score each player on the active rubric. Overall grade auto-computes and matches a division band."
       />
-      <section className="rounded-md border border-hairline bg-surface overflow-hidden">
-        {roster === undefined ? (
-          <LoadingState />
-        ) : roster.length === 0 ? (
-          <EmptyState
-            icon={Gauge}
-            title="No active members to grade"
-            description="Mark members active in Members, then return here to evaluate."
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Player</TableHead>
-                <TableHead numeric>Grade</TableHead>
-                <TableHead>Division</TableHead>
-                <TableHead>Progress</TableHead>
-                <TableHead className="w-24" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {roster.map((p) => (
-                <TableRow key={p.memberId}>
-                  <TableCell className="font-semi text-ink-strong">
-                    {p.name}
-                  </TableCell>
-                  <TableCell numeric>
-                    {p.scoredCount === 0 ? (
-                      <span className="text-ink-quiet">—</span>
-                    ) : (
-                      <span className="font-strong text-ink-strong">
-                        {p.grade.toFixed(1)}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {p.division ? (
-                      <span className="inline-flex items-center gap-2">
-                        <span
-                          aria-hidden="true"
-                          className="inline-block h-3 w-3 rounded-xs"
-                          style={{
-                            background: p.division.color ?? "transparent",
-                          }}
-                        />
-                        {p.division.name}
-                      </span>
-                    ) : (
-                      <span className="text-ink-quiet">unassigned</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-ink-soft">
-                    <span data-numeric>{p.scoredCount}</span>
-                    {" / "}
-                    <span data-numeric>{p.totalSkills}</span>
-                  </TableCell>
-                  <TableCell>
-                    <Button asChild size="sm" variant="outline">
-                      <Link to={`/soccer/grading/${p.memberId}`}>Evaluate</Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+      {roster === undefined ? (
+        <LoadingState />
+      ) : (
+        <DataTable<RosterRow>
+          data={roster}
+          columns={columns}
+          getRowId={(r) => String(r.memberId)}
+          searchPlaceholder="Search player, division"
+          emptyState={
+            <EmptyState
+              icon={Gauge}
+              title="No active members to grade"
+              description="Mark members active in Members, then return here to evaluate."
+            />
+          }
+        />
+      )}
     </div>
   );
 }
