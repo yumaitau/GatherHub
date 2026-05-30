@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 // The Convex Swift client ships as the `ConvexMobile` product of
 // https://github.com/get-convex/convex-swift. Add that package in Xcode before
@@ -55,7 +56,7 @@ final class ConvexService: ObservableObject {
     /// `sync:currentContext` (query) — the signed-in user, active org, and role.
     /// Returns `nil` when signed out / no active org / not yet synced.
     func currentContext() async throws -> CurrentContext? {
-        try await client.query("sync:currentContext")
+        try await once("sync:currentContext")
     }
 
     // MARK: - Tags / assets
@@ -63,7 +64,7 @@ final class ConvexService: ObservableObject {
     /// `tags:lookupAuthed` (query, `{ tagId }`) — full asset for a scanned tag
     /// within the user's org.
     func lookupTag(_ tagId: String) async throws -> TagLookupResult {
-        try await client.query("tags:lookupAuthed", with: ["tagId": tagId])
+        try await once("tags:lookupAuthed", with: ["tagId": tagId])
     }
 
     /// `assetOps:checkOut` (mutation).
@@ -102,7 +103,7 @@ final class ConvexService: ObservableObject {
     func listEvents(upcomingOnly: Bool = true, teamId: String? = nil) async throws -> [Event] {
         var args: [String: ConvexEncodable?] = ["upcomingOnly": upcomingOnly]
         if let teamId { args["teamId"] = teamId }
-        return try await client.query("events:list", with: args)
+        return try await once("events:list", with: args)
     }
 
     /// `events:setRsvp` (mutation, `{ eventId, memberId, status }`).
@@ -121,20 +122,56 @@ final class ConvexService: ObservableObject {
 
     /// `members:list` (query) — used for picking a custodian / RSVP target.
     func listMembers() async throws -> [Member] {
-        try await client.query("members:list")
+        try await once("members:list")
     }
 
     // MARK: - Dashboard
 
     /// `dashboard:stats` (query) — aggregate counters for the active org.
     func dashboardStats() async throws -> DashboardStats {
-        try await client.query("dashboard:stats")
+        try await once("dashboard:stats")
     }
 
     /// `soccer:dashboardStats` (query) — soccer-mode counters. Returns `nil`
     /// when soccer mode is off, matching the web behaviour.
     func soccerDashboardStats() async throws -> SoccerDashboardStats? {
-        try await client.query("soccer:dashboardStats")
+        try await once("soccer:dashboardStats")
+    }
+
+    // MARK: - One-shot query helper
+
+    /// ConvexMobile exposes only the subscription-based `subscribe(to:)` for
+    /// queries; there is no one-shot `query()` method. This helper bridges the
+    /// gap: it subscribes, takes the first value (the cached result on first
+    /// emission), then tears the subscription down. Use for any read that
+    /// only needs a snapshot — pull-to-refresh, navigation loads, etc. Pages
+    /// that need live updates should subscribe directly.
+    private func once<T: Decodable>(
+        _ name: String,
+        with args: [String: ConvexEncodable?]? = nil
+    ) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            var cancellable: AnyCancellable?
+            var resumed = false
+            cancellable = client
+                .subscribe(to: name, with: args, yielding: T.self)
+                .first()
+                .sink(
+                    receiveCompletion: { completion in
+                        defer { cancellable?.cancel() }
+                        guard !resumed else { return }
+                        if case .failure(let err) = completion {
+                            resumed = true
+                            continuation.resume(throwing: err)
+                        }
+                    },
+                    receiveValue: { value in
+                        guard !resumed else { return }
+                        resumed = true
+                        continuation.resume(returning: value)
+                    }
+                )
+        }
     }
 }
 
