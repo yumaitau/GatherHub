@@ -57,6 +57,35 @@ export function toCsv(
   return `${header}\n${body}`;
 }
 
+/** "Good morning" / "Good afternoon" / "Good evening" by local hour. */
+export function greeting(date: Date = new Date()): string {
+  const h = date.getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+/** Compact relative time: "now", "12m ago", "2h ago", "3d ago", "Jun 12". */
+export function relativeTime(
+  value: number | undefined | null,
+  now: number = Date.now(),
+): string {
+  if (value === undefined || value === null) return "—";
+  const diff = Math.max(0, now - value);
+  const sec = Math.floor(diff / 1000);
+  if (sec < 45) return "now";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  return new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function downloadCsv(filename: string, csv: string): void {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
