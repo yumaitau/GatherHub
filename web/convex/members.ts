@@ -56,6 +56,8 @@ export const setLifetimeMember = mutation({
     isLifetimeMember: v.boolean(),
     lifetimeMemberSince: v.optional(v.string()),
     lifetimeMemberNotes: v.optional(v.string()),
+    lifetimeMemberFirstAddedToClub: v.optional(v.string()),
+    lifetimeMemberAddedBy: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
@@ -69,6 +71,13 @@ export const setLifetimeMember = mutation({
         : undefined,
       lifetimeMemberNotes: args.isLifetimeMember
         ? (args.lifetimeMemberNotes ?? member.lifetimeMemberNotes)
+        : undefined,
+      lifetimeMemberFirstAddedToClub: args.isLifetimeMember
+        ? (args.lifetimeMemberFirstAddedToClub ??
+          member.lifetimeMemberFirstAddedToClub)
+        : undefined,
+      lifetimeMemberAddedBy: args.isLifetimeMember
+        ? (args.lifetimeMemberAddedBy ?? member.lifetimeMemberAddedBy)
         : undefined,
     });
   },

@@ -199,6 +199,11 @@ function ProfileTab({
   const [lifetimeMemberNotes, setLifetimeMemberNotes] = React.useState(
     member.lifetimeMemberNotes ?? "",
   );
+  const [lifetimeMemberFirstAddedToClub, setLifetimeMemberFirstAddedToClub] =
+    React.useState(member.lifetimeMemberFirstAddedToClub ?? "");
+  const [lifetimeMemberAddedBy, setLifetimeMemberAddedBy] = React.useState(
+    member.lifetimeMemberAddedBy ?? "",
+  );
   const setLifetime = useMutation(api.members.setLifetimeMember);
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
@@ -231,6 +236,9 @@ function ProfileTab({
         isLifetimeMember,
         lifetimeMemberSince: lifetimeMemberSince.trim() || undefined,
         lifetimeMemberNotes: lifetimeMemberNotes.trim() || undefined,
+        lifetimeMemberFirstAddedToClub:
+          lifetimeMemberFirstAddedToClub.trim() || undefined,
+        lifetimeMemberAddedBy: lifetimeMemberAddedBy.trim() || undefined,
       });
       setSaved(true);
     } catch (err) {
@@ -378,6 +386,28 @@ function ProfileTab({
                   id="m-lifenotes"
                   value={lifetimeMemberNotes}
                   onChange={(e) => setLifetimeMemberNotes(e.target.value)}
+                  disabled={!canEdit}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="m-lifefirst">First added to club</Label>
+                <Input
+                  id="m-lifefirst"
+                  value={lifetimeMemberFirstAddedToClub}
+                  onChange={(e) =>
+                    setLifetimeMemberFirstAddedToClub(e.target.value)
+                  }
+                  placeholder="e.g. 1992 or 1992-03-14"
+                  disabled={!canEdit}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="m-lifeaddedby">Added by</Label>
+                <Input
+                  id="m-lifeaddedby"
+                  value={lifetimeMemberAddedBy}
+                  onChange={(e) => setLifetimeMemberAddedBy(e.target.value)}
+                  placeholder="e.g. Committee 2024"
                   disabled={!canEdit}
                 />
               </div>

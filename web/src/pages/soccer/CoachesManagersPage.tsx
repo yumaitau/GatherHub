@@ -194,6 +194,8 @@ export default function CoachesManagersPage() {
                   sightedAt: row.original.wwvpSightedAt,
                   expiresAt: row.original.wwvpExpiresAt,
                   notes: row.original.wwvpNotes,
+                  registered: row.original.registered,
+                  registeredDate: row.original.registeredDate,
                 }}
               />
             ),
@@ -248,6 +250,8 @@ function EditWwvpDialog({
     sightedAt?: string;
     expiresAt?: string;
     notes?: string;
+    registered?: boolean;
+    registeredDate?: string;
   };
 }) {
   const upsert = useMutation(api.soccer.upsertWwvp);
@@ -257,6 +261,12 @@ function EditWwvpDialog({
   const [sightedAt, setSightedAt] = React.useState(current.sightedAt ?? "");
   const [expiresAt, setExpiresAt] = React.useState(current.expiresAt ?? "");
   const [notes, setNotes] = React.useState(current.notes ?? "");
+  const [registered, setRegistered] = React.useState(
+    current.registered ?? false,
+  );
+  const [registeredDate, setRegisteredDate] = React.useState(
+    current.registeredDate ?? "",
+  );
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -266,6 +276,8 @@ function EditWwvpDialog({
       setSightedAt(current.sightedAt ?? "");
       setExpiresAt(current.expiresAt ?? "");
       setNotes(current.notes ?? "");
+      setRegistered(current.registered ?? false);
+      setRegisteredDate(current.registeredDate ?? "");
       setError(null);
     }
   }, [open, current]);
@@ -279,12 +291,18 @@ function EditWwvpDialog({
         status === "sighted" && !sightedAt
           ? new Date().toISOString().slice(0, 10)
           : sightedAt;
+      const nextRegDate =
+        registered && !registeredDate
+          ? new Date().toISOString().slice(0, 10)
+          : registeredDate;
       await upsert({
         memberId,
         status,
         sightedAt: next || undefined,
         expiresAt: expiresAt || undefined,
         notes: notes.trim() || undefined,
+        registered,
+        registeredDate: nextRegDate || undefined,
       });
       setOpen(false);
     } catch (err) {
@@ -350,6 +368,26 @@ function EditWwvpDialog({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
+          </div>
+          <div className="flex items-center gap-4 pt-1">
+            <label className="inline-flex items-center gap-2 text-body text-ink-soft">
+              <input
+                type="checkbox"
+                checked={registered}
+                onChange={(e) => setRegistered(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              Registered with federation
+            </label>
+            <div className="grid gap-1.5 flex-1">
+              <Label htmlFor="ww-reg-date">Registered date</Label>
+              <Input
+                id="ww-reg-date"
+                type="date"
+                value={registeredDate}
+                onChange={(e) => setRegisteredDate(e.target.value)}
+              />
+            </div>
           </div>
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>

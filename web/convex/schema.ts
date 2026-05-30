@@ -204,6 +204,10 @@ export default defineSchema({
     isLifetimeMember: v.optional(v.boolean()),
     lifetimeMemberSince: v.optional(v.string()), // year or ISO date
     lifetimeMemberNotes: v.optional(v.string()),
+    // Belwest lifetimeMembers parity: separate "first added to club"
+    // date from joinYear, plus the person who added the record.
+    lifetimeMemberFirstAddedToClub: v.optional(v.string()),
+    lifetimeMemberAddedBy: v.optional(v.string()),
     // Functional role in the club (separate from app-auth role). Free
     // string so each org can extend it. Common values: "coach",
     // "manager", "player", "parent", "committee", "volunteer".
@@ -258,6 +262,23 @@ export default defineSchema({
     // identity; bag number identifies the physical kit bag (KitTrace-ish).
     kitColour: v.optional(v.string()),
     kitBagNumber: v.optional(v.string()),
+    // Belwest parity: per-team competition + division links, contact
+    // details for coach / additional coach / manager, and the team's
+    // own registration / payment state with the federation.
+    competitionId: v.optional(v.id("soccerCompetitions")),
+    divisionId: v.optional(v.id("soccerDivisions")),
+    coach: v.optional(v.string()),
+    coachEmail: v.optional(v.string()),
+    coachPhone: v.optional(v.string()),
+    additionalCoach: v.optional(v.string()),
+    additionalCoachEmail: v.optional(v.string()),
+    additionalCoachPhone: v.optional(v.string()),
+    manager: v.optional(v.string()),
+    managerEmail: v.optional(v.string()),
+    managerPhone: v.optional(v.string()),
+    teamRegistered: v.optional(v.boolean()),
+    teamRegisteredDate: v.optional(v.string()),
+    teamRegistrationPaid: v.optional(v.boolean()),
   })
     .index("by_org", ["orgId"])
     .index("by_org_and_active", ["orgId", "isActive"]),
@@ -543,6 +564,10 @@ export default defineSchema({
     sightedAt: v.optional(v.string()), // ISO yyyy-mm-dd
     expiresAt: v.optional(v.string()),
     notes: v.optional(v.string()),
+    // Belwest parity: coach/manager's own federation registration status
+    // tracked alongside WWVP.
+    registered: v.optional(v.boolean()),
+    registeredDate: v.optional(v.string()),
     updatedBy: v.id("users"),
     updatedAt: v.number(),
   })

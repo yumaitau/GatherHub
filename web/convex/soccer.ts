@@ -490,6 +490,8 @@ export const upsertWwvp = mutation({
     sightedAt: v.optional(v.string()),
     expiresAt: v.optional(v.string()),
     notes: v.optional(v.string()),
+    registered: v.optional(v.boolean()),
+    registeredDate: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
@@ -506,6 +508,8 @@ export const upsertWwvp = mutation({
         sightedAt: args.sightedAt,
         expiresAt: args.expiresAt,
         notes: args.notes,
+        registered: args.registered,
+        registeredDate: args.registeredDate,
         updatedBy: auth.user._id,
         updatedAt: Date.now(),
       });
@@ -518,6 +522,8 @@ export const upsertWwvp = mutation({
       sightedAt: args.sightedAt,
       expiresAt: args.expiresAt,
       notes: args.notes,
+      registered: args.registered,
+      registeredDate: args.registeredDate,
       updatedBy: auth.user._id,
       updatedAt: Date.now(),
     });
@@ -715,6 +721,8 @@ export const coachesAndManagers = query({
           wwvpSightedAt: wwvp?.sightedAt,
           wwvpExpiresAt: wwvp?.expiresAt,
           wwvpNotes: wwvp?.notes,
+          registered: wwvp?.registered ?? false,
+          registeredDate: wwvp?.registeredDate,
         };
       }),
     );
@@ -865,6 +873,7 @@ export const playerListing = query({
           teamName: team?.name ?? null,
           divisionId: reg?.divisionId ?? null,
           divisionName: division?.name ?? null,
+          ageGroupKey: reg?.ageGroupKey ?? null,
           divisionColor: division?.color,
           paymentPlanStart: reg?.paymentPlanStart ?? null,
           paymentPlanEnd: reg?.paymentPlanEnd ?? null,

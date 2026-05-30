@@ -35,6 +35,7 @@ export default function RegistrationsPage() {
   const competitions = useQuery(api.soccer.listCompetitions, {});
   const teams = useQuery(api.teams.list, {});
   const members = useQuery(api.members.list, { status: "active" });
+  const ageGroups = useQuery(api.taxonomies.list, { kind: "team_age_group" });
   const canEdit = can("committee");
 
   if (!org?.soccerMode) {
@@ -104,6 +105,7 @@ export default function RegistrationsPage() {
                 members={members ?? []}
                 teams={teams ?? []}
                 competitions={competitions ?? []}
+                ageGroups={ageGroups ?? []}
               />
             )}
           </>
@@ -243,6 +245,7 @@ export default function RegistrationsPage() {
                           members={members ?? []}
                           teams={teams ?? []}
                           competitions={competitions ?? []}
+                          ageGroups={ageGroups ?? []}
                         />
                       ),
                     },
@@ -268,6 +271,7 @@ export default function RegistrationsPage() {
 type MemberOpt = { _id: Id<"members">; firstName: string; lastName: string };
 type TeamOpt = { _id: Id<"teams">; name: string };
 type CompOpt = { _id: Id<"soccerCompetitions">; name: string };
+type AgeGroupOpt = { key: string; label: string };
 
 interface RegistrationDialogRow {
   memberId: Id<"members">;
@@ -284,6 +288,7 @@ interface RegistrationDialogRow {
   paymentPlanStart: string | null;
   paymentPlanEnd: string | null;
   comments: string | null;
+  ageGroupKey: string | null;
 }
 
 function RegistrationDialog({
@@ -291,11 +296,13 @@ function RegistrationDialog({
   members,
   teams,
   competitions,
+  ageGroups,
 }: {
   row?: RegistrationDialogRow;
   members: MemberOpt[];
   teams: TeamOpt[];
   competitions: CompOpt[];
+  ageGroups: AgeGroupOpt[];
 }) {
   const upsert = useMutation(api.soccer.upsertRegistration);
   const formId = React.useId();
@@ -309,6 +316,9 @@ function RegistrationDialog({
   );
   const [compId, setCompId] = React.useState<string>(
     row?.competitionId ? String(row.competitionId) : "",
+  );
+  const [ageGroupKey, setAgeGroupKey] = React.useState<string>(
+    row?.ageGroupKey ?? "",
   );
   const [ffaNumber, setFfaNumber] = React.useState(row?.ffaNumber ?? "");
   const [gender, setGender] = React.useState(row?.gender ?? "");
@@ -338,6 +348,7 @@ function RegistrationDialog({
         competitionId: compId
           ? (compId as Id<"soccerCompetitions">)
           : undefined,
+        ageGroupKey: ageGroupKey || undefined,
         teamId: teamId ? (teamId as Id<"teams">) : undefined,
         ffaNumber: ffaNumber || undefined,
         gender: gender || undefined,
@@ -441,6 +452,25 @@ function RegistrationDialog({
               </Select>
             </div>
           </div>
+          <div className="grid gap-1.5">
+            <Label>Age group</Label>
+            <Select
+              value={ageGroupKey || "__none__"}
+              onValueChange={(v) => setAgeGroupKey(v === "__none__" ? "" : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">None</SelectItem>
+                {ageGroups.map((a) => (
+                  <SelectItem key={a.key} value={a.key}>
+                    {a.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="rg-ffa">FFA number</Label>
@@ -462,9 +492,11 @@ function RegistrationDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">None</SelectItem>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="unspecified">Unspecified</SelectItem>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
+                  <SelectItem value="Does not wish to specify">
+                    Does not wish to specify
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

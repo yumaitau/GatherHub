@@ -23,11 +23,21 @@ export default function LifetimeMembersPage() {
       lastName: m.lastName,
       email: m.email ?? "",
       since: m.lifetimeMemberSince ?? "",
+      firstAddedToClub: m.lifetimeMemberFirstAddedToClub ?? "",
+      addedBy: m.lifetimeMemberAddedBy ?? "",
       notes: m.lifetimeMemberNotes ?? "",
     }));
     downloadCsv(
       "lifetime-members.csv",
-      toCsv(out, ["firstName", "lastName", "email", "since", "notes"]),
+      toCsv(out, [
+        "firstName",
+        "lastName",
+        "email",
+        "since",
+        "firstAddedToClub",
+        "addedBy",
+        "notes",
+      ]),
     );
   }
 
@@ -66,6 +76,24 @@ export default function LifetimeMembersPage() {
       cell: ({ row }) => (
         <span className="text-ink-soft" data-numeric>
           {row.original.lifetimeMemberSince ?? "—"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "lifetimeMemberFirstAddedToClub",
+      header: "First added to club",
+      cell: ({ row }) => (
+        <span className="text-ink-soft" data-numeric>
+          {row.original.lifetimeMemberFirstAddedToClub ?? "—"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "lifetimeMemberAddedBy",
+      header: "Added by",
+      cell: ({ row }) => (
+        <span className="text-ink-soft">
+          {row.original.lifetimeMemberAddedBy ?? "—"}
         </span>
       ),
     },
