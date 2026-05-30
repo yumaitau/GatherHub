@@ -136,7 +136,6 @@ export function EventsCalendar({
           end: e.end ? new Date(e.end).toISOString() : undefined,
           backgroundColor: tint.bg,
           borderColor: tint.border,
-          textColor: "oklch(var(--ink-strong))",
           extendedProps: {
             teamName: e.teamName ?? null,
             location: e.location ?? null,

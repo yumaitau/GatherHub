@@ -314,3 +314,119 @@
       0 0 0 4px var(--focus-ring-halo);
   }
 }
+
+/* ----------------------------------------------------------------------
+ * FullCalendar theme overrides — bind the third-party grid to the
+ * project's OKLCH tokens so it reads in both light and dark modes.
+ * Scoped to `.gh-calendar` (set in EventsCalendar.tsx).
+ * ------------------------------------------------------------------- */
+.gh-calendar {
+  --fc-page-bg-color: oklch(var(--surface));
+  --fc-neutral-bg-color: oklch(var(--surface-sunk));
+  --fc-neutral-text-color: oklch(var(--ink-soft));
+  --fc-border-color: oklch(var(--border-default));
+  --fc-today-bg-color: oklch(var(--accent-base) / 0.08);
+  --fc-now-indicator-color: oklch(var(--accent-base));
+  --fc-event-text-color: oklch(var(--ink-strong));
+  --fc-button-text-color: oklch(var(--ink-strong));
+  --fc-button-bg-color: oklch(var(--surface));
+  --fc-button-border-color: oklch(var(--border-default));
+  --fc-button-hover-bg-color: oklch(var(--surface-sunk));
+  --fc-button-hover-border-color: oklch(var(--border-strong));
+  --fc-button-active-bg-color: oklch(var(--surface-sunk));
+  --fc-button-active-border-color: oklch(var(--border-strong));
+  --fc-list-event-hover-bg-color: oklch(var(--surface-sunk));
+  --fc-highlight-color: oklch(var(--accent-base) / 0.12);
+  color: oklch(var(--ink));
+}
+
+/* Day numbers, weekday headers, and time labels: pull them out of
+ * FullCalendar's default washed-out grey into the design system inks. */
+.gh-calendar .fc {
+  font-family: inherit;
+}
+.gh-calendar .fc .fc-col-header-cell-cushion,
+.gh-calendar .fc .fc-daygrid-day-number,
+.gh-calendar .fc .fc-list-day-text,
+.gh-calendar .fc .fc-list-day-side-text {
+  color: oklch(var(--ink-strong));
+  text-decoration: none;
+}
+.gh-calendar .fc .fc-col-header-cell-cushion {
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: oklch(var(--ink-quiet));
+  padding-block: 0.5rem;
+}
+.gh-calendar .fc .fc-timegrid-axis-cushion,
+.gh-calendar .fc .fc-timegrid-slot-label-cushion {
+  color: oklch(var(--ink-quiet));
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+}
+.gh-calendar .fc-theme-standard td,
+.gh-calendar .fc-theme-standard th,
+.gh-calendar .fc-theme-standard .fc-scrollgrid {
+  border-color: oklch(var(--border-default));
+}
+.gh-calendar .fc .fc-day-other .fc-daygrid-day-number {
+  color: oklch(var(--ink-quiet));
+}
+.gh-calendar .fc .fc-day-today {
+  background-color: var(--fc-today-bg-color);
+}
+.gh-calendar .fc .fc-day-today .fc-daygrid-day-number {
+  color: oklch(var(--accent-base));
+  font-weight: 700;
+}
+
+/* Event chips: bordered, tinted background, high-contrast text.
+ * The inline backgroundColor we set per-event already uses the alpha
+ * variants of the design tokens, so the chip stays legible against
+ * both light and dark calendar backgrounds. */
+.gh-calendar .fc .fc-event {
+  border-radius: 4px;
+  border-width: 1px;
+  border-style: solid;
+  box-shadow: none;
+  font-family: inherit;
+}
+.gh-calendar .fc .fc-event:hover {
+  filter: brightness(1.04);
+}
+.gh-calendar .fc .fc-event-main {
+  color: oklch(var(--ink-strong));
+}
+.gh-calendar .fc .fc-event-title,
+.gh-calendar .fc .fc-event-time {
+  color: oklch(var(--ink-strong));
+}
+.gh-calendar .fc .fc-daygrid-event-dot {
+  border-color: oklch(var(--accent-base));
+}
+
+/* List view rows. */
+.gh-calendar .fc .fc-list-event-title a {
+  color: oklch(var(--ink-strong));
+  text-decoration: none;
+  font-weight: 500;
+}
+.gh-calendar .fc .fc-list-event-time {
+  color: oklch(var(--ink-soft));
+  font-variant-numeric: tabular-nums;
+}
+.gh-calendar .fc .fc-list-day-cushion {
+  background-color: oklch(var(--surface-sunk));
+}
+.gh-calendar .fc .fc-list-empty {
+  background-color: oklch(var(--surface));
+  color: oklch(var(--ink-soft));
+}
+
+/* "more" link in month view. */
+.gh-calendar .fc .fc-more-link {
+  color: oklch(var(--accent-base));
+  font-weight: 500;
+}
