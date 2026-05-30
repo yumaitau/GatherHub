@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 
 type Announcement = {
   _id: Id<"announcements">;
@@ -61,17 +60,21 @@ export default function AnnouncementsPage() {
           action={can("coach") ? <NewAnnouncementDialog /> : undefined}
         />
       ) : (
-        <div className="grid gap-4">
-          {announcements.map((a) => (
-            <AnnouncementCard key={a._id} announcement={a} />
-          ))}
-        </div>
+        <section className="rounded-md border border-hairline bg-surface overflow-hidden">
+          <ul className="divide-y divide-hairline">
+            {announcements.map((a) => (
+              <li key={a._id}>
+                <AnnouncementRow announcement={a} />
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );
 }
 
-function AnnouncementCard({ announcement }: { announcement: Announcement }) {
+function AnnouncementRow({ announcement }: { announcement: Announcement }) {
   const { can } = useGatherHub();
   const markRead = useMutation(api.announcements.markRead);
   const setPinned = useMutation(api.announcements.setPinned);
@@ -113,76 +116,93 @@ function AnnouncementCard({ announcement }: { announcement: Announcement }) {
   }
 
   return (
-    <Card className={announcement.pinned ? "border-primary/40" : undefined}>
-      <CardHeader
-        className="cursor-pointer"
-        onClick={expand}
+    <div
+      className={cn(
+        "transition-colors duration-fast ease-out",
+        announcement.pinned && "bg-primary-wash/40",
+      )}
+    >
+      <div
         role="button"
         tabIndex={0}
+        onClick={expand}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             expand();
           }
         }}
+        className={cn(
+          "flex flex-wrap items-start justify-between gap-3 px-5 py-3.5",
+          "cursor-pointer hover:bg-surface-sunk/50",
+          "focus-visible:outline-none focus-visible:shadow-focus",
+        )}
       >
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              {!announcement.isRead && (
-                <span
-                  className="h-2 w-2 rounded-full bg-primary"
-                  aria-label="Unread"
-                />
-              )}
-              {announcement.pinned && (
-                <Pin className="h-4 w-4 text-primary" aria-label="Pinned" />
-              )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-0.5">
+            {!announcement.isRead && (
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-primary shrink-0"
+                aria-label="Unread"
+              />
+            )}
+            {announcement.pinned && (
+              <Pin
+                className="h-3.5 w-3.5 text-primary shrink-0"
+                aria-label="Pinned"
+              />
+            )}
+            <h3 className="text-body-strong text-ink-strong">
               {announcement.title}
-            </CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {announcement.authorName ?? "Unknown"} ·{" "}
-              {formatDateTime(announcement._creationTime)}
-            </p>
+            </h3>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant={announcement.teamName ? "secondary" : "muted"}>
-              {announcement.teamName ?? "Org-wide"}
-            </Badge>
-            {can("committee") && (
-              <Button
-                variant="ghost"
-                size="icon"
-                title={announcement.pinned ? "Unpin" : "Pin"}
-                onClick={togglePin}
-              >
-                {announcement.pinned ? (
-                  <PinOff className="h-4 w-4" />
-                ) : (
-                  <Pin className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-            {can("coach") && (
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Delete"
-                onClick={doRemove}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+          <p className="text-caption text-ink-quiet">
+            {announcement.authorName ?? "Unknown"} ·{" "}
+            <time>{formatDateTime(announcement._creationTime)}</time>
+          </p>
         </div>
-      </CardHeader>
+        <div
+          className="flex items-center gap-1.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Badge variant={announcement.teamName ? "muted" : "default"}>
+            {announcement.teamName ?? "Org-wide"}
+          </Badge>
+          {can("committee") && (
+            <Button
+              variant="ghost"
+              size="icon"
+              title={announcement.pinned ? "Unpin" : "Pin"}
+              onClick={togglePin}
+            >
+              {announcement.pinned ? (
+                <PinOff className="h-4 w-4" />
+              ) : (
+                <Pin className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+          {can("coach") && (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Delete"
+              onClick={doRemove}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
       {expanded && (
-        <CardContent>
-          <p className="whitespace-pre-wrap text-sm">{announcement.body}</p>
-          {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-        </CardContent>
+        <div className="px-5 pb-4 border-t border-hairline bg-surface-sunk/30">
+          <p className="whitespace-pre-wrap text-body text-ink max-w-prose pt-3">
+            {announcement.body}
+          </p>
+          {error && <p className="mt-2 text-caption text-danger">{error}</p>}
+        </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -194,7 +214,6 @@ function NewAnnouncementDialog() {
   const [open, setOpen] = React.useState(false);
   const [title, setTitle] = React.useState("");
   const [body, setBody] = React.useState("");
-  // "org" only selectable by committee+, otherwise a team must be chosen.
   const [teamId, setTeamId] = React.useState<string>(canOrgWide ? "org" : "");
   const [pinned, setPinned] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -247,67 +266,65 @@ function NewAnnouncementDialog() {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <form onSubmit={submit}>
-          <DialogHeader>
-            <DialogTitle>New announcement</DialogTitle>
-            <DialogDescription>
-              Post an update to your organisation or a specific team.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="ann-title">Title</Label>
-              <Input
-                id="ann-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="ann-body">Body</Label>
-              <Textarea
-                id="ann-body"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Audience</Label>
-              <Select value={teamId} onValueChange={setTeamId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select audience…" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="org" disabled={!canOrgWide}>
-                    Org-wide{!canOrgWide ? " (committee only)" : ""}
-                  </SelectItem>
-                  {(teams ?? []).map((t) => (
-                    <SelectItem key={t._id} value={t._id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={pinned}
-                onChange={(e) => setPinned(e.target.checked)}
-                className="h-4 w-4"
-              />
-              Pin to top
-            </label>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogHeader>
+          <DialogTitle>New announcement</DialogTitle>
+          <DialogDescription>
+            Post an update to your organisation or a specific team.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="ann-title">Title</Label>
+            <Input
+              id="ann-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
           </div>
-          <DialogFooter>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Posting…" : "Post"}
-            </Button>
-          </DialogFooter>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ann-body">Body</Label>
+            <Textarea
+              id="ann-body"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              required
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Audience</Label>
+            <Select value={teamId} onValueChange={setTeamId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select audience" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="org" disabled={!canOrgWide}>
+                  Org-wide{!canOrgWide ? " (committee only)" : ""}
+                </SelectItem>
+                {(teams ?? []).map((t) => (
+                  <SelectItem key={t._id} value={t._id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <label className="flex items-center gap-2 text-body text-ink-soft">
+            <input
+              type="checkbox"
+              checked={pinned}
+              onChange={(e) => setPinned(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            Pin to top
+          </label>
+          {error && <p className="text-caption text-danger">{error}</p>}
         </form>
+        <DialogFooter>
+          <Button type="submit" onClick={submit} disabled={saving}>
+            {saving ? "Posting…" : "Post"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

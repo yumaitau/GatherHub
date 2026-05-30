@@ -1,51 +1,137 @@
+/* GatherHub design tokens. See ../../DESIGN.md for the system spec.
+   OKLCH-canonical; Tailwind reads `oklch(var(--x) / <alpha-value>)`. */
+
+@import "@fontsource-variable/inter/index.css";
+@import "@fontsource-variable/inter/wght-italic.css";
+@import "@fontsource-variable/jetbrains-mono/index.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 243 75% 59%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 243 75% 59%;
-    --radius: 0.6rem;
+    /* Surfaces (tinted-neutral paper field) */
+    --paper: 99% 0.003 250;
+    --surface: 98% 0.004 250;
+    --surface-sunk: 96.5% 0.006 250;
+    --surface-raised: 99.5% 0.002 250;
+
+    /* Borders */
+    --border-hairline: 93% 0.008 250;
+    --border-default: 88% 0.010 250;
+    --border-strong: 80% 0.012 250;
+
+    /* Ink */
+    --ink-quiet: 48% 0.014 250;
+    --ink-soft: 36% 0.018 250;
+    --ink: 22% 0.020 250;
+    --ink-strong: 14% 0.020 250;
+
+    /* Accent (Slate Ink) */
+    --accent-base: 38% 0.080 250;
+    --accent-hover: 32% 0.085 250;
+    --accent-active: 28% 0.085 250;
+    --accent-wash: 94% 0.025 250;
+    --accent-ink: 98% 0.003 250;
+
+    /* Status */
+    --success: 48% 0.100 155;
+    --success-wash: 94% 0.040 155;
+    --warning: 60% 0.130 70;
+    --warning-wash: 94% 0.060 75;
+    --danger: 48% 0.160 25;
+    --danger-wash: 94% 0.050 25;
+    --info: 45% 0.070 235;
+    --info-wash: 94% 0.030 235;
+
+    /* shadcn semantic aliases. Existing `bg-primary`, `bg-card`, etc. keep
+       working, now resolving to the new token system. */
+    --background: var(--paper);
+    --foreground: var(--ink);
+    --card: var(--surface);
+    --card-foreground: var(--ink);
+    --popover: var(--surface-raised);
+    --popover-foreground: var(--ink);
+    --primary: var(--accent-base);
+    --primary-foreground: var(--accent-ink);
+    --secondary: var(--surface-sunk);
+    --secondary-foreground: var(--ink);
+    --muted: var(--surface-sunk);
+    --muted-foreground: var(--ink-quiet);
+    --accent: var(--surface-sunk);
+    --accent-foreground: var(--ink);
+    --destructive: var(--danger);
+    --destructive-foreground: var(--accent-ink);
+    --border: var(--border-default);
+    --input: var(--border-hairline);
+    --ring: var(--accent-base);
+    --radius: 0.5rem;
+
+    /* Elevation. Shadows reserved for genuinely lifted overlays. */
+    --shadow-popover:
+      0 1px 2px oklch(0% 0 0 / 0.04),
+      0 6px 16px oklch(0% 0 0 / 0.06);
+    --shadow-dialog:
+      0 2px 4px oklch(0% 0 0 / 0.05),
+      0 16px 32px oklch(0% 0 0 / 0.10);
+
+    /* Focus ring: 2px paper inner gap, 4px accent halo. */
+    --focus-ring-halo: oklch(var(--accent-base) / 0.45);
+    --focus-ring-gap: oklch(var(--paper));
+    --shadow-focus:
+      0 0 0 2px var(--focus-ring-gap),
+      0 0 0 4px var(--focus-ring-halo);
+
+    /* Motion */
+    --ease: cubic-bezier(0.25, 1, 0.5, 1);
+    --dur-fast: 120ms;
+    --dur-base: 180ms;
+    --dur-slow: 220ms;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 243 75% 66%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 243 75% 66%;
+    --paper: 15% 0.010 250;
+    --surface: 18% 0.012 250;
+    --surface-sunk: 12.5% 0.010 250;
+    --surface-raised: 21% 0.014 250;
+
+    --border-hairline: 22% 0.014 250;
+    --border-default: 28% 0.016 250;
+    --border-strong: 36% 0.018 250;
+
+    --ink-quiet: 58% 0.014 250;
+    --ink-soft: 72% 0.016 250;
+    --ink: 88% 0.012 250;
+    --ink-strong: 96% 0.008 250;
+
+    --accent-base: 72% 0.090 250;
+    --accent-hover: 78% 0.095 250;
+    --accent-active: 82% 0.095 250;
+    --accent-wash: 28% 0.045 250;
+    --accent-ink: 14% 0.020 250;
+
+    --success: 68% 0.100 155;
+    --success-wash: 28% 0.040 155;
+    --warning: 76% 0.130 70;
+    --warning-wash: 30% 0.060 75;
+    --danger: 68% 0.140 25;
+    --danger-wash: 28% 0.050 25;
+    --info: 70% 0.080 235;
+    --info-wash: 28% 0.030 235;
+
+    --shadow-popover:
+      0 1px 2px oklch(0% 0 0 / 0.30),
+      0 6px 16px oklch(0% 0 0 / 0.40);
+    --shadow-dialog:
+      0 2px 4px oklch(0% 0 0 / 0.35),
+      0 16px 32px oklch(0% 0 0 / 0.55);
+
+    --focus-ring-halo: oklch(var(--accent-base) / 0.55);
+    --focus-ring-gap: oklch(var(--paper));
+    --shadow-focus:
+      0 0 0 2px var(--focus-ring-gap),
+      0 0 0 4px var(--focus-ring-halo);
   }
 }
 
@@ -53,10 +139,178 @@
   * {
     @apply border-border;
   }
+
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-family:
+      "InterVariable", "Inter", ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-feature-settings:
+      "cv11" 1,
+      "ss01" 1,
+      "ss03" 1,
       "rlig" 1,
       "calt" 1;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.003em;
+  }
+
+  /* Tabular numerals on every digit by default (committee data is list data). */
+  :where(td, th, [data-numeric], .numeric, code, kbd, samp, time, output) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre,
+  .mono {
+    font-family:
+      "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular,
+      Menlo, monospace;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Token-driven focus ring. Browser default suppressed everywhere. */
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--focus-ring-gap),
+      0 0 0 4px var(--focus-ring-halo);
+    border-radius: inherit;
+  }
+
+  ::selection {
+    background: oklch(var(--accent-wash));
+    color: oklch(var(--ink-strong));
+  }
+
+  /* Scrollbar (WebKit + Firefox). Tinted-neutral, never accent. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(var(--border-strong)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: oklch(var(--border-default));
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: oklch(var(--border-strong));
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+}
+
+@layer base {
+  /* Respect prefers-reduced-motion. Non-essential transitions disable;
+     essential ones shorten to opacity. See DESIGN.md §6. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 100ms !important;
+      transition-property: opacity !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Typography roles (mapping to DESIGN.md frontmatter). Use these in
+     prose / structural copy, not as decoration. */
+  .text-display {
+    font-size: 1.75rem;
+    line-height: 2.125rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  .text-headline {
+    font-size: 1.375rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+  }
+  .text-title {
+    font-size: 1.0625rem;
+    line-height: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.008em;
+  }
+  .text-body {
+    font-size: 0.875rem;
+    line-height: 1.375rem;
+    font-weight: 400;
+    letter-spacing: -0.003em;
+  }
+  .text-body-strong {
+    font-size: 0.875rem;
+    line-height: 1.375rem;
+    font-weight: 550;
+    letter-spacing: -0.003em;
+  }
+  .text-caption {
+    font-size: 0.75rem;
+    line-height: 1.125rem;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+  .text-label {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .text-numeric {
+    font-size: 0.875rem;
+    line-height: 1.375rem;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    font-variant-numeric: tabular-nums;
+  }
+  .text-mono {
+    font-family:
+      "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular,
+      Menlo, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+    font-weight: 450;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Elevation utilities. Use only on genuinely-floating overlays. */
+  .shadow-popover {
+    box-shadow: var(--shadow-popover);
+  }
+  .shadow-dialog {
+    box-shadow: var(--shadow-dialog);
+  }
+
+  /* Focus ring utility for non-input controls (custom buttons, table rows). */
+  .focus-ring {
+    box-shadow:
+      0 0 0 2px var(--focus-ring-gap),
+      0 0 0 4px var(--focus-ring-halo);
   }
 }

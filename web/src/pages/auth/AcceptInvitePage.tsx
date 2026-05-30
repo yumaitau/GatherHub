@@ -5,17 +5,12 @@ import { useMutation, useQuery } from "convex/react";
 import { Building2, Check, Mail } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, LoadingState } from "@/components/shared";
+import { AuthShell } from "@/pages/auth/AuthShell";
 import { humanise } from "@/lib/utils";
 
 /**
  * /invite/:code — landing page for an emailed organisation invitation.
- *
- * If the visitor is signed out we route them through Clerk sign-up/sign-in
- * with the code preserved in the redirect URL. Once signed in we surface the
- * invitation details and let them accept, which adds a membership and sets
- * the org active.
  */
 export default function AcceptInvitePage() {
   const { code = "" } = useParams<{ code: string }>();
@@ -23,23 +18,40 @@ export default function AcceptInvitePage() {
   const signInTarget = `/sign-in?redirect_url=${encodeURIComponent(`/invite/${code}`)}`;
   const signUpTarget = `/sign-up?redirect_url=${encodeURIComponent(`/invite/${code}`)}`;
 
-  if (!code) return <InvalidCard />;
-  if (preview === undefined) return <LoadingState label="Loading invitation…" />;
-
-  if (preview.status !== "pending") {
+  if (!code) {
     return (
-      <Centered>
+      <AuthShell heading="No invitation code">
         <EmptyState
           icon={Mail}
-          title={
-            preview.status === "expired"
-              ? "Invitation expired"
-              : preview.status === "accepted"
-                ? "Invitation already used"
-                : preview.status === "revoked"
-                  ? "Invitation revoked"
-                  : "Invitation not found"
-          }
+          title="No invitation code"
+          description="The link you followed is missing a code."
+        />
+      </AuthShell>
+    );
+  }
+
+  if (preview === undefined) {
+    return (
+      <AuthShell heading="Loading invitation">
+        <LoadingState label="Loading invitation…" />
+      </AuthShell>
+    );
+  }
+
+  if (preview.status !== "pending") {
+    const title =
+      preview.status === "expired"
+        ? "Invitation expired"
+        : preview.status === "accepted"
+          ? "Invitation already used"
+          : preview.status === "revoked"
+            ? "Invitation revoked"
+            : "Invitation not found";
+    return (
+      <AuthShell heading={title}>
+        <EmptyState
+          icon={Mail}
+          title={title}
           description="Ask an admin to send you a new invite."
           action={
             <Button asChild>
@@ -47,45 +59,54 @@ export default function AcceptInvitePage() {
             </Button>
           }
         />
-      </Centered>
+      </AuthShell>
     );
   }
 
   return (
-    <Centered>
-      <Card className="max-w-md">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Join {preview.orgName}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            You&apos;ve been invited to join <strong>{preview.orgName}</strong>{" "}
-            as <strong>{humanise(preview.role)}</strong>. The invite was sent to{" "}
-            <strong>{preview.email}</strong>.
-          </p>
-          <SignedOut>
-            <div className="flex flex-col gap-2">
-              <Button asChild>
-                <Link to={signUpTarget}>Create an account to accept</Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link to={signInTarget}>I already have an account</Link>
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Make sure to use {preview.email} when signing in or up — the
-              invitation is locked to that address.
+    <AuthShell
+      heading={`Join ${preview.orgName}`}
+      caption={`Invited as ${humanise(preview.role)} (${preview.email}).`}
+    >
+      <div className="rounded-md border border-hairline bg-surface px-5 py-5">
+        <div className="flex items-center gap-3 pb-4 border-b border-hairline">
+          <span
+            className="inline-flex h-9 w-9 items-center justify-center rounded-sm bg-primary-wash"
+            aria-hidden="true"
+          >
+            <Building2 className="h-4 w-4 text-primary" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-body-strong text-ink-strong truncate">
+              {preview.orgName}
             </p>
-          </SignedOut>
-          <SignedIn>
+            <p className="text-caption text-ink-quiet">
+              You will join as {humanise(preview.role)}
+            </p>
+          </div>
+        </div>
+
+        <SignedOut>
+          <div className="flex flex-col gap-2 pt-4">
+            <Button asChild>
+              <Link to={signUpTarget}>Create an account to accept</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to={signInTarget}>I already have an account</Link>
+            </Button>
+          </div>
+          <p className="mt-3 text-caption text-ink-quiet max-w-prose">
+            Use {preview.email} when signing in or up; the invitation is locked
+            to that address.
+          </p>
+        </SignedOut>
+        <SignedIn>
+          <div className="pt-4">
             <AcceptControls code={code} expectedEmail={preview.email} />
-          </SignedIn>
-        </CardContent>
-      </Card>
-    </Centered>
+          </div>
+        </SignedIn>
+      </div>
+    </AuthShell>
   );
 }
 
@@ -127,10 +148,10 @@ function AcceptControls({
   if (wrongAccount) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-destructive">
-          You&apos;re signed in as <strong>{userEmail}</strong>, but this
-          invite is for <strong>{expectedEmail}</strong>. Sign out and sign in
-          with the invited email to accept.
+        <p className="text-body text-danger">
+          You are signed in as <strong>{userEmail}</strong>, but this invite is
+          for <strong>{expectedEmail}</strong>. Sign out and sign in with the
+          invited email to accept.
         </p>
         <Button asChild variant="outline">
           <Link to="/sign-in">Switch account</Link>
@@ -145,27 +166,7 @@ function AcceptControls({
         <Check className="h-4 w-4" />
         {busy ? "Accepting…" : "Accept invitation"}
       </Button>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-caption text-danger">{error}</p>}
     </div>
-  );
-}
-
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      {children}
-    </div>
-  );
-}
-
-function InvalidCard() {
-  return (
-    <Centered>
-      <EmptyState
-        icon={Mail}
-        title="No invitation code"
-        description="The link you followed is missing a code."
-      />
-    </Centered>
   );
 }

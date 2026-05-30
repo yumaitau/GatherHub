@@ -13,14 +13,20 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+    <div className="flex flex-wrap items-start justify-between gap-4 mb-7">
+      <div className="min-w-0">
+        <h1 className="text-display text-ink-strong">{title}</h1>
         {description && (
-          <p className="text-muted-foreground mt-1 text-sm">{description}</p>
+          <p className="max-w-prose text-body text-ink-soft mt-1.5">
+            {description}
+          </p>
         )}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }
@@ -28,14 +34,19 @@ export function PageHeader({
 export function Spinner({ className }: { className?: string }) {
   return (
     <Loader2
-      className={cn("h-5 w-5 animate-spin text-muted-foreground", className)}
+      className={cn("h-4 w-4 animate-spin text-ink-quiet", className)}
+      aria-hidden="true"
     />
   );
 }
 
 export function LoadingState({ label = "Loading…" }: { label?: string }) {
   return (
-    <div className="flex items-center gap-3 py-16 justify-center text-muted-foreground">
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex items-center justify-center gap-2.5 py-16 text-body text-ink-quiet"
+    >
       <Spinner />
       <span>{label}</span>
     </div>
@@ -54,15 +65,18 @@ export function EmptyState({
   icon?: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
-      {Icon && <Icon className="h-10 w-10 text-muted-foreground mb-3" />}
-      <h3 className="font-medium">{title}</h3>
-      {description && (
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-          {description}
-        </p>
+    <div className="mx-auto flex max-w-[360px] flex-col items-center gap-2 py-12 text-center">
+      {Icon && (
+        <Icon
+          className="h-6 w-6 text-ink-quiet mb-1"
+          aria-hidden="true"
+        />
       )}
-      {action && <div className="mt-4">{action}</div>}
+      <p className="text-body-strong text-ink-strong">{title}</p>
+      {description && (
+        <p className="max-w-prose text-body text-ink-soft">{description}</p>
+      )}
+      {action && <div className="mt-3">{action}</div>}
     </div>
   );
 }

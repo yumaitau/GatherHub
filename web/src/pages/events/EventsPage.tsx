@@ -9,13 +9,6 @@ import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -37,9 +30,12 @@ import { formatDateTime, humanise } from "@/lib/utils";
 
 type EventType = "training" | "match" | "meeting";
 
-const TYPE_VARIANT: Record<EventType, "default" | "secondary" | "warning"> = {
-  match: "default",
-  training: "secondary",
+const TYPE_VARIANT: Record<
+  EventType,
+  "accent" | "muted" | "warning"
+> = {
+  match: "accent",
+  training: "muted",
   meeting: "warning",
 };
 
@@ -53,75 +49,98 @@ export default function EventsPage() {
       <PageHeader
         title="Events"
         description="Training, matches and meetings."
-        actions={
-          <>
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={!upcomingOnly}
-                onChange={(e) => setUpcomingOnly(!e.target.checked)}
-                className="h-4 w-4"
-              />
-              Show past events
-            </label>
-            {can("coach") && <NewEventDialog />}
-          </>
-        }
+        actions={can("coach") ? <NewEventDialog /> : undefined}
       />
 
-      {events === undefined ? (
-        <LoadingState />
-      ) : events.length === 0 ? (
-        <EmptyState
-          icon={CalendarDays}
-          title="No events"
-          description={
-            upcomingOnly
-              ? "There are no upcoming events scheduled."
-              : "No events have been created yet."
-          }
-          action={can("coach") ? <NewEventDialog /> : undefined}
-        />
-      ) : (
-        <div className="grid gap-4">
-          {events.map((e) => (
-            <Link key={e._id} to={`/events/${e._id}`}>
-              <Card className="transition-colors hover:bg-accent/40">
-                <CardHeader>
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Badge variant={TYPE_VARIANT[e.type as EventType]}>
-                          {humanise(e.type)}
-                        </Badge>
-                        {e.title}
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        {formatDateTime(e.startTime)}
-                        {e.opponent ? ` · vs ${e.opponent}` : ""}
-                      </CardDescription>
-                    </div>
-                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Users className="h-4 w-4" />
-                      {e.goingCount} going
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  {e.location && (
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4" />
-                      {e.location}
-                    </span>
-                  )}
-                  {e.teamName && <span>{e.teamName}</span>}
-                  {!e.teamName && <span>Org-wide</span>}
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+      <section className="rounded-md border border-hairline bg-surface overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-hairline">
+          <label className="flex items-center gap-2 text-body text-ink-soft">
+            <input
+              type="checkbox"
+              checked={!upcomingOnly}
+              onChange={(e) => setUpcomingOnly(!e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            Include past events
+          </label>
+          {events && (
+            <span className="ml-auto text-caption text-ink-quiet">
+              <span data-numeric className="font-medium text-ink-soft">
+                {events.length}
+              </span>{" "}
+              {events.length === 1 ? "event" : "events"}
+            </span>
+          )}
         </div>
-      )}
+
+        {events === undefined ? (
+          <LoadingState />
+        ) : events.length === 0 ? (
+          <EmptyState
+            icon={CalendarDays}
+            title="No events"
+            description={
+              upcomingOnly
+                ? "There are no upcoming events scheduled."
+                : "No events have been created yet."
+            }
+            action={can("coach") ? <NewEventDialog /> : undefined}
+          />
+        ) : (
+          <ul className="divide-y divide-hairline">
+            {events.map((e) => (
+              <li key={e._id}>
+                <Link
+                  to={`/events/${e._id}`}
+                  className="group/event block px-5 py-3.5 hover:bg-surface-sunk/60 transition-colors duration-fast ease-out focus-visible:outline-none focus-visible:shadow-focus"
+                >
+                  <div className="flex items-baseline flex-wrap gap-x-3 gap-y-1">
+                    <Badge variant={TYPE_VARIANT[e.type as EventType]}>
+                      {humanise(e.type)}
+                    </Badge>
+                    <h3 className="text-body-strong text-ink-strong group-hover/event:text-primary">
+                      {e.title}
+                    </h3>
+                    <time
+                      className="text-caption text-ink-quiet"
+                      dateTime={new Date(e.startTime).toISOString()}
+                    >
+                      {formatDateTime(e.startTime)}
+                    </time>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-ink-soft">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Users
+                        className="h-3.5 w-3.5 text-ink-quiet"
+                        aria-hidden="true"
+                      />
+                      <span data-numeric className="font-medium text-ink">
+                        {e.goingCount}
+                      </span>{" "}
+                      going
+                    </span>
+                    {e.location && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <MapPin
+                          className="h-3.5 w-3.5 text-ink-quiet"
+                          aria-hidden="true"
+                        />
+                        {e.location}
+                      </span>
+                    )}
+                    <span className="text-ink-quiet">
+                      {e.teamName ?? "Org-wide"}
+                    </span>
+                    {e.opponent && (
+                      <span className="text-ink-quiet">vs {e.opponent}</span>
+                    )}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
@@ -194,99 +213,97 @@ function NewEventDialog() {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <form onSubmit={submit}>
-          <DialogHeader>
-            <DialogTitle>New event</DialogTitle>
-            <DialogDescription>
-              Schedule a training, match or meeting.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Type</Label>
-              <Select
-                value={type}
-                onValueChange={(v) => setType(v as EventType)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="training">Training</SelectItem>
-                  <SelectItem value="match">Match</SelectItem>
-                  <SelectItem value="meeting">Meeting</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="event-title">Title</Label>
-              <Input
-                id="event-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="event-start">Start time</Label>
-              <Input
-                id="event-start"
-                type="datetime-local"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="event-location">Location</Label>
-              <Input
-                id="event-location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Team</Label>
-              <Select value={teamId} onValueChange={setTeamId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Org-wide" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Org-wide</SelectItem>
-                  {(teams ?? []).map((t) => (
-                    <SelectItem key={t._id} value={t._id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {type === "match" && (
-              <div className="grid gap-2">
-                <Label htmlFor="event-opponent">Opponent</Label>
-                <Input
-                  id="event-opponent"
-                  value={opponent}
-                  onChange={(e) => setOpponent(e.target.value)}
-                />
-              </div>
-            )}
-            <div className="grid gap-2">
-              <Label htmlFor="event-desc">Description</Label>
-              <Textarea
-                id="event-desc"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogHeader>
+          <DialogTitle>New event</DialogTitle>
+          <DialogDescription>
+            Schedule a training, match or meeting.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label>Type</Label>
+            <Select
+              value={type}
+              onValueChange={(v) => setType(v as EventType)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="training">Training</SelectItem>
+                <SelectItem value="match">Match</SelectItem>
+                <SelectItem value="meeting">Meeting</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <DialogFooter>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Create event"}
-            </Button>
-          </DialogFooter>
+          <div className="grid gap-1.5">
+            <Label htmlFor="event-title">Title</Label>
+            <Input
+              id="event-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="event-start">Start time</Label>
+            <Input
+              id="event-start"
+              type="datetime-local"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              required
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="event-location">Location</Label>
+            <Input
+              id="event-location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Team</Label>
+            <Select value={teamId} onValueChange={setTeamId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Org-wide" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Org-wide</SelectItem>
+                {(teams ?? []).map((t) => (
+                  <SelectItem key={t._id} value={t._id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {type === "match" && (
+            <div className="grid gap-1.5">
+              <Label htmlFor="event-opponent">Opponent</Label>
+              <Input
+                id="event-opponent"
+                value={opponent}
+                onChange={(e) => setOpponent(e.target.value)}
+              />
+            </div>
+          )}
+          <div className="grid gap-1.5">
+            <Label htmlFor="event-desc">Description</Label>
+            <Textarea
+              id="event-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          {error && <p className="text-caption text-danger">{error}</p>}
         </form>
+        <DialogFooter>
+          <Button type="submit" onClick={submit} disabled={saving}>
+            {saving ? "Saving…" : "Create event"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

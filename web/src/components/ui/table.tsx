@@ -1,6 +1,9 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+// Tables are committee work surface (DESIGN.md §5). Hairline dividers,
+// paper rows, surface-sunk hover, no zebra. Numeric cells right-align via
+// the `numeric` prop on TableCell/TableHead.
 const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
@@ -8,7 +11,11 @@ const Table = React.forwardRef<
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn(
+        "w-full caption-bottom text-body text-ink",
+        "border-separate border-spacing-0",
+        className,
+      )}
       {...props}
     />
   </div>
@@ -19,7 +26,15 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  <thead
+    ref={ref}
+    className={cn(
+      "bg-paper [&_tr]:border-0 [&_th]:border-b [&_th]:border-hairline",
+      "sticky top-0 z-10",
+      className,
+    )}
+    {...props}
+  />
 ));
 TableHeader.displayName = "TableHeader";
 
@@ -29,7 +44,10 @@ const TableBody = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <tbody
     ref={ref}
-    className={cn("[&_tr:last-child]:border-0", className)}
+    className={cn(
+      "[&_tr:not(:last-child)>td]:border-b [&_tr>td]:border-hairline",
+      className,
+    )}
     {...props}
   />
 ));
@@ -42,7 +60,10 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "group/row bg-paper",
+      "transition-colors duration-fast ease-out",
+      "hover:bg-surface-sunk/70",
+      "data-[state=selected]:bg-primary-wash data-[state=selected]:hover:bg-primary-wash",
       className,
     )}
     {...props}
@@ -50,14 +71,20 @@ const TableRow = React.forwardRef<
 ));
 TableRow.displayName = "TableRow";
 
+interface TableCellPropsBase {
+  numeric?: boolean;
+}
+
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
+  React.ThHTMLAttributes<HTMLTableCellElement> & TableCellPropsBase
+>(({ className, numeric, ...props }, ref) => (
   <th
     ref={ref}
     className={cn(
-      "h-11 px-3 text-left align-middle font-medium text-muted-foreground",
+      "h-9 px-4 align-middle text-label text-ink-quiet",
+      "first:pl-5 last:pr-5",
+      numeric ? "text-right tabular-nums" : "text-left",
       className,
     )}
     {...props}
@@ -67,10 +94,39 @@ TableHead.displayName = "TableHead";
 
 const TableCell = React.forwardRef<
   HTMLTableCellElement,
-  React.TdHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
-  <td ref={ref} className={cn("p-3 align-middle", className)} {...props} />
+  React.TdHTMLAttributes<HTMLTableCellElement> & TableCellPropsBase
+>(({ className, numeric, ...props }, ref) => (
+  <td
+    ref={ref}
+    className={cn(
+      "h-11 px-4 align-middle text-body",
+      "first:pl-5 last:pr-5",
+      numeric ? "text-right tabular-nums font-medium" : "text-left",
+      className,
+    )}
+    {...props}
+  />
 ));
 TableCell.displayName = "TableCell";
 
-export { Table, TableHeader, TableBody, TableHead, TableRow, TableCell };
+const TableCaption = React.forwardRef<
+  HTMLTableCaptionElement,
+  React.HTMLAttributes<HTMLTableCaptionElement>
+>(({ className, ...props }, ref) => (
+  <caption
+    ref={ref}
+    className={cn("mt-3 text-caption text-ink-quiet", className)}
+    {...props}
+  />
+));
+TableCaption.displayName = "TableCaption";
+
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+};

@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { cn, humanise } from "@/lib/utils";
 
 /**
  * Convex-native organisation switcher.
@@ -38,31 +40,49 @@ export function OrgSwitcher({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="relative">
-      <Button
+      <button
         type="button"
-        variant="outline"
-        size="sm"
-        className="gap-2"
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={cn(
+          "inline-flex items-center gap-2 h-8 px-2.5",
+          "rounded-sm border border-hairline bg-surface text-body text-ink",
+          "transition-[background-color,border-color] duration-fast ease-out",
+          "hover:bg-surface-sunk hover:border-border-strong",
+          "focus-visible:outline-none focus-visible:shadow-focus",
+        )}
       >
-        <Building2 className="h-4 w-4" />
+        <Building2 className="h-3.5 w-3.5 text-ink-quiet shrink-0" aria-hidden="true" />
         {!compact && (
-          <span className="max-w-[14ch] truncate">
+          <span className="max-w-[16ch] truncate font-semi">
             {active?.org?.name ?? "Select organisation"}
           </span>
         )}
-        <ChevronsUpDown className="h-4 w-4 opacity-60" />
-      </Button>
+        <ChevronsUpDown className="h-3.5 w-3.5 text-ink-quiet shrink-0" aria-hidden="true" />
+      </button>
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-50 mt-2 w-72 rounded-md border bg-popover p-1 shadow-md">
-            <div className="px-2 py-1 text-xs uppercase tracking-wide text-muted-foreground">
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            role="menu"
+            className={cn(
+              "absolute left-0 z-50 mt-2 w-80",
+              "rounded-md border border-hairline bg-popover",
+              "shadow-popover overflow-hidden",
+              "animate-overlay-in",
+            )}
+          >
+            <div className="px-3 pt-3 pb-1.5 text-label text-ink-quiet">
               Your organisations
             </div>
             {memberships?.length ? (
-              <ul className="max-h-72 overflow-auto">
+              <ul className="max-h-72 overflow-auto py-1">
                 {[...(active ? [active] : []), ...others].map((m) => (
                   <li key={m.membershipId}>
                     <button
@@ -70,25 +90,47 @@ export function OrgSwitcher({ compact = false }: { compact?: boolean }) {
                       onClick={() =>
                         m.org && !m.isActive && switchTo(m.org.id)
                       }
-                      className="flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                      className={cn(
+                        "flex w-full items-center gap-2 px-3 py-1.5",
+                        "text-body text-ink text-left",
+                        "transition-colors duration-fast ease-out",
+                        "hover:bg-surface-sunk",
+                        "focus-visible:outline-none focus-visible:bg-surface-sunk",
+                        m.isActive && "bg-primary-wash hover:bg-primary-wash",
+                      )}
                     >
-                      <span className="truncate">
+                      <span
+                        className={cn(
+                          "inline-flex h-6 w-6 items-center justify-center rounded-xs",
+                          "border border-hairline bg-paper text-caption font-semi text-ink-strong",
+                          m.isActive && "border-primary/40 text-primary",
+                        )}
+                        aria-hidden="true"
+                      >
+                        {(m.org?.name ?? "?").slice(0, 1).toUpperCase()}
+                      </span>
+                      <span className="flex-1 truncate font-semi">
                         {m.org?.name ?? "Unknown"}
                       </span>
-                      <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {m.role}
-                        {m.isActive && <Check className="h-3.5 w-3.5" />}
-                      </span>
+                      <Badge variant="muted" className="font-semi">
+                        {humanise(m.role)}
+                      </Badge>
+                      {m.isActive && (
+                        <Check
+                          className="h-4 w-4 text-primary shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
                     </button>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="px-2 py-2 text-sm text-muted-foreground">
-                You haven&apos;t joined an organisation yet.
+              <p className="px-3 py-3 text-body text-ink-quiet">
+                You have not joined an organisation yet.
               </p>
             )}
-            <div className="mt-1 border-t pt-1">
+            <div className="border-t border-hairline py-1">
               <CreateClubAction onDone={() => setOpen(false)} />
               <JoinClubAction onDone={() => setOpen(false)} />
             </div>
@@ -116,7 +158,9 @@ function CreateClubAction({ onDone }: { onDone: () => void }) {
       setOpen(false);
       onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create organisation.");
+      setError(
+        err instanceof Error ? err.message : "Could not create organisation.",
+      );
     } finally {
       setBusy(false);
     }
@@ -127,9 +171,15 @@ function CreateClubAction({ onDone }: { onDone: () => void }) {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+          className={cn(
+            "flex w-full items-center gap-2 px-3 py-1.5",
+            "text-body text-ink-soft text-left",
+            "transition-colors duration-fast ease-out",
+            "hover:bg-surface-sunk hover:text-ink",
+          )}
         >
-          <Plus className="h-4 w-4" /> Create a new organisation
+          <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="font-semi">Create a new organisation</span>
         </button>
       </DialogTrigger>
       <DialogContent>
@@ -139,25 +189,29 @@ function CreateClubAction({ onDone }: { onDone: () => void }) {
             You will become its owner and can invite others with a code.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-3">
+        <form onSubmit={submit} className="grid gap-3 px-6 pb-4">
           <div className="grid gap-1.5">
             <Label htmlFor="org-name">Organisation name</Label>
             <Input
               id="org-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Acme Co."
+              placeholder="e.g. Eastside FC"
               required
               autoFocus
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <DialogFooter>
-            <Button type="submit" disabled={busy || !name.trim()}>
-              {busy ? "Creating…" : "Create organisation"}
-            </Button>
-          </DialogFooter>
+          {error && <p className="text-caption text-danger">{error}</p>}
         </form>
+        <DialogFooter>
+          <Button
+            type="submit"
+            onClick={submit}
+            disabled={busy || !name.trim()}
+          >
+            {busy ? "Creating…" : "Create organisation"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -191,9 +245,15 @@ function JoinClubAction({ onDone }: { onDone: () => void }) {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+          className={cn(
+            "flex w-full items-center gap-2 px-3 py-1.5",
+            "text-body text-ink-soft text-left",
+            "transition-colors duration-fast ease-out",
+            "hover:bg-surface-sunk hover:text-ink",
+          )}
         >
-          <Ticket className="h-4 w-4" /> Join with invite code
+          <Ticket className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="font-semi">Join with invite code</span>
         </button>
       </DialogTrigger>
       <DialogContent>
@@ -203,7 +263,7 @@ function JoinClubAction({ onDone }: { onDone: () => void }) {
             Paste the invite code an admin shared with you.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-3">
+        <form onSubmit={submit} className="grid gap-3 px-6 pb-4">
           <div className="grid gap-1.5">
             <Label htmlFor="invite-code">Invite code</Label>
             <Input
@@ -211,17 +271,22 @@ function JoinClubAction({ onDone }: { onDone: () => void }) {
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="ABCDEF1234"
+              className="font-mono tracking-[0.05em]"
               required
               autoFocus
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <DialogFooter>
-            <Button type="submit" disabled={busy || !code.trim()}>
-              {busy ? "Joining…" : "Join organisation"}
-            </Button>
-          </DialogFooter>
+          {error && <p className="text-caption text-danger">{error}</p>}
         </form>
+        <DialogFooter>
+          <Button
+            type="submit"
+            onClick={submit}
+            disabled={busy || !code.trim()}
+          >
+            {busy ? "Joining…" : "Join organisation"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

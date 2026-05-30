@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { Link } from "react-router-dom";
-import { Users, Plus, Download, Mail, X } from "lucide-react";
+import { Users, Plus, Download, Mail, X, Search } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
-import { toCsv, downloadCsv, humanise, formatDateTime } from "@/lib/utils";
+import { toCsv, downloadCsv, humanise, formatDateTime, cn } from "@/lib/utils";
 import type { Role } from "@/lib/roles";
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -90,45 +90,59 @@ export default function MembersPage() {
         }
       />
 
-      {can("admin") && <PendingInvitesCard />}
+      {can("admin") && <PendingInvitesPanel />}
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Input
-          placeholder="Search by name or email…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs"
-        />
-        <Select
-          value={status}
-          onValueChange={(v) => setStatus(v as StatusFilter)}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <section className="rounded-md border border-hairline bg-surface overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-hairline">
+          <div className="relative w-full max-w-xs">
+            <Search
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-quiet pointer-events-none"
+              aria-hidden="true"
+            />
+            <Input
+              placeholder="Search by name or email"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          <Select
+            value={status}
+            onValueChange={(v) => setStatus(v as StatusFilter)}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          {members && (
+            <span className="ml-auto text-caption text-ink-quiet">
+              <span data-numeric className="font-medium text-ink-soft">
+                {members.length}
+              </span>{" "}
+              {members.length === 1 ? "result" : "results"}
+            </span>
+          )}
+        </div>
 
-      {members === undefined ? (
-        <LoadingState />
-      ) : members.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title="No members found"
-          description={
-            search || status !== "all"
-              ? "Try adjusting your search or filters."
-              : "Add your first member to get started."
-          }
-          action={can("coach") ? <AddMemberDialog /> : undefined}
-        />
-      ) : (
-        <div className="rounded-lg border">
+        {members === undefined ? (
+          <LoadingState />
+        ) : members.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No members found"
+            description={
+              search || status !== "all"
+                ? "Try adjusting your search or filters."
+                : "Add your first member to get started."
+            }
+            action={can("coach") ? <AddMemberDialog /> : undefined}
+          />
+        ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -141,8 +155,11 @@ export default function MembersPage() {
             <TableBody>
               {members.map((m) => (
                 <TableRow key={m._id}>
-                  <TableCell className="font-medium">
-                    <Link to={`/members/${m._id}`} className="hover:underline">
+                  <TableCell>
+                    <Link
+                      to={`/members/${m._id}`}
+                      className="font-semi text-ink-strong hover:text-primary"
+                    >
                       {m.firstName} {m.lastName}
                     </Link>
                   </TableCell>
@@ -155,20 +172,20 @@ export default function MembersPage() {
                   </TableCell>
                   <TableCell>
                     {m.isVolunteer ? (
-                      <Badge variant="secondary">Volunteer</Badge>
+                      <Badge variant="accent">Volunteer</Badge>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-ink-quiet">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-ink-soft">
                     {m.email ?? "—"}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
-      )}
+        )}
+      </section>
     </div>
   );
 }
@@ -229,68 +246,66 @@ function AddMemberDialog() {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <form onSubmit={submit}>
-          <DialogHeader>
-            <DialogTitle>Add member</DialogTitle>
-            <DialogDescription>
-              Create a new person record for your organisation.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="firstName">First name</Label>
-                <Input
-                  id="firstName"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="lastName">Last name</Label>
-                <Input
-                  id="lastName"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+        <DialogHeader>
+          <DialogTitle>Add member</DialogTitle>
+          <DialogDescription>
+            Create a new person record for your organisation.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="firstName">First name</Label>
               <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Phone</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="lastName">Last name</Label>
               <Input
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
               />
             </div>
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={isVolunteer}
-                onChange={(e) => setIsVolunteer(e.target.checked)}
-                className="h-4 w-4"
-              />
-              Volunteer
-            </label>
-            {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
-          <DialogFooter>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Add member"}
-            </Button>
-          </DialogFooter>
+          <div className="grid gap-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-body text-ink-soft">
+            <input
+              type="checkbox"
+              checked={isVolunteer}
+              onChange={(e) => setIsVolunteer(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            Volunteer
+          </label>
+          {error && <p className="text-caption text-danger">{error}</p>}
         </form>
+        <DialogFooter>
+          <Button type="submit" onClick={submit} disabled={saving}>
+            {saving ? "Saving…" : "Add member"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -339,56 +354,54 @@ function InviteUserDialog() {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <form onSubmit={submit}>
-          <DialogHeader>
-            <DialogTitle>Invite someone by email</DialogTitle>
-            <DialogDescription>
-              They&apos;ll receive a link to sign in (or sign up) and join this
-              organisation with the chosen role.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="invite-email">Email</Label>
-              <Input
-                id="invite-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="person@example.com"
-                required
-                autoFocus
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Role</Label>
-              <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {INVITE_ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {humanise(r)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <DialogHeader>
+          <DialogTitle>Invite someone by email</DialogTitle>
+          <DialogDescription>
+            They will receive a link to sign in or sign up and join this
+            organisation with the chosen role.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="invite-email">Email</Label>
+            <Input
+              id="invite-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="person@example.com"
+              required
+              autoFocus
+            />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <DialogFooter>
-            <Button type="submit" disabled={busy || !email.trim()}>
-              {busy ? "Sending…" : "Send invitation"}
-            </Button>
-          </DialogFooter>
+          <div className="grid gap-1.5">
+            <Label>Role</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {INVITE_ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {humanise(r)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {error && <p className="text-caption text-danger">{error}</p>}
         </form>
+        <DialogFooter>
+          <Button type="submit" onClick={submit} disabled={busy || !email.trim()}>
+            {busy ? "Sending…" : "Send invitation"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function PendingInvitesCard() {
+function PendingInvitesPanel() {
   const invites = useQuery(api.invitations.list);
   const revoke = useMutation(api.invitations.revoke);
 
@@ -397,10 +410,18 @@ function PendingInvitesCard() {
   if (pending.length === 0) return null;
 
   return (
-    <div className="mb-4 rounded-lg border bg-background">
-      <div className="border-b px-4 py-2 text-sm font-medium">
-        Pending invitations
-      </div>
+    <section
+      className={cn(
+        "mb-5 rounded-md border border-hairline bg-surface overflow-hidden",
+      )}
+      aria-label="Pending invitations"
+    >
+      <header className="flex items-center justify-between px-4 py-2.5 border-b border-hairline bg-surface-sunk/40">
+        <h2 className="text-title text-ink-strong">Pending invitations</h2>
+        <span className="text-caption text-ink-quiet">
+          <span data-numeric>{pending.length}</span> open
+        </span>
+      </header>
       <Table>
         <TableHeader>
           <TableRow>
@@ -413,12 +434,12 @@ function PendingInvitesCard() {
         <TableBody>
           {pending.map((i) => (
             <TableRow key={i.id}>
-              <TableCell>{i.email}</TableCell>
+              <TableCell className="font-semi text-ink">{i.email}</TableCell>
               <TableCell>
-                <Badge variant="secondary">{humanise(i.role)}</Badge>
+                <Badge variant="muted">{humanise(i.role)}</Badge>
               </TableCell>
-              <TableCell className="text-muted-foreground">
-                {formatDateTime(i.sentAt)}
+              <TableCell className="text-ink-quiet">
+                <time>{formatDateTime(i.sentAt)}</time>
               </TableCell>
               <TableCell>
                 <Button
@@ -434,6 +455,6 @@ function PendingInvitesCard() {
           ))}
         </TableBody>
       </Table>
-    </div>
+    </section>
   );
 }

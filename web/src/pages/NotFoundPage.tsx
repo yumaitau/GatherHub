@@ -3,15 +3,21 @@ import { Button } from "@/components/ui/button";
 
 export default function NotFoundPage() {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <p className="text-5xl font-bold tracking-tight">404</p>
-      <h1 className="mt-4 text-xl font-semibold">Page not found</h1>
-      <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-        The page you’re looking for doesn’t exist or may have moved.
+    <div className="mx-auto max-w-[420px] py-20 text-center">
+      <p className="text-label text-ink-quiet">Error 404</p>
+      <h1 className="mt-2 text-display text-ink-strong">Page not found</h1>
+      <p className="mt-3 max-w-prose mx-auto text-body text-ink-soft">
+        The page you followed has moved, been renamed, or never existed. Open
+        the command palette with ⌘K to jump anywhere.
       </p>
-      <Button asChild className="mt-6">
-        <Link to="/">Back to dashboard</Link>
-      </Button>
+      <div className="mt-6 flex items-center justify-center gap-2">
+        <Button asChild>
+          <Link to="/">Back to dashboard</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/members">Members</Link>
+        </Button>
+      </div>
     </div>
   );
 }

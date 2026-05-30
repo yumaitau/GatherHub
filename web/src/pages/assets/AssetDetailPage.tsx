@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectTrigger,
@@ -35,11 +34,9 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import {
-  PageHeader,
-  LoadingState,
-  AssetStatusBadge,
-} from "@/components/shared";
+import { AuditRow } from "@/components/ui/audit-row";
+import { EmptyState as PrimitiveEmpty } from "@/components/ui/empty-state";
+import { PageHeader, LoadingState, AssetStatusBadge } from "@/components/shared";
 import { QrCode, assetTagUrl } from "@/components/QrCode";
 import { useGatherHub } from "@/lib/gatherhub";
 import { canManageAssets } from "@/lib/roles";
@@ -65,7 +62,7 @@ export default function AssetDetailPage() {
     <div>
       <Button variant="ghost" size="sm" asChild className="mb-3 -ml-2">
         <Link to="/assets">
-          <ArrowLeft className="h-4 w-4" /> Back to KitTrace
+          <ArrowLeft className="h-4 w-4" /> KitTrace
         </Link>
       </Button>
 
@@ -76,7 +73,7 @@ export default function AssetDetailPage() {
       />
 
       {canManage && asset.status !== "retired" && (
-        <div className="mb-6 flex flex-wrap gap-2">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
           {(asset.status === "available" || asset.status === "maintenance") && (
             <CheckOutDialog assetId={id} />
           )}
@@ -126,8 +123,8 @@ export default function AssetDetailPage() {
         </TabsList>
 
         <TabsContent value="details">
-          <Card>
-            <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
+          <section className="rounded-md border border-hairline bg-surface">
+            <dl className="grid gap-x-8 gap-y-5 px-5 py-5 sm:grid-cols-2">
               <Field label="Status" value={humanise(asset.status)} />
               <Field label="Category" value={humanise(asset.category)} />
               <Field
@@ -142,8 +139,13 @@ export default function AssetDetailPage() {
               <Field
                 label="Replacement value"
                 value={formatCurrency(asset.replacementValue)}
+                numeric
               />
-              <Field label="Serial number" value={asset.serialNumber ?? "—"} />
+              <Field
+                label="Serial number"
+                value={asset.serialNumber ?? "—"}
+                mono
+              />
               <Field
                 label="Purchase date"
                 value={
@@ -160,7 +162,7 @@ export default function AssetDetailPage() {
                   sponsor ? (
                     <Link
                       to={`/sponsors/${sponsor._id}`}
-                      className="text-primary hover:underline"
+                      className="text-ink hover:text-primary font-semi"
                     >
                       {sponsor.name}
                     </Link>
@@ -169,31 +171,43 @@ export default function AssetDetailPage() {
                   )
                 }
               />
-              <Field label="Notes" value={asset.notes ?? "—"} />
-            </CardContent>
-          </Card>
+              <Field
+                label="Notes"
+                value={asset.notes ?? "—"}
+                wide
+              />
+            </dl>
+          </section>
         </TabsContent>
 
         <TabsContent value="qr">
-          <Card>
-            <CardHeader>
-              <CardTitle>QR code</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <section className="rounded-md border border-hairline bg-surface">
+            <header className="px-5 py-3 border-b border-hairline">
+              <h2 className="text-title text-ink-strong">QR code</h2>
+            </header>
+            <div className="px-5 py-5 space-y-5">
               {asset.qrTagId ? (
-                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                  <div className="rounded-lg border bg-white p-4">
+                <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+                  <div className="rounded-md border border-hairline bg-paper p-4">
                     <QrCode value={assetTagUrl(asset.qrTagId)} />
                   </div>
-                  <div className="space-y-2 text-sm">
-                    <p>
-                      <span className="text-muted-foreground">Tag id:</span>{" "}
-                      <code>{asset.qrTagId}</code>
-                    </p>
-                    <p className="break-all">
-                      <span className="text-muted-foreground">Lookup URL:</span>{" "}
-                      {assetTagUrl(asset.qrTagId)}
-                    </p>
+                  <div className="space-y-2 text-body min-w-0">
+                    <div>
+                      <span className="text-ink-quiet text-caption">
+                        Tag id
+                      </span>
+                      <code className="block text-mono text-ink">
+                        {asset.qrTagId}
+                      </code>
+                    </div>
+                    <div>
+                      <span className="text-ink-quiet text-caption">
+                        Lookup URL
+                      </span>
+                      <p className="text-mono text-ink break-all">
+                        {assetTagUrl(asset.qrTagId)}
+                      </p>
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"
@@ -204,78 +218,126 @@ export default function AssetDetailPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-body text-ink-quiet">
                   No QR tag assigned.
                 </p>
               )}
 
-              <div className="border-t pt-4">
-                <p className="mb-1 text-sm font-medium">NFC tag</p>
+              <div className="pt-5 border-t border-hairline">
+                <p className="text-label text-ink-quiet mb-2">NFC tag</p>
                 {asset.nfcTagId ? (
-                  <p className="text-sm">
-                    Registered: <code>{asset.nfcTagId}</code>
+                  <p className="text-body text-ink">
+                    Registered:{" "}
+                    <code className="text-mono">{asset.nfcTagId}</code>
                   </p>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-body text-ink-quiet">
                     No NFC tag registered.
                   </p>
                 )}
-                {canManage && <RegisterNfcDialog assetId={id} />}
+                {canManage && (
+                  <div className="mt-3">
+                    <RegisterNfcDialog assetId={id} />
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         </TabsContent>
 
         <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>Audit history</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {history === undefined ? (
-                <LoadingState />
-              ) : history.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No history.</p>
-              ) : (
-                <ol className="relative border-l pl-6">
-                  {history.map((h) => (
-                    <li key={h._id} className="mb-5">
-                      <div className="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full bg-primary" />
-                      <p className="font-medium">{humanise(h.action)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDateTime(h.performedAt)} · {h.performerName}
-                      </p>
-                      {(h.toStatus || h.toCustodianName || h.toLocation) && (
-                        <p className="text-sm">
-                          {h.fromStatus && h.toStatus
-                            ? `${humanise(h.fromStatus)} → ${humanise(h.toStatus)}`
-                            : null}
-                          {h.toCustodianName
-                            ? ` · to ${h.toCustodianName}`
-                            : null}
-                          {h.toLocation ? ` · @ ${h.toLocation}` : null}
-                        </p>
-                      )}
-                      {h.notes && <p className="text-sm italic">“{h.notes}”</p>}
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </CardContent>
-          </Card>
+          <section className="rounded-md border border-hairline bg-surface">
+            <header className="px-5 py-3 border-b border-hairline">
+              <h2 className="text-title text-ink-strong">Audit history</h2>
+            </header>
+            {history === undefined ? (
+              <LoadingState />
+            ) : history.length === 0 ? (
+              <PrimitiveEmpty
+                title="No history yet."
+                description="Every issue, return, transfer, and status change will appear here."
+              />
+            ) : (
+              <div role="list" aria-label="Audit history">
+                {history.map((h) => (
+                  <AuditRow
+                    key={h._id}
+                    timestamp={formatDateTime(h.performedAt)}
+                    actor={
+                      <span className="font-semi text-ink">
+                        {h.performerName}
+                      </span>
+                    }
+                    action={
+                      <span>
+                        <span className="font-semi text-ink">
+                          {humanise(h.action)}
+                        </span>
+                        {h.fromStatus && h.toStatus && (
+                          <span className="text-ink-quiet">
+                            {" "}
+                            · {humanise(h.fromStatus)} → {humanise(h.toStatus)}
+                          </span>
+                        )}
+                        {h.toCustodianName && (
+                          <span className="text-ink-quiet">
+                            {" "}
+                            · to {h.toCustodianName}
+                          </span>
+                        )}
+                        {h.toLocation && (
+                          <span className="text-ink-quiet">
+                            {" "}
+                            · @ {h.toLocation}
+                          </span>
+                        )}
+                      </span>
+                    }
+                    expandable={Boolean(h.notes)}
+                  >
+                    {h.notes && (
+                      <span className="text-body text-ink-soft italic">
+                        {h.notes}
+                      </span>
+                    )}
+                  </AuditRow>
+                ))}
+              </div>
+            )}
+          </section>
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+function Field({
+  label,
+  value,
+  numeric,
+  mono,
+  wide,
+}: {
+  label: string;
+  value: React.ReactNode;
+  numeric?: boolean;
+  mono?: boolean;
+  wide?: boolean;
+}) {
   return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-0.5">{value}</p>
+    <div className={wide ? "sm:col-span-2" : undefined}>
+      <dt className="text-label text-ink-quiet mb-1">{label}</dt>
+      <dd
+        className={[
+          "text-body text-ink",
+          numeric ? "tabular-nums font-medium" : "",
+          mono ? "text-mono text-ink" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
@@ -321,8 +383,8 @@ function CheckOutDialog({ assetId }: { assetId: Id<"assets"> }) {
         <DialogHeader>
           <DialogTitle>Check out asset</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <div>
+        <div className="grid gap-3">
+          <div className="grid gap-1.5">
             <Label>Custodian</Label>
             <Select value={memberId} onValueChange={setMemberId}>
               <SelectTrigger>
@@ -337,7 +399,7 @@ function CheckOutDialog({ assetId }: { assetId: Id<"assets"> }) {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="grid gap-1.5">
             <Label htmlFor="co-loc">Location</Label>
             <Input
               id="co-loc"
@@ -345,7 +407,7 @@ function CheckOutDialog({ assetId }: { assetId: Id<"assets"> }) {
               onChange={(e) => setLocation(e.target.value)}
             />
           </div>
-          <div>
+          <div className="grid gap-1.5">
             <Label htmlFor="co-due">Due back</Label>
             <Input
               id="co-due"
@@ -354,7 +416,7 @@ function CheckOutDialog({ assetId }: { assetId: Id<"assets"> }) {
               onChange={(e) => setDueBack(e.target.value)}
             />
           </div>
-          <div>
+          <div className="grid gap-1.5">
             <Label htmlFor="co-notes">Notes</Label>
             <Textarea
               id="co-notes"
@@ -362,7 +424,7 @@ function CheckOutDialog({ assetId }: { assetId: Id<"assets"> }) {
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-caption text-danger">{error}</p>}
         </div>
         <DialogFooter>
           <DialogClose asChild>
@@ -410,8 +472,8 @@ function TransferDialog({ assetId }: { assetId: Id<"assets"> }) {
         <DialogHeader>
           <DialogTitle>Transfer asset</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <div>
+        <div className="grid gap-3">
+          <div className="grid gap-1.5">
             <Label>New custodian</Label>
             <Select value={memberId} onValueChange={setMemberId}>
               <SelectTrigger>
@@ -426,7 +488,7 @@ function TransferDialog({ assetId }: { assetId: Id<"assets"> }) {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="grid gap-1.5">
             <Label htmlFor="tr-notes">Notes</Label>
             <Textarea
               id="tr-notes"
@@ -434,7 +496,7 @@ function TransferDialog({ assetId }: { assetId: Id<"assets"> }) {
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-caption text-danger">{error}</p>}
         </div>
         <DialogFooter>
           <DialogClose asChild>
@@ -507,8 +569,8 @@ function SimpleOpButton({
         <DialogHeader>
           <DialogTitle>{label}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <div>
+        <div className="grid gap-3">
+          <div className="grid gap-1.5">
             <Label htmlFor="op-notes">Notes (optional)</Label>
             <Textarea
               id="op-notes"
@@ -516,7 +578,7 @@ function SimpleOpButton({
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-caption text-danger">{error}</p>}
         </div>
         <DialogFooter>
           <DialogClose asChild>
@@ -549,7 +611,7 @@ function RegisterNfcDialog({ assetId }: { assetId: Id<"assets"> }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="mt-2">
+        <Button variant="outline" size="sm">
           <Nfc className="h-4 w-4" /> Register NFC tag
         </Button>
       </DialogTrigger>
@@ -557,8 +619,8 @@ function RegisterNfcDialog({ assetId }: { assetId: Id<"assets"> }) {
         <DialogHeader>
           <DialogTitle>Register NFC tag</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
+        <div className="grid gap-3">
+          <p className="text-body text-ink-soft">
             Enter the NFC tag id (the iOS app writes the opaque tag id when
             scanning a blank tag). No private data is stored on the tag.
           </p>
@@ -566,8 +628,9 @@ function RegisterNfcDialog({ assetId }: { assetId: Id<"assets"> }) {
             value={nfc}
             placeholder="tag_…"
             onChange={(e) => setNfc(e.target.value)}
+            className="font-mono"
           />
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-caption text-danger">{error}</p>}
         </div>
         <DialogFooter>
           <DialogClose asChild>

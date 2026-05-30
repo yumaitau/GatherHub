@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
 
+// Underline tabs, not pill segmented control. Quieter, denser, more
+// committee-y. Active tab gets accent underline + ink-strong text.
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
@@ -11,7 +13,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+      "inline-flex h-9 items-stretch gap-1 border-b border-hairline",
       className,
     )}
     {...props}
@@ -26,7 +28,16 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+      "relative inline-flex items-center gap-1.5 whitespace-nowrap px-3",
+      "text-body font-semi text-ink-soft",
+      "transition-colors duration-fast ease-out",
+      "hover:text-ink",
+      "focus-visible:outline-none focus-visible:shadow-focus rounded-xs",
+      "data-[state=active]:text-ink-strong",
+      "after:absolute after:left-2 after:right-2 after:-bottom-px after:h-[2px]",
+      "after:bg-transparent after:transition-colors after:duration-fast after:ease-out",
+      "data-[state=active]:after:bg-primary",
+      "disabled:pointer-events-none disabled:opacity-50",
       className,
     )}
     {...props}
@@ -41,7 +52,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "mt-5 focus-visible:outline-none focus-visible:shadow-focus rounded-xs",
       className,
     )}
     {...props}

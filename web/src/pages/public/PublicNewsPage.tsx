@@ -17,16 +17,19 @@ export default function PublicNewsPage() {
 
   if (article === undefined) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-paper">
         <Spinner />
       </div>
     );
   }
   if (article === null) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-2">
-        <h1 className="text-2xl font-bold">Article not found</h1>
-        <Link to={`/club/${slug}`} className="text-primary hover:underline">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-paper px-5 text-center">
+        <h1 className="text-headline text-ink-strong">Article not found</h1>
+        <Link
+          to={`/club/${slug}`}
+          className="text-body text-primary hover:underline"
+        >
           Back to home
         </Link>
       </div>
@@ -34,26 +37,31 @@ export default function PublicNewsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <article className="mx-auto max-w-2xl px-4 py-12">
+    <div className="min-h-screen bg-paper text-ink">
+      <article className="mx-auto max-w-[680px] px-5 py-12">
         <Link
           to={`/club/${slug}`}
-          className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
+          className="inline-flex items-center gap-1.5 mb-6 text-body text-ink-soft hover:text-ink"
         >
-          <ArrowLeft className="h-4 w-4" /> {article.orgName}
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          {article.orgName}
         </Link>
         {article.coverImageUrl && (
           <img
             src={article.coverImageUrl}
             alt=""
-            className="mb-6 w-full rounded-lg object-cover"
+            className="mb-7 w-full rounded-md border border-hairline object-cover"
           />
         )}
-        <h1 className="text-3xl font-bold">{article.title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {formatDate(article.publishedAt)}
-        </p>
-        <div className="prose mt-6 max-w-none whitespace-pre-line">
+        <h1 className="text-display text-ink-strong">{article.title}</h1>
+        {article.publishedAt !== undefined && (
+          <p className="mt-2 text-body text-ink-quiet">
+            <time dateTime={new Date(article.publishedAt).toISOString()}>
+              {formatDate(article.publishedAt)}
+            </time>
+          </p>
+        )}
+        <div className="mt-7 max-w-prose whitespace-pre-line text-body text-ink leading-[1.625rem]">
           {article.body}
         </div>
       </article>

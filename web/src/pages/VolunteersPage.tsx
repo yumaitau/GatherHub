@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -65,11 +64,13 @@ export default function VolunteersPage() {
     downloadCsv("volunteers.csv", csv);
   }
 
+  const hasExpiring = expiring && expiring.length > 0;
+
   return (
     <div>
       <PageHeader
         title="Volunteers"
-        description="People who help your organisation run, and their certifications."
+        description="People who help run the club, and their certifications."
         actions={
           <>
             <Button
@@ -85,108 +86,124 @@ export default function VolunteersPage() {
         }
       />
 
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
-            Expiring &amp; expired certifications
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {expiring === undefined ? (
-            <LoadingState />
-          ) : expiring.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No certifications are expiring soon.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Certification</TableHead>
-                  <TableHead>Expiry</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expiring.map((c) => {
-                  const expired = isExpired(c.cert.expiryDate);
-                  return (
-                    <TableRow key={c.cert._id}>
-                      <TableCell className="font-medium">
-                        {c.member ? (
-                          `${c.member.firstName} ${c.member.lastName}`
-                        ) : (
-                          <span className="text-muted-foreground">Unknown</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{c.cert.name}</TableCell>
-                      <TableCell>
-                        <span
-                          className={
-                            expired ? "font-medium text-destructive" : undefined
-                          }
-                        >
+      {hasExpiring && (
+        <section
+          className="mb-6 rounded-md border border-hairline bg-surface overflow-hidden"
+          aria-label="Expiring and expired certifications"
+        >
+          <header className="flex items-center gap-2 px-4 py-2.5 border-b border-hairline bg-warning-wash/60">
+            <AlertTriangle
+              className="h-4 w-4 text-warning shrink-0"
+              aria-hidden="true"
+            />
+            <h2 className="text-title text-ink-strong">
+              Expiring &amp; expired certifications
+            </h2>
+            <span className="ml-auto text-caption text-ink-quiet">
+              <span data-numeric className="font-medium text-ink-soft">
+                {expiring.length}
+              </span>{" "}
+              flagged
+            </span>
+          </header>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Member</TableHead>
+                <TableHead>Certification</TableHead>
+                <TableHead>Expiry</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {expiring.map((c) => {
+                const expired = isExpired(c.cert.expiryDate);
+                return (
+                  <TableRow key={c.cert._id}>
+                    <TableCell className="font-semi text-ink">
+                      {c.member ? (
+                        `${c.member.firstName} ${c.member.lastName}`
+                      ) : (
+                        <span className="text-ink-quiet">Unknown</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-ink-soft">
+                      {c.cert.name}
+                    </TableCell>
+                    <TableCell>
+                      {expired ? (
+                        <Badge variant="destructive">
+                          {formatDate(c.cert.expiryDate)} · expired
+                        </Badge>
+                      ) : (
+                        <Badge variant="warning">
                           {formatDate(c.cert.expiryDate)}
-                          {expired ? " (expired)" : ""}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </section>
+      )}
 
-      {volunteers === undefined ? (
-        <LoadingState />
-      ) : volunteers.length === 0 ? (
-        <EmptyState
-          icon={HandHeart}
-          title="No volunteers yet"
-          description="Flag members as volunteers or add a certification to get started."
-          action={can("committee") ? <AddCertificationDialog /> : undefined}
-        />
-      ) : (
-        <div className="rounded-lg border">
+      <section className="rounded-md border border-hairline bg-surface overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-hairline">
+          <h2 className="text-title text-ink-strong">All volunteers</h2>
+          {volunteers && (
+            <span className="ml-auto text-caption text-ink-quiet">
+              <span data-numeric className="font-medium text-ink-soft">
+                {volunteers.length}
+              </span>{" "}
+              {volunteers.length === 1 ? "person" : "people"}
+            </span>
+          )}
+        </div>
+        {volunteers === undefined ? (
+          <LoadingState />
+        ) : volunteers.length === 0 ? (
+          <EmptyState
+            icon={HandHeart}
+            title="No volunteers yet"
+            description="Flag a member as a volunteer or record a certification to start tracking."
+            action={can("committee") ? <AddCertificationDialog /> : undefined}
+          />
+        ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Skills</TableHead>
-                <TableHead>Certifications</TableHead>
+                <TableHead numeric>Certifications</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {volunteers.map((v) => (
                 <TableRow key={v.member._id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-semi text-ink-strong">
                     {v.member.firstName} {v.member.lastName}
                   </TableCell>
                   <TableCell>
                     {(v.member.volunteerSkills ?? []).length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {(v.member.volunteerSkills ?? []).map((s) => (
-                          <Badge key={s} variant="secondary">
+                          <Badge key={s} variant="muted">
                             {s}
                           </Badge>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-ink-quiet">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {v.certifications.length}
-                  </TableCell>
+                  <TableCell numeric>{v.certifications.length}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
-      )}
+        )}
+      </section>
     </div>
   );
 }
@@ -252,81 +269,79 @@ function AddCertificationDialog() {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <form onSubmit={submit}>
-          <DialogHeader>
-            <DialogTitle>Add certification</DialogTitle>
-            <DialogDescription>
-              Record a certification for a volunteer.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Member</Label>
-              <Select value={memberId} onValueChange={setMemberId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a member…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {members === undefined ? (
-                    <SelectItem value="loading" disabled>
-                      Loading…
+        <DialogHeader>
+          <DialogTitle>Add certification</DialogTitle>
+          <DialogDescription>
+            Record a certification for a volunteer.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label>Member</Label>
+            <Select value={memberId} onValueChange={setMemberId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a member" />
+              </SelectTrigger>
+              <SelectContent>
+                {members === undefined ? (
+                  <SelectItem value="loading" disabled>
+                    Loading…
+                  </SelectItem>
+                ) : (
+                  members.map((m) => (
+                    <SelectItem key={m._id} value={m._id}>
+                      {m.firstName} {m.lastName}
                     </SelectItem>
-                  ) : (
-                    members.map((m) => (
-                      <SelectItem key={m._id} value={m._id}>
-                        {m.firstName} {m.lastName}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="cert-name">Name</Label>
-              <Input
-                id="cert-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Working With Children Check"
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="cert-issuer">Issuer</Label>
-              <Input
-                id="cert-issuer"
-                value={issuer}
-                onChange={(e) => setIssuer(e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="cert-issued">Issued</Label>
-                <Input
-                  id="cert-issued"
-                  type="date"
-                  value={issuedDate}
-                  onChange={(e) => setIssuedDate(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="cert-expiry">Expiry</Label>
-                <Input
-                  id="cert-expiry"
-                  type="date"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                />
-              </div>
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
-          <DialogFooter>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Add"}
-            </Button>
-          </DialogFooter>
+          <div className="grid gap-1.5">
+            <Label htmlFor="cert-name">Name</Label>
+            <Input
+              id="cert-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Working With Children Check"
+              required
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="cert-issuer">Issuer</Label>
+            <Input
+              id="cert-issuer"
+              value={issuer}
+              onChange={(e) => setIssuer(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="cert-issued">Issued</Label>
+              <Input
+                id="cert-issued"
+                type="date"
+                value={issuedDate}
+                onChange={(e) => setIssuedDate(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="cert-expiry">Expiry</Label>
+              <Input
+                id="cert-expiry"
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+              />
+            </div>
+          </div>
+          {error && <p className="text-caption text-danger">{error}</p>}
         </form>
+        <DialogFooter>
+          <Button type="submit" onClick={submit} disabled={saving}>
+            {saving ? "Saving…" : "Add"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

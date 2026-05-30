@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -33,8 +32,8 @@ export default function SponsorsPage() {
         title="Sponsors"
         description={
           totalValue !== undefined
-            ? `Total sponsorship value: ${formatCurrency(totalValue)}`
-            : "Your organisation's sponsors and partners."
+            ? `Sponsors and partners. Total value ${formatCurrency(totalValue)}.`
+            : "Sponsors and partners."
         }
         actions={can("committee") ? <NewSponsorDialog /> : undefined}
       />
@@ -49,38 +48,44 @@ export default function SponsorsPage() {
           action={can("committee") ? <NewSponsorDialog /> : undefined}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {sponsors.map((s) => (
-            <Link key={s._id} to={`/sponsors/${s._id}`}>
-              <Card className="h-full transition-colors hover:bg-accent/40">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    {s.logoUrl ? (
-                      <img
-                        src={s.logoUrl}
-                        alt={`${s.name} logo`}
-                        className="h-12 w-12 rounded object-contain"
-                      />
-                    ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded bg-muted">
-                        <Building2 className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                    )}
-                    <CardTitle>{s.name}</CardTitle>
+            <li key={s._id}>
+              <Link
+                to={`/sponsors/${s._id}`}
+                className="group/sponsor block rounded-md border border-hairline bg-surface transition-colors duration-fast ease-out hover:bg-surface-sunk/50 focus-visible:outline-none focus-visible:shadow-focus"
+              >
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  {s.logoUrl ? (
+                    <img
+                      src={s.logoUrl}
+                      alt=""
+                      className="h-10 w-10 rounded-xs object-contain bg-paper border border-hairline"
+                    />
+                  ) : (
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-xs bg-surface-sunk border border-hairline"
+                      aria-hidden="true"
+                    >
+                      <Building2 className="h-4 w-4 text-ink-quiet" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-body-strong text-ink-strong truncate group-hover/sponsor:text-primary">
+                      {s.name}
+                    </p>
+                    <p className="text-caption text-ink-quiet" data-numeric>
+                      {formatCurrency(s.sponsorshipValue)}
+                    </p>
                   </div>
-                </CardHeader>
-                <CardContent className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {formatCurrency(s.sponsorshipValue)}
-                  </span>
                   {s.visibleOnPublicSite && (
                     <Badge variant="success">Public</Badge>
                   )}
-                </CardContent>
-              </Card>
-            </Link>
+                </div>
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );
@@ -170,94 +175,92 @@ function NewSponsorDialog() {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <form onSubmit={submit}>
-          <DialogHeader>
-            <DialogTitle>New sponsor</DialogTitle>
-            <DialogDescription>
-              Add a sponsor or partner organisation.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="sp-name">Name</Label>
-              <Input
-                id="sp-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="sp-contact">Contact name</Label>
-                <Input
-                  id="sp-contact"
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="sp-email">Contact email</Label>
-                <Input
-                  id="sp-email"
-                  type="email"
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="sp-website">Website</Label>
-              <Input
-                id="sp-website"
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="sp-value">Sponsorship value (AUD)</Label>
-              <Input
-                id="sp-value"
-                type="number"
-                min="0"
-                value={sponsorshipValue}
-                onChange={(e) => setSponsorshipValue(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="sp-logo">Logo</Label>
-              <Input
-                id="sp-logo"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="sp-notes">Notes</Label>
-              <Textarea
-                id="sp-notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </div>
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={visibleOnPublicSite}
-                onChange={(e) => setVisibleOnPublicSite(e.target.checked)}
-                className="h-4 w-4"
-              />
-              Show on public site
-            </label>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogHeader>
+          <DialogTitle>New sponsor</DialogTitle>
+          <DialogDescription>
+            Add a sponsor or partner organisation.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="sp-name">Name</Label>
+            <Input
+              id="sp-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
           </div>
-          <DialogFooter>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Create sponsor"}
-            </Button>
-          </DialogFooter>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="sp-contact">Contact name</Label>
+              <Input
+                id="sp-contact"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="sp-email">Contact email</Label>
+              <Input
+                id="sp-email"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="sp-website">Website</Label>
+            <Input
+              id="sp-website"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="sp-value">Sponsorship value (AUD)</Label>
+            <Input
+              id="sp-value"
+              type="number"
+              min="0"
+              value={sponsorshipValue}
+              onChange={(e) => setSponsorshipValue(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="sp-logo">Logo</Label>
+            <Input
+              id="sp-logo"
+              type="file"
+              accept="image/*"
+              onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="sp-notes">Notes</Label>
+            <Textarea
+              id="sp-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-body text-ink-soft">
+            <input
+              type="checkbox"
+              checked={visibleOnPublicSite}
+              onChange={(e) => setVisibleOnPublicSite(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            Show on public site
+          </label>
+          {error && <p className="text-caption text-danger">{error}</p>}
         </form>
+        <DialogFooter>
+          <Button type="submit" onClick={submit} disabled={saving}>
+            {saving ? "Saving…" : "Create sponsor"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

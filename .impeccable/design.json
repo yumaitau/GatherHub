@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-30T00:00:00Z",
+  "title": "Design System: GatherHub",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(99% 0.003 250)",
+        "tonalRamp": [
+          "oklch(15% 0.010 250)",
+          "oklch(22% 0.014 250)",
+          "oklch(36% 0.016 250)",
+          "oklch(50% 0.014 250)",
+          "oklch(66% 0.012 250)",
+          "oklch(82% 0.010 250)",
+          "oklch(93% 0.008 250)",
+          "oklch(99% 0.003 250)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(22% 0.020 250)",
+        "tonalRamp": [
+          "oklch(10% 0.020 250)",
+          "oklch(14% 0.020 250)",
+          "oklch(22% 0.020 250)",
+          "oklch(36% 0.018 250)",
+          "oklch(48% 0.014 250)",
+          "oklch(66% 0.012 250)",
+          "oklch(82% 0.010 250)",
+          "oklch(93% 0.008 250)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Slate Ink",
+        "canonical": "oklch(38% 0.080 250)",
+        "tonalRamp": [
+          "oklch(18% 0.060 250)",
+          "oklch(24% 0.070 250)",
+          "oklch(30% 0.078 250)",
+          "oklch(38% 0.080 250)",
+          "oklch(50% 0.082 250)",
+          "oklch(64% 0.085 250)",
+          "oklch(80% 0.060 250)",
+          "oklch(94% 0.025 250)"
+        ]
+      },
+      "success": {
+        "role": "tertiary",
+        "displayName": "Quiet Green",
+        "canonical": "oklch(48% 0.100 155)",
+        "tonalRamp": [
+          "oklch(20% 0.060 155)",
+          "oklch(28% 0.080 155)",
+          "oklch(38% 0.095 155)",
+          "oklch(48% 0.100 155)",
+          "oklch(62% 0.100 155)",
+          "oklch(76% 0.080 155)",
+          "oklch(88% 0.050 155)",
+          "oklch(94% 0.040 155)"
+        ]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Ochre",
+        "canonical": "oklch(60% 0.130 70)",
+        "tonalRamp": [
+          "oklch(28% 0.080 70)",
+          "oklch(38% 0.110 70)",
+          "oklch(48% 0.130 70)",
+          "oklch(60% 0.130 70)",
+          "oklch(72% 0.130 70)",
+          "oklch(82% 0.110 70)",
+          "oklch(90% 0.080 75)",
+          "oklch(94% 0.060 75)"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Brick",
+        "canonical": "oklch(48% 0.160 25)",
+        "tonalRamp": [
+          "oklch(22% 0.090 25)",
+          "oklch(32% 0.130 25)",
+          "oklch(40% 0.150 25)",
+          "oklch(48% 0.160 25)",
+          "oklch(62% 0.155 25)",
+          "oklch(76% 0.120 25)",
+          "oklch(88% 0.070 25)",
+          "oklch(94% 0.050 25)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Section landing titles (Members, KitTrace). Never inline." },
+      "headline": { "displayName": "Headline", "purpose": "Subsection, dialog and drawer titles." },
+      "title": { "displayName": "Title", "purpose": "Card and panel titles, table titles inside a panel." },
+      "body": { "displayName": "Body", "purpose": "Default product UI body. Tables, forms, list items." },
+      "body-strong": { "displayName": "Body Strong", "purpose": "Inline emphasis, button labels, table primary-column values." },
+      "caption": { "displayName": "Caption", "purpose": "Metadata, timestamps, chip labels." },
+      "label": { "displayName": "Label", "purpose": "Form labels, table headers, sidebar dividers. Uppercase, tracked." },
+      "numeric": { "displayName": "Numeric", "purpose": "Any digit in a column, total, badge, or money field. Tabular." },
+      "mono": { "displayName": "Mono", "purpose": "Kit serials, QR data, audit IDs, code blocks." }
+    },
+    "shadows": [
+      { "name": "popover", "value": "0 1px 2px oklch(0% 0 0 / 0.04), 0 6px 16px oklch(0% 0 0 / 0.06)", "purpose": "Dropdown menus, tooltips, command palette, autocomplete." },
+      { "name": "dialog", "value": "0 2px 4px oklch(0% 0 0 / 0.05), 0 16px 32px oklch(0% 0 0 / 0.10)", "purpose": "Modal dialogs, confirmation prompts, drawers." },
+      { "name": "focus-ring", "value": "0 0 0 2px var(--paper), 0 0 0 4px oklch(38% 0.080 250 / 0.45)", "purpose": "The only lift on interactive elements. Replaces browser default focus." }
+    ],
+    "motion": [
+      { "name": "ease-out-quart", "value": "cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Default easing for state transitions (hover, focus, open, close)." },
+      { "name": "duration-fast", "value": "120ms", "purpose": "Hover, focus, tonal step changes." },
+      { "name": "duration-base", "value": "180ms", "purpose": "Popover open/close, sidebar collapse." },
+      { "name": "duration-slow", "value": "220ms", "purpose": "Dialog/drawer entrance; clamped to opacity when prefers-reduced-motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single principal action per surface. Slate Ink fill, paper ink text.",
+      "html": "<button class=\"ds-btn-primary\">Mark subs paid</button>",
+      "css": ".ds-btn-primary { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; border:0; border-radius:6px; background:oklch(38% 0.080 250); color:oklch(98% 0.003 250); font:550 0.875rem/1.375rem InterVariable, Inter, system-ui, sans-serif; letter-spacing:-0.003em; cursor:pointer; transition:background 120ms cubic-bezier(0.25,1,0.5,1); } .ds-btn-primary:hover { background:oklch(32% 0.085 250); } .ds-btn-primary:active { background:oklch(28% 0.085 250); } .ds-btn-primary:focus-visible { outline:none; box-shadow:0 0 0 2px oklch(99% 0.003 250), 0 0 0 4px oklch(38% 0.080 250 / 0.45); } .ds-btn-primary:disabled { background:oklch(88% 0.010 250); color:oklch(48% 0.014 250); cursor:not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The default for non-principal actions. Surface fill, hairline border.",
+      "html": "<button class=\"ds-btn-secondary\">Export CSV</button>",
+      "css": ".ds-btn-secondary { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; border:1px solid oklch(88% 0.010 250); border-radius:6px; background:oklch(98% 0.004 250); color:oklch(22% 0.020 250); font:550 0.875rem/1.375rem InterVariable, Inter, system-ui, sans-serif; letter-spacing:-0.003em; cursor:pointer; transition:background 120ms cubic-bezier(0.25,1,0.5,1), border-color 120ms cubic-bezier(0.25,1,0.5,1); } .ds-btn-secondary:hover { background:oklch(96.5% 0.006 250); border-color:oklch(80% 0.012 250); } .ds-btn-secondary:focus-visible { outline:none; box-shadow:0 0 0 2px oklch(99% 0.003 250), 0 0 0 4px oklch(38% 0.080 250 / 0.45); }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Default text field. Surface fill, hairline border. Focus lifts border to accent.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search members\" />",
+      "css": ".ds-input { display:block; width:100%; height:34px; padding:0 10px; border:1px solid oklch(93% 0.008 250); border-radius:6px; background:oklch(98% 0.004 250); color:oklch(22% 0.020 250); font:400 0.875rem/1.375rem InterVariable, Inter, system-ui, sans-serif; letter-spacing:-0.003em; transition:border-color 120ms cubic-bezier(0.25,1,0.5,1); } .ds-input::placeholder { color:oklch(48% 0.014 250); } .ds-input:hover { border-color:oklch(80% 0.012 250); } .ds-input:focus-visible { outline:none; border-color:oklch(38% 0.080 250); box-shadow:0 0 0 2px oklch(99% 0.003 250), 0 0 0 4px oklch(38% 0.080 250 / 0.45); }"
+    },
+    {
+      "name": "Sidebar Item",
+      "kind": "nav",
+      "refersTo": "sidebar",
+      "description": "One row in the left sidebar. Active state lifts to Paper tone, no left stripe.",
+      "html": "<a class=\"ds-nav-item ds-nav-item--active\" href=\"#\"><svg class=\"ds-nav-icon\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M2 6.5 8 2l6 4.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6.5Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linejoin=\"round\"/></svg><span class=\"ds-nav-label\">Members</span><span class=\"ds-nav-kbd\">M</span></a>",
+      "css": ".ds-nav-item { display:flex; align-items:center; gap:10px; height:30px; padding:0 10px; margin:1px 8px; border-radius:6px; color:oklch(36% 0.018 250); font:400 0.875rem/1.375rem InterVariable, Inter, system-ui, sans-serif; letter-spacing:-0.003em; text-decoration:none; transition:background 120ms cubic-bezier(0.25,1,0.5,1), color 120ms cubic-bezier(0.25,1,0.5,1); } .ds-nav-item:hover { background:oklch(98% 0.004 250); color:oklch(22% 0.020 250); } .ds-nav-item--active { background:oklch(99% 0.003 250); color:oklch(14% 0.020 250); font-weight:550; box-shadow:inset 0 0 0 1px oklch(93% 0.008 250); } .ds-nav-icon { width:16px; height:16px; flex:none; opacity:0.9; } .ds-nav-label { flex:1; } .ds-nav-kbd { font:600 0.6875rem/1rem InterVariable, Inter, system-ui, sans-serif; letter-spacing:0.04em; color:oklch(48% 0.014 250); padding:0 6px; height:18px; display:inline-flex; align-items:center; border:1px solid oklch(93% 0.008 250); border-radius:4px; background:oklch(98% 0.004 250); }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "chip-success",
+      "description": "Pill with leading status dot, icon-or-text, never colour-only signal. Variant shown: success.",
+      "html": "<span class=\"ds-chip ds-chip--success\"><span class=\"ds-chip-dot\" aria-hidden=\"true\"></span>Subs paid</span>",
+      "css": ".ds-chip { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 8px; border-radius:9999px; font:400 0.75rem/1.125rem InterVariable, Inter, system-ui, sans-serif; } .ds-chip-dot { width:6px; height:6px; border-radius:9999px; background:currentColor; } .ds-chip--success { background:oklch(94% 0.040 155); color:oklch(38% 0.095 155); } .ds-chip--warning { background:oklch(94% 0.060 75); color:oklch(48% 0.130 70); } .ds-chip--danger { background:oklch(94% 0.050 25); color:oklch(40% 0.150 25); } .ds-chip--accent { background:oklch(94% 0.025 250); color:oklch(30% 0.078 250); } .ds-chip--neutral { background:oklch(96.5% 0.006 250); color:oklch(36% 0.018 250); }"
+    },
+    {
+      "name": "Command Palette Trigger",
+      "kind": "input",
+      "refersTo": "command-palette",
+      "description": "Top-bar search trigger that opens the command palette. Reads as a quiet field with a trailing kbd hint.",
+      "html": "<button class=\"ds-cmd-trigger\" type=\"button\"><svg class=\"ds-cmd-icon\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"7\" r=\"4.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"m13.5 13.5-3-3\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\"/></svg><span class=\"ds-cmd-label\">Search or jump to</span><span class=\"ds-cmd-kbd\">⌘K</span></button>",
+      "css": ".ds-cmd-trigger { display:inline-flex; align-items:center; gap:10px; width:320px; height:32px; padding:0 8px 0 10px; border:1px solid oklch(93% 0.008 250); border-radius:6px; background:oklch(98% 0.004 250); color:oklch(48% 0.014 250); font:400 0.8125rem/1.125rem InterVariable, Inter, system-ui, sans-serif; cursor:text; transition:border-color 120ms cubic-bezier(0.25,1,0.5,1), background 120ms cubic-bezier(0.25,1,0.5,1); } .ds-cmd-trigger:hover { background:oklch(96.5% 0.006 250); border-color:oklch(80% 0.012 250); color:oklch(36% 0.018 250); } .ds-cmd-icon { width:14px; height:14px; flex:none; } .ds-cmd-label { flex:1; text-align:left; } .ds-cmd-kbd { font:600 0.6875rem/1rem InterVariable, Inter, system-ui, sans-serif; letter-spacing:0.04em; color:oklch(48% 0.014 250); padding:0 6px; height:18px; display:inline-flex; align-items:center; border:1px solid oklch(93% 0.008 250); border-radius:4px; background:oklch(99% 0.003 250); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Operator",
+    "overview": "GatherHub is a tool a tired volunteer treasurer opens at 9pm to answer a specific question and to log an honest action. The interface should disappear into the task. The Quiet Operator is the system disposition: the product never raises its voice, never celebrates routine work, never makes itself the centre of attention. Density is high but the weight is low. Decisions are made by typography, hairline borders, and disciplined whitespace, not by colour, shadow, or motion.\n\nThe palette is tinted-neutral paper with a single cool slate-blue ink accent, used sparingly. The type is a single well-tuned sans family (Inter Variable) carrying every role from label to display; numerics are tabular by default because committee work is list work. Surfaces are flat at rest; depth is conveyed by tonal layering, not shadows. Shadows appear only when something is genuinely lifted off the page (popover, dropdown, dialog) and never as decoration.",
+    "keyCharacteristics": [
+      "Restrained colour: tinted neutrals plus one cool accent, used on ≤10% of any screen.",
+      "Single-family typography (Inter Variable) at a tight 1.18 scale; numerics tabular by default.",
+      "Flat by default; tonal surface layering, not shadows, conveys structure.",
+      "Hairline borders (1px, low-chroma) carry the visual grid.",
+      "Light canonical, dark first-class; both checked at the token layer.",
+      "150–220ms ease-out-quart on state transitions; nothing else moves."
+    ],
+    "rules": [
+      { "name": "The 10% Accent Rule", "body": "Slate Ink covers no more than 10% of any rendered screen. Count it. If a primary button, the active sidebar item, and a selected row already exist on screen, a fourth use of the accent is wrong.", "section": "colors" },
+      { "name": "The No Saturation in Chrome Rule", "body": "Chrome (sidebar, top bar, table dividers, borders, cards) is tinted-neutral only. Saturation lives in content (status chips, accent buttons, audit markers).", "section": "colors" },
+      { "name": "The Status Carries Icon + Text Rule", "body": "Status colour is never the only signal. Every status chip has an icon and a text label; every status row has a textual state.", "section": "colors" },
+      { "name": "The One Family Rule", "body": "Inter Variable carries every role. The system has no display serif, no script accent, no second sans. If a second family is reached for, the answer is wrong weight, not wrong typeface.", "section": "typography" },
+      { "name": "The Tabular Numerics Rule", "body": "Any digit that appears in a column, total, badge count, money figure, or attendance count uses tabular numerals. Lining proportional digits are forbidden in committee data.", "section": "typography" },
+      { "name": "The Label Restraint Rule", "body": "The uppercase Label role appears only in form field labels, table headers, and sidebar section dividers. It is forbidden in body copy, button text, dialog headings, and decorative captions.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. Shadows exist only as a response to 'this thing is actually floating off the page': popover, dialog, focused control. Hover does not lift; hover changes tonal value.", "section": "elevation" },
+      { "name": "The Tonal-Before-Shadow Rule", "body": "When a region needs to read as distinct, the answer is a tonal step (Surface to Surface Sunk, or a hairline border), not a shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep slate-blue accent at or below 10% of any rendered screen. Count the uses before shipping a layout.",
+      "Do reach for tonal surface steps (Surface to Surface Sunk to Surface Raised) before reaching for a shadow.",
+      "Do carry hierarchy with weight contrast in a single family (400 / 550 / 600); never introduce a second typeface for emphasis.",
+      "Do render numbers with tabular figures and right-aligned columns in every table, money field, and count badge.",
+      "Do pair every status colour with an icon and a text label; colour is never the sole carrier of meaning.",
+      "Do treat empty states as teaching surfaces with one Secondary action, not 'nothing here' placeholders.",
+      "Do suppress browser default focus and apply the token Focus Ring on every interactive element, including custom controls.",
+      "Do respect prefers-reduced-motion: non-essential transitions disable; essential ones shorten to opacity-only at 100ms.",
+      "Do verify contrast at the token layer (Ink on Paper, Accent on Paper, Status on Wash) so theme changes cannot silently degrade WCAG 2.2 AA compliance."
+    ],
+    "donts": [
+      "Don't use the SaaS-indigo-to-pink gradient register, gradient text on a gradient background, or any decorative gradient.",
+      "Don't use glassmorphism (backdrop blur on translucent cards) as decoration. Backdrop blur is reserved for the command palette scrim.",
+      "Don't ship the hero-metric template (big number + small label + sparkline + percent-up arrow tile grid) as the dashboard home.",
+      "Don't ship identical icon-and-heading card grids. Differentiate by content, weight, and size.",
+      "Don't use border-left or border-right greater than 1px as a coloured stripe on cards, list items, or alerts.",
+      "Don't mimic Spond, TeamSnap, or Heja: no chat-thread-first IA, no consumer-y baby-blue palette, no kid-app illustration.",
+      "Don't drift into crypto / AI-startup neon: no black-with-neon, no animated gradient backgrounds, no hero glow.",
+      "Don't stack enterprise-admin chrome layers: no breadcrumb + tabs + accordion on the same surface.",
+      "Don't write marketing voice in product copy: no 'Supercharge your club', no 'Empower your committee', no exclamation marks.",
+      "Don't introduce a second type family for display. Inter Variable carries every role.",
+      "Don't nest cards. A card inside a card is always wrong.",
+      "Don't use colour as the sole status signal.",
+      "Don't decorate motion. Transitions exist to convey state, not to orchestrate."
+    ]
+  }
+}

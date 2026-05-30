@@ -71,7 +71,7 @@ export default function NewsAdminPage() {
         actions={can("committee") ? <NewsDialog mode="create" /> : undefined}
       />
 
-      {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
+      {error && <p className="mb-4 text-caption text-danger">{error}</p>}
 
       {news === undefined ? (
         <LoadingState />
@@ -83,7 +83,7 @@ export default function NewsAdminPage() {
           action={can("committee") ? <NewsDialog mode="create" /> : undefined}
         />
       ) : (
-        <div className="rounded-lg border">
+        <section className="rounded-md border border-hairline bg-surface overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -96,13 +96,13 @@ export default function NewsAdminPage() {
             <TableBody>
               {news.map((post) => (
                 <TableRow key={post._id}>
-                  <TableCell className="font-medium">{post.title}</TableCell>
+                  <TableCell className="font-semi text-ink-strong">{post.title}</TableCell>
                   <TableCell>
                     <Badge variant={post.published ? "success" : "muted"}>
                       {post.published ? "Published" : "Draft"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-ink-quiet">
                     {post.published ? formatDate(post.publishedAt) : "—"}
                   </TableCell>
                   {can("committee") && (
@@ -131,7 +131,7 @@ export default function NewsAdminPage() {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </section>
       )}
     </div>
   );
@@ -260,7 +260,7 @@ function NewsDialog(
               />
               Published
             </label>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-caption text-danger">{error}</p>}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={saving}>

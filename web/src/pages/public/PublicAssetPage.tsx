@@ -2,7 +2,6 @@ import { useQuery } from "convex/react";
 import { useParams } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
 import { Package, PackageX } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/shared";
 import { humanise } from "@/lib/utils";
@@ -10,56 +9,98 @@ import { humanise } from "@/lib/utils";
 /**
  * Public QR landing page. Shows ONLY safe, non-sensitive info so a finder can
  * return a lost item. No custodian, value, serial, or history is exposed.
+ *
+ * AAA-tier contrast and 44px+ touch targets per DESIGN.md commitment for
+ * public surfaces.
  */
 export default function PublicAssetPage() {
   const { tagId } = useParams<{ tagId: string }>();
   const data = useQuery(api.tags.lookupPublic, { tagId: tagId ?? "" });
 
   return (
-    <div className="min-h-screen bg-muted/30 px-4 py-16">
-      <div className="mx-auto max-w-md">
-        <div className="mb-6 flex items-center justify-center gap-2 font-bold text-xl">
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground">
-            G
+    <div className="min-h-screen bg-paper text-ink">
+      <header className="border-b border-hairline">
+        <div className="mx-auto flex max-w-md items-center gap-2 px-5 py-4">
+          <span
+            className="inline-flex h-7 w-7 items-center justify-center rounded-xs border border-hairline bg-surface text-caption font-strong text-ink-strong"
+            aria-hidden="true"
+          >
+            GH
           </span>
-          GatherHub
+          <span className="text-body-strong text-ink-strong tracking-[-0.012em]">
+            GatherHub
+          </span>
         </div>
+      </header>
 
+      <main className="mx-auto max-w-md px-5 py-12">
         {data === undefined ? (
-          <div className="flex justify-center py-10">
+          <div className="flex justify-center py-16">
             <Spinner />
           </div>
         ) : !data.found ? (
-          <Card>
-            <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-              <PackageX className="h-10 w-10 text-muted-foreground" />
-              <h1 className="text-lg font-semibold">Tag not recognised</h1>
-              <p className="text-sm text-muted-foreground">
-                This tag isn't registered, or it has been deactivated.
-              </p>
-            </CardContent>
-          </Card>
+          <section className="rounded-md border border-hairline bg-surface px-6 py-12 text-center">
+            <PackageX
+              className="mx-auto mb-3 h-8 w-8 text-ink-quiet"
+              aria-hidden="true"
+            />
+            <h1 className="text-headline text-ink-strong">
+              Tag not recognised
+            </h1>
+            <p className="mt-2 text-body text-ink-soft max-w-prose mx-auto">
+              This tag is not registered, or it has been deactivated.
+            </p>
+          </section>
         ) : (
-          <Card>
-            <CardContent className="space-y-4 py-8 text-center">
-              <Package className="mx-auto h-10 w-10 text-primary" />
-              <div>
-                <h1 className="text-xl font-semibold">{data.assetName}</h1>
-                <p className="text-sm text-muted-foreground">
+          <section
+            className="rounded-md border border-hairline bg-surface"
+            aria-labelledby="asset-title"
+          >
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-hairline">
+              <span
+                className="inline-flex h-10 w-10 items-center justify-center rounded-sm bg-primary-wash"
+                aria-hidden="true"
+              >
+                <Package className="h-5 w-5 text-primary" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h1
+                  id="asset-title"
+                  className="text-headline text-ink-strong truncate"
+                >
+                  {data.assetName}
+                </h1>
+                <p className="text-body text-ink-soft truncate">
                   Belongs to {data.orgName}
                 </p>
               </div>
-              <div className="flex justify-center gap-2">
-                <Badge variant="secondary">{humanise(data.category)}</Badge>
-                <Badge variant="outline">{humanise(data.status)}</Badge>
-              </div>
-              <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+            </div>
+
+            <div className="px-5 py-4 flex flex-wrap items-center gap-2 border-b border-hairline">
+              <Badge variant="muted">{humanise(data.category)}</Badge>
+              <Badge variant="outline">{humanise(data.status)}</Badge>
+            </div>
+
+            <div
+              className="px-5 py-5 text-body text-ink"
+              role="region"
+              aria-label="Return instructions"
+            >
+              <p className="text-label text-ink-quiet mb-1.5">
+                If found
+              </p>
+              <p className="whitespace-pre-wrap leading-[1.5rem] max-w-prose">
                 {data.message}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         )}
-      </div>
+
+        <p className="mt-6 text-center text-caption text-ink-quiet">
+          GatherHub does not store personal data on the tag itself. This page
+          shows only what the club has chosen to publish.
+        </p>
+      </main>
     </div>
   );
 }

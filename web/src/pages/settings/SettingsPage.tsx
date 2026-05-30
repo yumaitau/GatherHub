@@ -141,8 +141,8 @@ function SendInviteCard() {
             {busy ? "Sending…" : "Send invite"}
           </Button>
         </form>
-        {message && <p className="mt-3 text-sm text-emerald-600">{message}</p>}
-        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+        {message && <p className="mt-3 text-sm text-success">{message}</p>}
+        {error && <p className="mt-3 text-caption text-danger">{error}</p>}
       </CardContent>
     </Card>
   );
@@ -284,7 +284,7 @@ function RolesTab() {
         <CardTitle>Members & roles</CardTitle>
       </CardHeader>
       <CardContent>
-        {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
+        {error && <p className="mb-3 text-caption text-danger">{error}</p>}
         <Table>
           <TableHeader>
             <TableRow>
@@ -465,10 +465,10 @@ function PublicSiteTab() {
             />
           </div>
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && <p className="text-caption text-danger">{error}</p>}
         <div className="flex items-center gap-3">
           <Button onClick={save}>Save settings</Button>
-          {saved && <span className="text-sm text-emerald-600">Saved ✓</span>}
+          {saved && <span className="text-sm text-success">Saved ✓</span>}
         </div>
       </CardContent>
     </Card>

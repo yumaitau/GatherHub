@@ -5,7 +5,6 @@ import { api } from "../../../convex/_generated/api";
 import { ScanLine, Camera, CameraOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared";
 
 /** Extract an opaque `tag_…` id from a scanned URL, deep link, or bare id. */
@@ -27,7 +26,7 @@ export default function ScanPage() {
     async (value: string) => {
       const tagId = extractTagId(value);
       if (!tagId) {
-        setError("That doesn't look like a GatherHub tag.");
+        setError("That does not look like a GatherHub tag.");
         return;
       }
       setError(null);
@@ -51,13 +50,12 @@ export default function ScanPage() {
 
   async function startCamera() {
     setError(null);
-    // BarcodeDetector is available in Chromium browsers; degrade gracefully.
     const Detector = (
       window as unknown as { BarcodeDetector?: new (o: object) => unknown }
     ).BarcodeDetector;
     if (!Detector) {
       setError(
-        "Live camera scanning isn't supported in this browser. Paste the link or tag id below, or use the iOS app.",
+        "Live camera scanning is not supported in this browser. Paste the link or tag id below, or use the iOS app.",
       );
       return;
     }
@@ -99,17 +97,19 @@ export default function ScanPage() {
     <div>
       <PageHeader
         title="Scan asset"
-        description="Scan a KitTrace QR code or enter a tag id to jump to an asset."
+        description="Scan a KitTrace QR code or paste a tag id to jump to an asset."
       />
-      <div className="mx-auto max-w-md space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Camera className="h-4 w-4" /> Camera
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
+      <div className="mx-auto max-w-md space-y-5">
+        <section className="rounded-md border border-hairline bg-surface overflow-hidden">
+          <header className="flex items-center gap-2 px-5 py-3 border-b border-hairline">
+            <Camera
+              className="h-4 w-4 text-ink-quiet"
+              aria-hidden="true"
+            />
+            <h2 className="text-title text-ink-strong">Camera</h2>
+          </header>
+          <div className="p-5 space-y-3">
+            <div className="aspect-square overflow-hidden rounded-sm border border-hairline bg-surface-sunk">
               {scanning ? (
                 <video
                   ref={videoRef}
@@ -118,8 +118,11 @@ export default function ScanPage() {
                   playsInline
                 />
               ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  <ScanLine className="h-10 w-10" />
+                <div
+                  className="flex h-full items-center justify-center text-ink-quiet"
+                  aria-hidden="true"
+                >
+                  <ScanLine className="h-8 w-8" />
                 </div>
               )}
             </div>
@@ -132,14 +135,17 @@ export default function ScanPage() {
                 <Camera className="h-4 w-4" /> Start camera
               </Button>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Enter manually</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <section className="rounded-md border border-hairline bg-surface overflow-hidden">
+          <header className="px-5 py-3 border-b border-hairline">
+            <h2 className="text-title text-ink-strong">Enter manually</h2>
+            <p className="text-caption text-ink-quiet mt-0.5">
+              Paste a scanned link or the tag id directly.
+            </p>
+          </header>
+          <div className="p-5 space-y-3">
             <Input
               placeholder="Paste link or tag_… id"
               value={raw}
@@ -147,6 +153,7 @@ export default function ScanPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") resolve(raw);
               }}
+              className="font-mono"
             />
             <Button
               className="w-full"
@@ -155,11 +162,16 @@ export default function ScanPage() {
             >
               Look up
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
         {error && (
-          <p className="text-center text-sm text-destructive">{error}</p>
+          <p
+            role="alert"
+            className="text-center text-body text-danger"
+          >
+            {error}
+          </p>
         )}
       </div>
     </div>

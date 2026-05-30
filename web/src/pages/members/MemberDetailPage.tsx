@@ -323,8 +323,8 @@ function ProfileTab({
               </div>
             </>
           )}
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {saved && <p className="text-sm text-emerald-600">Saved.</p>}
+          {error && <p className="text-caption text-danger">{error}</p>}
+          {saved && <p className="text-caption text-success">Saved.</p>}
           {canEdit && (
             <div>
               <Button type="submit" disabled={saving}>
@@ -555,8 +555,8 @@ function MedicalTab({
             className="min-h-[140px]"
             placeholder="Allergies, conditions, medication…"
           />
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {saved && <p className="text-sm text-emerald-600">Saved.</p>}
+          {error && <p className="text-caption text-danger">{error}</p>}
+          {saved && <p className="text-caption text-success">Saved.</p>}
           {canEdit && (
             <div>
               <Button type="submit" disabled={saving}>
@@ -734,7 +734,7 @@ function AddGuardianDialog({ memberId }: { memberId: Id<"members"> }) {
                 placeholder="e.g. Mother"
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-caption text-danger">{error}</p>}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={saving}>
@@ -844,7 +844,7 @@ function AddEmergencyContactDialog({ memberId }: { memberId: Id<"members"> }) {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-caption text-danger">{error}</p>}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={saving}>
@@ -956,7 +956,7 @@ function AddCertDialog({ memberId }: { memberId: Id<"members"> }) {
                 />
               </div>
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-caption text-danger">{error}</p>}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={saving}>

@@ -2,7 +2,7 @@ import * as React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
-import { Plus, Package, ScanLine, Download } from "lucide-react";
+import { Plus, Package, ScanLine, Download, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,7 +114,7 @@ export default function AssetsPage() {
     <div>
       <PageHeader
         title="KitTrace"
-        description="Track every piece of kit and equipment."
+        description="Every piece of kit, who has it, and where it has been."
         actions={
           <>
             <Button variant="outline" asChild>
@@ -130,52 +130,66 @@ export default function AssetsPage() {
         }
       />
 
-      <div className="mb-4 flex flex-wrap gap-3">
-        <Input
-          placeholder="Search name, serial, tag…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs"
-        />
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {humanise(s)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {CATEGORIES.map((c) => (
-              <SelectItem key={c} value={c}>
-                {humanise(c)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <section className="rounded-md border border-hairline bg-surface overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-hairline">
+          <div className="relative w-full max-w-xs">
+            <Search
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-quiet pointer-events-none"
+              aria-hidden="true"
+            />
+            <Input
+              placeholder="Search name, serial, tag"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {humanise(s)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {humanise(c)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {assets && (
+            <span className="ml-auto text-caption text-ink-quiet">
+              <span data-numeric className="font-medium text-ink-soft">
+                {assets.length}
+              </span>{" "}
+              {assets.length === 1 ? "asset" : "assets"}
+            </span>
+          )}
+        </div>
 
-      {assets === undefined ? (
-        <LoadingState />
-      ) : assets.length === 0 ? (
-        <EmptyState
-          icon={Package}
-          title="No assets yet"
-          description="Add your first piece of kit to start tracking it with QR codes."
-          action={canManage ? <CreateAssetDialog /> : undefined}
-        />
-      ) : (
-        <div className="rounded-lg border bg-background">
+        {assets === undefined ? (
+          <LoadingState />
+        ) : assets.length === 0 ? (
+          <EmptyState
+            icon={Package}
+            title="No assets yet"
+            description="Add your first piece of kit to start tracking it with QR codes."
+            action={canManage ? <CreateAssetDialog /> : undefined}
+          />
+        ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -184,32 +198,41 @@ export default function AssetsPage() {
                 <TableHead>Status</TableHead>
                 <TableHead>Custodian</TableHead>
                 <TableHead>Location</TableHead>
-                <TableHead className="text-right">Value</TableHead>
+                <TableHead numeric>Value</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {assets.map((a) => (
-                <TableRow key={a._id} className="cursor-pointer">
-                  <TableCell className="font-medium">
-                    <Link to={`/assets/${a._id}`} className="hover:underline">
+                <TableRow key={a._id}>
+                  <TableCell>
+                    <Link
+                      to={`/assets/${a._id}`}
+                      className="font-semi text-ink-strong hover:text-primary"
+                    >
                       {a.name}
                     </Link>
                   </TableCell>
-                  <TableCell>{humanise(a.category)}</TableCell>
+                  <TableCell className="text-ink-soft">
+                    {humanise(a.category)}
+                  </TableCell>
                   <TableCell>
                     <AssetStatusBadge status={a.status} />
                   </TableCell>
-                  <TableCell>{a.custodianName ?? "—"}</TableCell>
-                  <TableCell>{a.location ?? "—"}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-ink-soft">
+                    {a.custodianName ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-ink-soft">
+                    {a.location ?? "—"}
+                  </TableCell>
+                  <TableCell numeric>
                     {formatCurrency(a.replacementValue)}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
-      )}
+        )}
+      </section>
     </div>
   );
 }
@@ -260,8 +283,8 @@ function CreateAssetDialog() {
         <DialogHeader>
           <DialogTitle>Add asset</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <div>
+        <div className="grid gap-3">
+          <div className="grid gap-1.5">
             <Label htmlFor="a-name">Name</Label>
             <Input
               id="a-name"
@@ -269,7 +292,7 @@ function CreateAssetDialog() {
               onChange={(e) => setName(e.target.value)}
             />
           </div>
-          <div>
+          <div className="grid gap-1.5">
             <Label>Category</Label>
             <Select
               value={category}
@@ -290,7 +313,7 @@ function CreateAssetDialog() {
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="grid gap-1.5">
               <Label htmlFor="a-value">Replacement value (AUD)</Label>
               <Input
                 id="a-value"
@@ -299,16 +322,17 @@ function CreateAssetDialog() {
                 onChange={(e) => setValue(e.target.value)}
               />
             </div>
-            <div>
+            <div className="grid gap-1.5">
               <Label htmlFor="a-serial">Serial number</Label>
               <Input
                 id="a-serial"
                 value={serial}
                 onChange={(e) => setSerial(e.target.value)}
+                className="font-mono tracking-[0.02em]"
               />
             </div>
           </div>
-          <div>
+          <div className="grid gap-1.5">
             <Label htmlFor="a-loc">Location</Label>
             <Input
               id="a-loc"
@@ -316,7 +340,7 @@ function CreateAssetDialog() {
               onChange={(e) => setLocation(e.target.value)}
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-caption text-danger">{error}</p>}
         </div>
         <DialogFooter>
           <DialogClose asChild>
