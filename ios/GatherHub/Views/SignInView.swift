@@ -9,6 +9,7 @@ import Clerk
 /// Clerk handles password / email-code / OAuth / MFA / passkey, so we
 /// don't duplicate any of that here.
 struct SignInView: View {
+    @Environment(Clerk.self) private var clerk
     @EnvironmentObject private var auth: AuthService
     @State private var isPresentingAuth = false
 
@@ -78,10 +79,12 @@ struct SignInView: View {
                 AuthView(mode: .signInOrUp, isDismissable: true)
             }
         }
-        // If the observation loop flips us to signed-in while the sheet
-        // is still up, close it explicitly so the user lands on the app.
-        .onChange(of: auth.state) { _, new in
-            if new == .signedIn { isPresentingAuth = false }
+        // Clerk drives the transition: once `clerk.user` is non-nil the
+        // RootView swaps screens and this sheet is torn down with the
+        // view. We also close the sheet explicitly so the dismissal feels
+        // immediate rather than waiting on the parent.
+        .onChange(of: clerk.user?.id) { _, new in
+            if new != nil { isPresentingAuth = false }
         }
     }
 }

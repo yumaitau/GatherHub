@@ -1,13 +1,18 @@
 import SwiftUI
+import Clerk
 
-/// Top-level view that switches between sign-in and the main app based on the
-/// Clerk session, and (once signed in) syncs the Convex context.
+/// Top-level auth gate.
+///
+/// Mirrors the RangerOS-iOS pattern: the SwiftUI environment holds the
+/// shared `Clerk` instance (an `@Observable`), and the view body branches
+/// on `clerk.user` directly. Clerk drives the sign-in / sign-out
+/// transitions; AuthService and ConvexService run their org-context sync
+/// in response. No manual refresh-on-dismiss is needed.
 struct RootView: View {
+    @Environment(Clerk.self) private var clerk
     @EnvironmentObject private var auth: AuthService
     @EnvironmentObject private var convex: ConvexService
 
-    /// Result of `sync:currentContext`, loaded after sign-in. `nil` while
-    /// loading or when there is no active org / not yet synced.
     @State private var context: CurrentContext?
     @State private var isSyncing = false
     @State private var loadError: String?
@@ -16,30 +21,35 @@ struct RootView: View {
         Group {
             if !Secrets.isConfigured {
                 notConfigured
+            } else if !clerk.isLoaded {
+                ProgressView("Loading…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.gh.paper.ignoresSafeArea())
+            } else if clerk.user == nil {
+                SignInView()
             } else {
-                switch auth.state {
-                case .loading:
-                    ProgressView("Loading…")
-                case .signedOut:
-                    SignInView()
-                case .signedIn:
-                    signedInContent
-                }
+                signedInContent
             }
         }
-        .animation(.default, value: auth.state)
+        // Re-run the org-context sync whenever the Clerk user identity
+        // changes (sign-in, sign-out, account switch).
+        .task(id: clerk.user?.id) {
+            if clerk.user != nil {
+                await sync()
+            } else {
+                context = nil
+                loadError = nil
+            }
+        }
     }
-
-    // MARK: - Signed-in routing
 
     @ViewBuilder
     private var signedInContent: some View {
         if isSyncing && context == nil {
             ProgressView("Syncing your club…")
-                .task { await sync() }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.gh.paper.ignoresSafeArea())
         } else if let context {
-            // If the user belongs to multiple orgs and none is active yet, let
-            // them choose; otherwise drop straight into the app.
             if auth.activeOrgId == nil && auth.organizations.count > 1 {
                 OrgPickerView()
             } else {
@@ -56,10 +66,6 @@ struct RootView: View {
         }
     }
 
-    // MARK: - Sync
-
-    /// On sign-in, upsert via `sync:ensureFromClient` then load
-    /// `sync:currentContext`. Mirrors the web app's load behaviour.
     private func sync() async {
         isSyncing = true
         loadError = nil
@@ -72,8 +78,6 @@ struct RootView: View {
             loadError = error.localizedDescription
         }
     }
-
-    // MARK: - Not configured
 
     private var notConfigured: some View {
         EmptyStateView(
