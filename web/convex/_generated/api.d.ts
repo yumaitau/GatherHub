@@ -21,7 +21,6 @@ import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_ids from "../lib/ids.js";
 import type * as members from "../members.js";
-import type * as migrations_belwest from "../migrations/belwest.js";
 import type * as news from "../news.js";
 import type * as organizations from "../organizations.js";
 import type * as publicSite from "../publicSite.js";
@@ -55,7 +54,6 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/ids": typeof lib_ids;
   members: typeof members;
-  "migrations/belwest": typeof migrations_belwest;
   news: typeof news;
   organizations: typeof organizations;
   publicSite: typeof publicSite;
