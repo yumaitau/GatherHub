@@ -50,7 +50,6 @@ struct GatherHubApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(Clerk.shared)
                 .environmentObject(auth)
                 .environmentObject(convex)
                 // Handle gatherhub://asset/tag_xxx deep links.

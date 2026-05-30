@@ -9,7 +9,12 @@ import Clerk
 /// transitions; AuthService and ConvexService run their org-context sync
 /// in response. No manual refresh-on-dismiss is needed.
 struct RootView: View {
-    @Environment(Clerk.self) private var clerk
+    // Hold the shared Clerk instance as @State so SwiftUI tracks its
+    // @Observable properties (isLoaded, client, session.user) and rebuilds
+    // the body when sign-in / sign-out completes. The `\.clerk`
+    // environment key the Clerk SDK reads internally already defaults to
+    // Clerk.shared, so injecting via .environment is not required.
+    @State private var clerk = Clerk.shared
     @EnvironmentObject private var auth: AuthService
     @EnvironmentObject private var convex: ConvexService
 
@@ -25,8 +30,13 @@ struct RootView: View {
                 ProgressView("Loading…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.gh.paper.ignoresSafeArea())
+                    .task {
+                        // Drive load() from the same view that consumes
+                        // isLoaded so the transition is observed.
+                        try? await clerk.load()
+                    }
             } else if clerk.user == nil {
-                SignInView()
+                SignInView(clerk: clerk)
             } else {
                 signedInContent
             }
