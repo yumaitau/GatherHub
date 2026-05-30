@@ -46,3 +46,16 @@ ios/**/*.xcuserstate
 ios/**/xcuserdata/
 ios/Pods/
 *.xcworkspace/xcuserdata/
+ios/**/*.xcuserstate
+ios/**/.swiftpm/
+ios/**/xcshareddata/IDETemplateMacros.plist
+# Per-developer signing — team id + bundle id are personal, never share.
+ios/Config/Signing.xcconfig
+# CocoaPods + Carthage if ever used
+ios/Pods/
+ios/Carthage/Build/
+# Fastlane scratch
+ios/fastlane/report.xml
+ios/fastlane/Preview.html
+ios/fastlane/screenshots/
+ios/fastlane/test_output/

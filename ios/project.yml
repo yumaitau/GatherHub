@@ -59,6 +59,13 @@ targets:
         INFOPLIST_FILE: GatherHub/Info.plist
         CODE_SIGN_ENTITLEMENTS: GatherHub/GatherHub.entitlements
         CODE_SIGN_STYLE: Automatic
+        # DEVELOPMENT_TEAM is intentionally empty so xcodegen does NOT
+        # inject the local developer's Xcode default team id into the
+        # checked-in project. Each developer sets their team in
+        # ios/Config/Signing.xcconfig (gitignored — copy from
+        # Signing.xcconfig.example) or in Xcode's Signing & Capabilities
+        # tab. See ios/README.md.
+        DEVELOPMENT_TEAM: ""
         ENABLE_PREVIEWS: YES
     # NOTE: We ship an explicit, hand-authored Info.plist (GatherHub/Info.plist,
     # referenced by INFOPLIST_FILE above) rather than letting XcodeGen generate

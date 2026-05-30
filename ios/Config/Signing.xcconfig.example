@@ -1,0 +1,14 @@
+// Per-developer signing settings.
+//
+// Copy this file to Signing.xcconfig (alongside it) and replace the
+// values with your own Apple Developer team id and a bundle id you own.
+// Signing.xcconfig is gitignored so each developer's local team and
+// bundle id never end up in version control.
+//
+//   cp ios/Config/Signing.xcconfig.example ios/Config/Signing.xcconfig
+//
+// Find your DEVELOPMENT_TEAM at https://developer.apple.com/account
+// → Membership.
+
+DEVELOPMENT_TEAM =
+PRODUCT_BUNDLE_IDENTIFIER = au.gatherhub.app
