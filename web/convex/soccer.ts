@@ -85,16 +85,20 @@ const DEFAULT_SKILLS: Array<{
   },
 ];
 
+// Bands mirror the Belwest grading system 1:1. Five divisions, banded
+// in 15-point increments from 85 down. The lowest band catches anything
+// not graded yet (default placement). Customise in Settings → Soccer.
 const DEFAULT_DIVISIONS: Array<{
   name: string;
   minGrade: number;
   maxGrade: number;
   color: string;
 }> = [
-  { name: "Division 1", minGrade: 75, maxGrade: 100, color: "#bf0000" },
-  { name: "Division 2", minGrade: 55, maxGrade: 74.99, color: "#d97706" },
-  { name: "Division 3", minGrade: 35, maxGrade: 54.99, color: "#0891b2" },
-  { name: "Division 4", minGrade: 0, maxGrade: 34.99, color: "#4b5563" },
+  { name: "Division 1", minGrade: 85, maxGrade: 100, color: "#bf0000" },
+  { name: "Division 2", minGrade: 70, maxGrade: 84.99, color: "#dc2626" },
+  { name: "Division 3", minGrade: 55, maxGrade: 69.99, color: "#ef4444" },
+  { name: "Division 4", minGrade: 40, maxGrade: 54.99, color: "#f87171" },
+  { name: "Division 5", minGrade: 0, maxGrade: 39.99, color: "#fca5a5" },
 ];
 
 async function ensureSkillDefaults(
@@ -142,6 +146,76 @@ async function ensureDivisionDefaults(
     });
   }
 }
+
+/**
+ * Insert any missing default skills / divisions for the active org.
+ * Existing rows (custom or already-seeded) are left untouched — this
+ * top-ups the catalogue without overwriting committee customisations.
+ * Admin+. Returns counts of what was added.
+ */
+export const restoreGradingDefaults = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const auth = await requireRole(ctx, "admin");
+    await assertSoccerMode(ctx, auth.org._id);
+
+    const existingSkills = await ctx.db
+      .query("soccerSkills")
+      .withIndex("by_org_order", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    const existingSkillNames = new Set(
+      existingSkills.map((s) => s.name.toLowerCase()),
+    );
+    const lastSkillOrder = existingSkills.reduce(
+      (m, r) => (r.order > m ? r.order : m),
+      -1,
+    );
+    let skillsAdded = 0;
+    let nextSkillOrder = lastSkillOrder + 1;
+    for (const s of DEFAULT_SKILLS) {
+      if (existingSkillNames.has(s.name.toLowerCase())) continue;
+      await ctx.db.insert("soccerSkills", {
+        orgId: auth.org._id,
+        name: s.name,
+        description: s.description,
+        maxScore: 10,
+        weight: s.weight,
+        order: nextSkillOrder++,
+        active: true,
+      });
+      skillsAdded++;
+    }
+
+    const existingDivisions = await ctx.db
+      .query("soccerDivisions")
+      .withIndex("by_org_order", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    const existingDivisionNames = new Set(
+      existingDivisions.map((d) => d.name.toLowerCase()),
+    );
+    const lastDivisionOrder = existingDivisions.reduce(
+      (m, r) => (r.order > m ? r.order : m),
+      -1,
+    );
+    let divisionsAdded = 0;
+    let nextDivisionOrder = lastDivisionOrder + 1;
+    for (const d of DEFAULT_DIVISIONS) {
+      if (existingDivisionNames.has(d.name.toLowerCase())) continue;
+      await ctx.db.insert("soccerDivisions", {
+        orgId: auth.org._id,
+        name: d.name,
+        minGrade: d.minGrade,
+        maxGrade: d.maxGrade,
+        color: d.color,
+        order: nextDivisionOrder++,
+        active: true,
+      });
+      divisionsAdded++;
+    }
+
+    return { skillsAdded, divisionsAdded };
+  },
+});
 
 // ---------- Skills (rubric) ----------------------------------------
 
@@ -952,5 +1026,113 @@ export const playerRoster = query({
         };
       }),
     );
+  },
+});
+
+/**
+ * Aggregate stats for the soccer-mode dashboard widgets. Ports the
+ * Belwest dashboard counts (registrations, payment, WWVP, grading
+ * progress) into a single round-trip.
+ */
+export const dashboardStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const auth = await requireOrgMember(ctx);
+    if (!auth.org.soccerMode) return null;
+
+    const activeMembers = await ctx.db
+      .query("members")
+      .withIndex("by_org_and_status", (q) =>
+        q.eq("orgId", auth.org._id).eq("status", "active"),
+      )
+      .collect();
+    const playerCount = activeMembers.length;
+
+    const registrations = await ctx.db
+      .query("soccerRegistrations")
+      .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    let registered = 0;
+    let paid = 0;
+    let onPaymentPlan = 0;
+    let expiredPaymentPlans = 0;
+    const todayIso = new Date().toISOString().slice(0, 10);
+    for (const r of registrations) {
+      if (r.registered) registered++;
+      if (r.paid) paid++;
+      if (r.paymentPlan) {
+        onPaymentPlan++;
+        if (r.paymentPlanEnd && r.paymentPlanEnd < todayIso) {
+          expiredPaymentPlans++;
+        }
+      }
+    }
+
+    let coachCount = 0;
+    let managerCount = 0;
+    for (const m of activeMembers) {
+      const role = (m.clubRole ?? "").toLowerCase();
+      if (role === "coach") coachCount++;
+      else if (role === "manager") managerCount++;
+    }
+
+    const wwvpRows = await ctx.db
+      .query("soccerWwvp")
+      .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    const wwvpByMember = new Map(wwvpRows.map((r) => [String(r.memberId), r]));
+    let wwvpApproved = 0;
+    let wwvpSighted = 0;
+    let wwvpPending = 0;
+    let wwvpNotProvided = 0;
+    for (const m of activeMembers) {
+      const role = (m.clubRole ?? "").toLowerCase();
+      if (role !== "coach" && role !== "manager") continue;
+      const w = wwvpByMember.get(String(m._id));
+      const status = w?.status ?? "not_provided";
+      if (status === "approved") wwvpApproved++;
+      else if (status === "sighted") wwvpSighted++;
+      else if (status === "pending") wwvpPending++;
+      else wwvpNotProvided++;
+    }
+
+    const skills = await ctx.db
+      .query("soccerSkills")
+      .withIndex("by_org_order", (q) => q.eq("orgId", auth.org._id))
+      .collect();
+    const activeSkillCount = skills.filter((s) => s.active).length;
+    let evaluatedFully = 0;
+    let evaluatedAny = 0;
+    for (const m of activeMembers) {
+      const evs = await ctx.db
+        .query("soccerEvaluations")
+        .withIndex("by_member", (q) => q.eq("memberId", m._id))
+        .collect();
+      if (evs.length === 0) continue;
+      evaluatedAny++;
+      if (activeSkillCount > 0 && evs.length >= activeSkillCount) {
+        evaluatedFully++;
+      }
+    }
+
+    const outstandingWwvp = wwvpPending + wwvpNotProvided;
+    return {
+      playerCount,
+      registered,
+      paid,
+      unpaid: playerCount - paid,
+      onPaymentPlan,
+      expiredPaymentPlans,
+      coachCount,
+      managerCount,
+      wwvpApproved,
+      wwvpSighted,
+      wwvpPending,
+      wwvpNotProvided,
+      outstandingWwvp,
+      evaluatedAny,
+      evaluatedFully,
+      activeSkillCount,
+    };
   },
 });

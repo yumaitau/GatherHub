@@ -1,7 +1,12 @@
 import * as React from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Gauge } from "lucide-react";
+import {
+  ArrowLeft,
+  Gauge,
+  Calculator,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -107,7 +112,31 @@ export default function GradingPage() {
       <PageHeader
         title={`Grading (${roster?.length ?? 0})`}
         description="Score each player on the active rubric. Overall grade auto-computes and matches a division band."
+        actions={
+          <Button variant="outline" asChild>
+            <Link to="/settings">
+              <SettingsIcon className="h-4 w-4" /> Customise rubric
+            </Link>
+          </Button>
+        }
       />
+      <section className="mb-4 flex items-start gap-3 rounded-md border border-hairline bg-primary-wash/40 px-4 py-3">
+        <Calculator
+          className="h-4 w-4 mt-0.5 text-primary shrink-0"
+          aria-hidden="true"
+        />
+        <p className="text-caption text-ink-soft max-w-prose">
+          Grade is a weighted average of skill scores —{" "}
+          <code className="text-mono text-ink-strong">
+            Σ(score ÷ max × weight × 100) ÷ Σ(weight of scored skills)
+          </code>
+          . Unscored skills are ignored. Rubric and division bands live in{" "}
+          <Link to="/settings" className="text-primary hover:underline">
+            Settings → Soccer
+          </Link>
+          .
+        </p>
+      </section>
       {roster === undefined ? (
         <LoadingState />
       ) : (

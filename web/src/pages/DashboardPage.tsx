@@ -19,6 +19,11 @@ import {
   Pencil,
   Plus,
   Sparkles,
+  ClipboardList,
+  CreditCard,
+  ShieldCheck,
+  Gauge,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 import { LoadingState } from "@/components/shared";
@@ -163,6 +168,8 @@ export default function DashboardPage() {
       </div>
 
       <PendingInvitesBlock />
+
+      {org?.soccerMode && <SoccerSummary />}
 
       <GlanceStrip stats={stats} />
     </div>
@@ -436,6 +443,169 @@ function PendingInvitesBlock() {
         ))}
       </ul>
     </section>
+  );
+}
+
+function SoccerSummary() {
+  const stats = useQuery(api.soccer.dashboardStats);
+  if (stats === undefined) return null;
+  if (stats === null) return null;
+
+  const registrationRate =
+    stats.playerCount > 0
+      ? Math.round((stats.registered / stats.playerCount) * 100)
+      : 0;
+  const paymentRate =
+    stats.playerCount > 0
+      ? Math.round((stats.paid / stats.playerCount) * 100)
+      : 0;
+  const gradingRate =
+    stats.playerCount > 0
+      ? Math.round((stats.evaluatedFully / stats.playerCount) * 100)
+      : 0;
+
+  return (
+    <section aria-label="Soccer club summary" className="mb-8">
+      <div className="flex items-center gap-3 mb-3">
+        <h2 className="text-label text-ink-quiet">Soccer club</h2>
+        <Separator className="flex-1" />
+        <Link
+          to="/soccer/registrations"
+          className="text-caption text-ink-soft hover:text-ink inline-flex items-center gap-1"
+        >
+          View registrations
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <SoccerCard
+          icon={ClipboardList}
+          tone="info"
+          label="Registered"
+          value={`${stats.registered} / ${stats.playerCount}`}
+          subline={`${registrationRate}% of active members`}
+          to="/soccer/registrations"
+          progress={registrationRate}
+        />
+        <SoccerCard
+          icon={CreditCard}
+          tone={stats.unpaid > 0 ? "warning" : "success"}
+          label="Paid in full"
+          value={`${stats.paid} / ${stats.playerCount}`}
+          subline={
+            stats.onPaymentPlan > 0
+              ? `${stats.onPaymentPlan} on payment plan${
+                  stats.expiredPaymentPlans > 0
+                    ? ` (${stats.expiredPaymentPlans} expired)`
+                    : ""
+                }`
+              : `${paymentRate}% of active members`
+          }
+          to="/soccer/registrations"
+          progress={paymentRate}
+        />
+        <SoccerCard
+          icon={ShieldCheck}
+          tone={stats.outstandingWwvp > 0 ? "danger" : "success"}
+          label="WWVP outstanding"
+          value={String(stats.outstandingWwvp)}
+          subline={`${stats.wwvpApproved} approved · ${stats.wwvpSighted} sighted · ${stats.wwvpPending} pending`}
+          to="/soccer/coaches-managers"
+        />
+        <SoccerCard
+          icon={UserCog}
+          tone="info"
+          label="Coaches & managers"
+          value={`${stats.coachCount + stats.managerCount}`}
+          subline={`${stats.coachCount} coach${stats.coachCount === 1 ? "" : "es"} · ${stats.managerCount} manager${stats.managerCount === 1 ? "" : "s"}`}
+          to="/soccer/coaches-managers"
+        />
+        <SoccerCard
+          icon={Gauge}
+          tone="info"
+          label="Players graded"
+          value={`${stats.evaluatedFully} / ${stats.playerCount}`}
+          subline={
+            stats.activeSkillCount > 0
+              ? `${stats.evaluatedAny} started, fully scored against ${stats.activeSkillCount} skill${stats.activeSkillCount === 1 ? "" : "s"}`
+              : "No active skills in rubric"
+          }
+          to="/soccer/grading"
+          progress={gradingRate}
+        />
+      </div>
+    </section>
+  );
+}
+
+function SoccerCard({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  subline,
+  to,
+  progress,
+}: {
+  icon: LucideIcon;
+  tone: "info" | "warning" | "danger" | "success";
+  label: string;
+  value: string;
+  subline: string;
+  to: string;
+  progress?: number;
+}) {
+  const ink =
+    tone === "danger"
+      ? "text-danger"
+      : tone === "warning"
+        ? "text-warning"
+        : tone === "success"
+          ? "text-success"
+          : "text-primary";
+  const barColor =
+    tone === "danger"
+      ? "bg-danger"
+      : tone === "warning"
+        ? "bg-warning"
+        : tone === "success"
+          ? "bg-success"
+          : "bg-primary";
+  return (
+    <Link
+      to={to}
+      className="group/sc block rounded-md border border-hairline bg-surface transition-colors duration-fast ease-out hover:border-border-strong focus-visible:outline-none focus-visible:shadow-focus"
+    >
+      <div className="px-5 py-4">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Icon className={`h-4 w-4 ${ink}`} aria-hidden="true" />
+          <p className="text-caption text-ink-soft uppercase tracking-[0.04em] font-semi">
+            {label}
+          </p>
+        </div>
+        <p
+          data-numeric
+          className={`text-display font-strong tracking-[-0.02em] ${ink}`}
+        >
+          {value}
+        </p>
+        <p className="text-caption text-ink-quiet mt-1">{subline}</p>
+        {progress !== undefined && (
+          <div
+            className="mt-2 h-1 w-full overflow-hidden rounded-xs bg-surface-sunk"
+            role="progressbar"
+            aria-valuenow={progress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className={`h-full ${barColor}`}
+              style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+            />
+          </div>
+        )}
+      </div>
+    </Link>
   );
 }
 

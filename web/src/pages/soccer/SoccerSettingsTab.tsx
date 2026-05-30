@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Plus } from "lucide-react";
+import { Plus, RotateCcw, Calculator } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -71,12 +71,93 @@ export function SoccerSettingsTab() {
 
       {org?.soccerMode && (
         <>
+          <GradingExplainer />
           <SkillRubricEditor />
           <DivisionEditor />
           <CompetitionEditor />
         </>
       )}
     </div>
+  );
+}
+
+function GradingExplainer() {
+  const restore = useMutation(api.soccer.restoreGradingDefaults);
+  const [busy, setBusy] = React.useState(false);
+  const [result, setResult] = React.useState<{
+    skillsAdded: number;
+    divisionsAdded: number;
+  } | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function onRestore() {
+    setError(null);
+    setResult(null);
+    setBusy(true);
+    try {
+      const r = await restore({});
+      setResult(r);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-md border border-hairline bg-primary-wash/40 overflow-hidden">
+      <header className="flex items-center gap-2 px-5 py-3 border-b border-hairline">
+        <Calculator
+          className="h-4 w-4 text-primary shrink-0"
+          aria-hidden="true"
+        />
+        <h2 className="text-title text-ink-strong">How grading works</h2>
+      </header>
+      <div className="px-5 py-4 grid gap-3 text-body text-ink">
+        <p className="max-w-prose">
+          Each player is scored against the rubric below. Their overall grade is
+          a weighted average: every scored skill contributes{" "}
+          <code className="text-mono text-ink-strong">
+            (score ÷ maxScore) × weight × 100
+          </code>
+          , summed and divided by the total weight of the skills that were
+          actually scored. Unrated skills don't drag the grade down — they're
+          excluded from both sides of the average.
+        </p>
+        <p className="max-w-prose text-ink-soft">
+          The resulting grade (0–100) is matched to a division using the bands
+          you configure. Bands may overlap; the first match in display order
+          wins.
+        </p>
+        <p className="text-caption text-ink-quiet max-w-prose">
+          Defaults mirror the Belwest grading system: seven skills (Ball
+          Handling, Passing, Shooting, Defense, Speed &amp; Agility, Physical
+          Strength, Game Intelligence) and five divisions in 15-point bands. You
+          can rename, reweight, deactivate, or add to any of these — your
+          customisations are never overwritten.
+        </p>
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Button
+            variant="outline"
+            onClick={onRestore}
+            disabled={busy}
+            title="Add any missing default skills or divisions. Existing customisations are kept."
+          >
+            <RotateCcw className="h-4 w-4" />
+            {busy ? "Restoring…" : "Restore default skills + divisions"}
+          </Button>
+          {result && (
+            <p className="text-caption text-ink-soft">
+              Added <span data-numeric>{result.skillsAdded}</span> skill
+              {result.skillsAdded === 1 ? "" : "s"} and{" "}
+              <span data-numeric>{result.divisionsAdded}</span> division
+              {result.divisionsAdded === 1 ? "" : "s"}.
+            </p>
+          )}
+          {error && <p className="text-caption text-danger">{error}</p>}
+        </div>
+      </div>
+    </section>
   );
 }
 
