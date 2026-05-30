@@ -353,18 +353,23 @@
   text-decoration: none;
 }
 .gh-calendar .fc .fc-col-header-cell-cushion {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: oklch(var(--ink-quiet));
+  color: oklch(var(--ink-soft));
   padding-block: 0.5rem;
 }
 .gh-calendar .fc .fc-timegrid-axis-cushion,
 .gh-calendar .fc .fc-timegrid-slot-label-cushion {
-  color: oklch(var(--ink-quiet));
+  color: oklch(var(--ink-soft));
   font-variant-numeric: tabular-nums;
   font-size: 0.75rem;
+  font-weight: 500;
+}
+.gh-calendar .fc .fc-daygrid-day-number {
+  font-weight: 500;
+  font-size: 0.875rem;
 }
 .gh-calendar .fc-theme-standard td,
 .gh-calendar .fc-theme-standard th,
@@ -373,6 +378,7 @@
 }
 .gh-calendar .fc .fc-day-other .fc-daygrid-day-number {
   color: oklch(var(--ink-quiet));
+  opacity: 0.7;
 }
 .gh-calendar .fc .fc-day-today {
   background-color: var(--fc-today-bg-color);
@@ -402,6 +408,17 @@
 .gh-calendar .fc .fc-event-title,
 .gh-calendar .fc .fc-event-time {
   color: oklch(var(--ink-strong));
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+.gh-calendar .fc .fc-event.fc-event-draggable {
+  cursor: grab;
+}
+.gh-calendar .fc .fc-event.fc-event-dragging,
+.gh-calendar .fc .fc-event.fc-event-mirror {
+  opacity: 0.85;
+  box-shadow: var(--shadow-popover);
+  cursor: grabbing;
 }
 .gh-calendar .fc .fc-daygrid-event-dot {
   border-color: oklch(var(--accent-base));

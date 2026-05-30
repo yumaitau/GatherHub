@@ -13,9 +13,13 @@ import type {
   EventContentArg,
 } from "@fullcalendar/core";
 import { useNavigate } from "react-router-dom";
+import { useMutation } from "convex/react";
+import type { EventDropArg } from "@fullcalendar/core";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 /**
  * Shared calendar surface for events. Lifted from RangerOS but stripped
@@ -86,15 +90,15 @@ function EventChip(arg: EventContentArg) {
     .filter(Boolean)
     .join(" · ");
   return (
-    <div className="min-w-0 px-1.5 py-0.5 leading-tight">
+    <div className="min-w-0 px-2 py-1 leading-snug">
       {arg.timeText && (
-        <div className="truncate text-[10px] font-semi opacity-80" data-numeric>
+        <div className="truncate text-[12px] font-semi opacity-90" data-numeric>
           {arg.timeText}
         </div>
       )}
-      <div className="truncate text-[12px] font-semi">{arg.event.title}</div>
+      <div className="truncate text-[14px] font-semi">{arg.event.title}</div>
       {subtitle && (
-        <div className="truncate text-[10px] opacity-80">{subtitle}</div>
+        <div className="truncate text-[12px] opacity-85">{subtitle}</div>
       )}
     </div>
   );
@@ -104,13 +108,16 @@ export function EventsCalendar({
   events,
   onDateClick,
   initialView = "dayGridMonth",
+  canEdit = false,
 }: {
   events: CalendarEventInput[];
   onDateClick?: (date: Date) => void;
   initialView?: CalendarViewName;
+  canEdit?: boolean;
 }) {
   const ref = React.useRef<FullCalendar | null>(null);
   const navigate = useNavigate();
+  const updateEvent = useMutation(api.events.update);
   const [title, setTitle] = React.useState("");
   const [activeView, setActiveView] =
     React.useState<CalendarViewName>(initialView);
@@ -164,6 +171,25 @@ export function EventsCalendar({
     onDateClick?.(arg.date);
   }
 
+  async function onEventDrop(arg: EventDropArg) {
+    if (!canEdit || !arg.event.start) {
+      arg.revert();
+      return;
+    }
+    const newStart = arg.event.start.getTime();
+    const newEnd = arg.event.end ? arg.event.end.getTime() : undefined;
+    try {
+      await updateEvent({
+        eventId: arg.event.id as Id<"events">,
+        startTime: newStart,
+        endTime: newEnd,
+      });
+    } catch (err) {
+      console.error("Reschedule failed", err);
+      arg.revert();
+    }
+  }
+
   return (
     <section className="rounded-md border border-hairline bg-surface overflow-hidden">
       <div className="flex flex-col gap-3 border-b border-hairline bg-surface-sunk/30 px-3 py-3 lg:flex-row lg:items-center lg:justify-between">
@@ -202,17 +228,29 @@ export function EventsCalendar({
             {title}
           </div>
         </div>
-        <div className="flex flex-wrap gap-1">
-          {(Object.keys(VIEW_LABELS) as CalendarViewName[]).map((v) => (
-            <Button
+        <div
+          className="inline-flex rounded-sm border border-hairline overflow-hidden"
+          role="group"
+          aria-label="Calendar range"
+        >
+          {(Object.keys(VIEW_LABELS) as CalendarViewName[]).map((v, idx) => (
+            <button
               key={v}
               type="button"
-              variant={activeView === v ? "default" : "outline"}
-              size="sm"
               onClick={() => changeView(v)}
+              aria-pressed={activeView === v}
+              className={cn(
+                "inline-flex items-center px-3 h-8 text-body",
+                "transition-colors duration-fast ease-out",
+                "focus-visible:outline-none focus-visible:shadow-focus",
+                idx > 0 && "border-l border-hairline",
+                activeView === v
+                  ? "bg-paper text-ink-strong font-semi"
+                  : "bg-surface-sunk text-ink hover:text-ink-strong",
+              )}
             >
               {VIEW_LABELS[v]}
-            </Button>
+            </button>
           ))}
         </div>
       </div>
@@ -236,6 +274,10 @@ export function EventsCalendar({
           eventClick={onEventClick}
           dateClick={onCalendarDateClick}
           datesSet={onDatesSet}
+          editable={canEdit}
+          eventStartEditable={canEdit}
+          eventDurationEditable={false}
+          eventDrop={onEventDrop}
           slotMinTime="06:00:00"
           slotMaxTime="22:00:00"
           timeZone="local"
