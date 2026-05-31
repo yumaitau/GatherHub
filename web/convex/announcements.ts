@@ -3,6 +3,8 @@ import { v } from "convex/values";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 
+const nullableTeamId = v.union(v.id("teams"), v.null());
+
 export const list = query({
   args: { teamId: v.optional(v.id("teams")) },
   handler: async (ctx, args) => {
@@ -53,17 +55,33 @@ export const create = mutation({
     body: v.string(),
     teamId: v.optional(v.id("teams")),
     pinned: v.optional(v.boolean()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Org-wide announcements require committee+, team announcements allow coaches.
     const auth = args.teamId
       ? await requireRole(ctx, "coach")
       : await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const announcementId = ctx.db.normalizeId(
+        "announcements",
+        replay.resultId,
+      );
+      if (!announcementId) {
+        throw new Error("Invalid announcement idempotency result.");
+      }
+      return announcementId;
+    }
+    if (replay) throw new Error("Missing announcement idempotency result.");
+    if (args.pinned) {
+      await requireRole(ctx, "committee");
+    }
     if (args.teamId) {
       const team = await ctx.db.get(args.teamId);
       assertSameOrg(auth, team);
     }
-    return await ctx.db.insert("announcements", {
+    const announcementId = await ctx.db.insert("announcements", {
       orgId: auth.org._id,
       title: args.title.trim(),
       body: args.body,
@@ -71,32 +89,109 @@ export const create = mutation({
       pinned: args.pinned ?? false,
       createdBy: auth.user._id,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "announcements:create",
+      String(announcementId),
+    );
+    return announcementId;
+  },
+});
+
+export const update = mutation({
+  args: {
+    announcementId: v.id("announcements"),
+    title: v.optional(v.string()),
+    body: v.optional(v.string()),
+    teamId: v.optional(nullableTeamId),
+    pinned: v.optional(v.boolean()),
+    clientMutationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireRole(ctx, "coach");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay) return;
+    const a = await ctx.db.get(args.announcementId);
+    assertSameOrg(auth, a);
+    if (!a) return;
+    if (a.teamId === undefined) {
+      await requireRole(ctx, "committee");
+    }
+    if (args.teamId === null) {
+      await requireRole(ctx, "committee");
+    } else if (args.teamId !== undefined) {
+      const team = await ctx.db.get(args.teamId);
+      assertSameOrg(auth, team);
+    }
+    if (args.pinned !== undefined) {
+      await requireRole(ctx, "committee");
+    }
+    await ctx.db.patch(args.announcementId, {
+      ...(args.title !== undefined ? { title: args.title.trim() } : {}),
+      ...(args.body !== undefined ? { body: args.body } : {}),
+      ...(args.teamId !== undefined
+        ? { teamId: args.teamId ?? undefined }
+        : {}),
+      ...(args.pinned !== undefined ? { pinned: args.pinned } : {}),
+    });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "announcements:update",
+      String(args.announcementId),
+    );
   },
 });
 
 export const setPinned = mutation({
-  args: { announcementId: v.id("announcements"), pinned: v.boolean() },
+  args: {
+    announcementId: v.id("announcements"),
+    pinned: v.boolean(),
+    clientMutationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const a = await ctx.db.get(args.announcementId);
     assertSameOrg(auth, a);
     await ctx.db.patch(args.announcementId, { pinned: args.pinned });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "announcements:setPinned",
+      String(args.announcementId),
+    );
   },
 });
 
 export const remove = mutation({
-  args: { announcementId: v.id("announcements") },
+  args: {
+    announcementId: v.id("announcements"),
+    clientMutationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     // Mirror `create`: org-wide announcements are a committee+ artefact, so
     // only committee+ can remove them. Team-scoped announcements remain
     // coach+. Prevents a coach in another team from nuking an
     // organisation-wide notice they had no role authoring.
     const auth = await requireOrgMember(ctx);
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const a = await ctx.db.get(args.announcementId);
     assertSameOrg(auth, a);
     const requires = a && a.teamId ? "coach" : "committee";
     await requireRole(ctx, requires);
     await ctx.db.delete(args.announcementId);
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "announcements:remove",
+      String(args.announcementId),
+    );
   },
 });
 

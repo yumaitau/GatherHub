@@ -139,9 +139,11 @@ export const transfer = mutation({
     toCustodianMemberId: v.id("members"),
     location: v.optional(v.string()),
     notes: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
     const newCustodian = await ctx.db.get(args.toCustodianMemberId);
     assertSameOrg(auth, newCustodian);
@@ -169,13 +171,24 @@ export const transfer = mutation({
       toLocation: location,
       notes: args.notes,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "assetOps:transfer",
+    );
   },
 });
 
 export const reportLost = mutation({
-  args: { assetId: v.id("assets"), notes: v.optional(v.string()) },
+  args: {
+    assetId: v.id("assets"),
+    notes: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
     await ctx.db.patch(args.assetId, { status: "lost" });
     await writeAudit(ctx, {
@@ -187,13 +200,24 @@ export const reportLost = mutation({
       toStatus: "lost",
       notes: args.notes,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "assetOps:reportLost",
+    );
   },
 });
 
 export const setMaintenance = mutation({
-  args: { assetId: v.id("assets"), notes: v.optional(v.string()) },
+  args: {
+    assetId: v.id("assets"),
+    notes: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
     await ctx.db.patch(args.assetId, {
       status: "maintenance",
@@ -208,13 +232,24 @@ export const setMaintenance = mutation({
       toStatus: "maintenance",
       notes: args.notes,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "assetOps:setMaintenance",
+    );
   },
 });
 
 export const retire = mutation({
-  args: { assetId: v.id("assets"), notes: v.optional(v.string()) },
+  args: {
+    assetId: v.id("assets"),
+    notes: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await ctx.db.get(args.assetId);
     assertSameOrg(auth, asset);
     if (!asset) throw new Error("Not found.");
@@ -231,6 +266,12 @@ export const retire = mutation({
       toStatus: "retired",
       notes: args.notes,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "assetOps:retire",
+    );
   },
 });
 

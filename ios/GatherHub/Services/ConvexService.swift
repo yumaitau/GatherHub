@@ -105,6 +105,14 @@ final class ConvexService: ObservableObject {
         try await once("taxonomies:list", with: ["kind": "asset_category"])
     }
 
+    func listAssetConditions() async throws -> [TaxonomyOption] {
+        try await once("taxonomies:list", with: ["kind": "asset_condition"])
+    }
+
+    func listEventTypes() async throws -> [TaxonomyOption] {
+        try await once("taxonomies:list", with: ["kind": "event_type"])
+    }
+
     /// `taxonomies:list` (query) — soccer team age-group options.
     func listTeamAgeGroups(includeInactive: Bool = false) async throws -> [TaxonomyOption] {
         try await once(
@@ -231,6 +239,50 @@ final class ConvexService: ObservableObject {
         )
     }
 
+    @discardableResult
+    func createEvent(
+        _ payload: EventMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args = eventArgs(from: payload)
+        args["type"] = payload.type
+        args["title"] = payload.title
+        args["startTime"] = payload.startTime
+        return try await performMutation(
+            "events:create",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func updateEvent(
+        eventId: String,
+        payload: EventMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args = eventArgs(from: payload, includeNulls: true)
+        args["eventId"] = eventId
+        args["type"] = payload.type
+        args["title"] = payload.title
+        args["startTime"] = payload.startTime
+        try await performMutation(
+            "events:update",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func removeEvent(
+        eventId: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "events:remove",
+            with: ["eventId": eventId],
+            clientMutationId: clientMutationId
+        )
+    }
+
     // MARK: - Members
 
     /// `members:list` (query). Optional `status` filter ("active" / "inactive").
@@ -287,6 +339,17 @@ final class ConvexService: ObservableObject {
         )
     }
 
+    func removeMember(
+        memberId: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "members:remove",
+            with: ["memberId": memberId],
+            clientMutationId: clientMutationId
+        )
+    }
+
     /// `teams:list` (query) — all teams in active org with roster counts.
     func listTeams(includeInactive: Bool = false) async throws -> [Team] {
         try await once("teams:list", with: ["includeInactive": includeInactive])
@@ -322,6 +385,17 @@ final class ConvexService: ObservableObject {
         )
     }
 
+    func removeTeam(
+        teamId: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "teams:remove",
+            with: ["teamId": teamId],
+            clientMutationId: clientMutationId
+        )
+    }
+
     /// `announcements:list` (query).
     func listAnnouncements() async throws -> [Announcement] {
         try await once("announcements:list", with: [:])
@@ -333,6 +407,50 @@ final class ConvexService: ObservableObject {
         try await performMutation(
             "announcements:markRead",
             with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    @discardableResult
+    func createAnnouncement(
+        _ payload: AnnouncementMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args = announcementArgs(from: payload)
+        args["title"] = payload.title
+        args["body"] = payload.body
+        args["pinned"] = payload.pinned
+        return try await performMutation(
+            "announcements:create",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func updateAnnouncement(
+        announcementId: String,
+        payload: AnnouncementMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args = announcementArgs(from: payload, includeNulls: true)
+        args["announcementId"] = announcementId
+        args["title"] = payload.title
+        args["body"] = payload.body
+        args["pinned"] = payload.pinned
+        try await performMutation(
+            "announcements:update",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func removeAnnouncement(
+        announcementId: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "announcements:remove",
+            with: ["announcementId": announcementId],
             clientMutationId: clientMutationId
         )
     }
@@ -353,6 +471,24 @@ final class ConvexService: ObservableObject {
     }
 
     @discardableResult
+    func upsertSoccerCompetition(
+        _ payload: CompetitionMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args: [String: ConvexEncodable?] = [
+            "name": payload.name,
+            "active": payload.active,
+        ]
+        if let id = payload.id { args["id"] = id }
+        putOptionalString("season", payload.season, into: &args, includeNull: payload.id != nil)
+        return try await performMutation(
+            "soccer:upsertCompetition",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    @discardableResult
     func upsertSoccerDivision(
         _ payload: DivisionMutationPayload,
         clientMutationId: String? = nil
@@ -364,7 +500,7 @@ final class ConvexService: ObservableObject {
             "active": payload.active,
         ]
         if let id = payload.id { args["id"] = id }
-        if let color = trimmed(payload.color) { args["color"] = color }
+        putOptionalString("color", payload.color, into: &args, includeNull: payload.id != nil)
         return try await performMutation(
             "soccer:upsertDivision",
             with: args,
@@ -407,6 +543,17 @@ final class ConvexService: ObservableObject {
         try await performMutation(
             "soccer:upsertRegistration",
             with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func removeRegistration(
+        memberId: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "soccer:removeRegistration",
+            with: ["memberId": memberId],
             clientMutationId: clientMutationId
         )
     }
@@ -466,6 +613,44 @@ final class ConvexService: ObservableObject {
         )
     }
 
+    @discardableResult
+    func createSoccerSkill(
+        _ payload: SkillMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args: [String: ConvexEncodable?] = [
+            "name": payload.name,
+            "weight": payload.weight,
+            "maxScore": payload.maxScore,
+        ]
+        putOptionalString("description", payload.description, into: &args)
+        return try await performMutation(
+            "soccer:createSkill",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func updateSoccerSkill(
+        skillId: String,
+        payload: SkillMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = [
+            "id": skillId,
+            "name": payload.name,
+            "weight": payload.weight,
+            "maxScore": payload.maxScore,
+            "active": payload.active,
+        ]
+        putOptionalString("description", payload.description, into: &args, includeNull: true)
+        try await performMutation(
+            "soccer:updateSkill",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
     /// `soccer:playerGrade` (query) — computed grade, division, and the
     /// player's evaluation rows in one call.
     func playerGrade(memberId: String) async throws -> PlayerGrade {
@@ -490,6 +675,18 @@ final class ConvexService: ObservableObject {
         try await performMutation(
             "soccer:upsertEvaluation",
             with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func removeEvaluation(
+        memberId: String,
+        skillId: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "soccer:removeEvaluation",
+            with: ["memberId": memberId, "skillId": skillId],
             clientMutationId: clientMutationId
         )
     }
@@ -536,8 +733,11 @@ final class ConvexService: ObservableObject {
     func createAsset(
         name: String,
         category: String,
+        description: String? = nil,
         serialNumber: String? = nil,
+        condition: String? = nil,
         location: String? = nil,
+        notes: String? = nil,
         nfcTagId: String? = nil,
         clientMutationId: String? = nil
     ) async throws -> String {
@@ -545,8 +745,11 @@ final class ConvexService: ObservableObject {
             "name": name,
             "category": category,
         ]
+        if let description { args["description"] = description }
         if let serialNumber { args["serialNumber"] = serialNumber }
+        if let condition { args["condition"] = condition }
         if let location { args["location"] = location }
+        if let notes { args["notes"] = notes }
         if let nfcTagId { args["nfcTagId"] = nfcTagId }
         let assetId: String = try await performMutation(
             "assets:create",
@@ -554,6 +757,48 @@ final class ConvexService: ObservableObject {
             clientMutationId: clientMutationId
         )
         return assetId
+    }
+
+    func updateAsset(
+        assetId: String,
+        payload: AssetMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args = assetArgs(from: payload, includeNulls: true)
+        args["assetId"] = assetId
+        args["name"] = payload.name
+        args["category"] = payload.category
+        args["condition"] = payload.condition
+        try await performMutation(
+            "assets:update",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func retireAsset(
+        assetId: String,
+        notes: String? = nil,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = ["assetId": assetId]
+        putOptionalString("notes", notes, into: &args)
+        try await performMutation(
+            "assetOps:retire",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func removeAsset(
+        assetId: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "assets:remove",
+            with: ["assetId": assetId],
+            clientMutationId: clientMutationId
+        )
     }
 
     /// `assets:list` (query) — list of assets for the active org, used
@@ -622,6 +867,40 @@ final class ConvexService: ObservableObject {
             }
     }
 
+    private func eventArgs(
+        from payload: EventMutationPayload,
+        includeNulls: Bool = false
+    ) -> [String: ConvexEncodable?] {
+        var args: [String: ConvexEncodable?] = [:]
+        putOptionalString("description", payload.description, into: &args, includeNull: includeNulls)
+        putOptionalString("location", payload.location, into: &args, includeNull: includeNulls)
+        putOptionalNumber("endTime", payload.endTime, into: &args, includeNull: includeNulls)
+        putOptionalString("teamId", payload.teamId, into: &args, includeNull: includeNulls)
+        putOptionalString("opponent", payload.opponent, into: &args, includeNull: includeNulls)
+        return args
+    }
+
+    private func announcementArgs(
+        from payload: AnnouncementMutationPayload,
+        includeNulls: Bool = false
+    ) -> [String: ConvexEncodable?] {
+        var args: [String: ConvexEncodable?] = [:]
+        putOptionalString("teamId", payload.teamId, into: &args, includeNull: includeNulls)
+        return args
+    }
+
+    private func assetArgs(
+        from payload: AssetMutationPayload,
+        includeNulls: Bool = false
+    ) -> [String: ConvexEncodable?] {
+        var args: [String: ConvexEncodable?] = [:]
+        putOptionalString("description", payload.description, into: &args, includeNull: includeNulls)
+        putOptionalString("serialNumber", payload.serialNumber, into: &args, includeNull: includeNulls)
+        putOptionalString("location", payload.location, into: &args, includeNull: includeNulls)
+        putOptionalString("notes", payload.notes, into: &args, includeNull: includeNulls)
+        return args
+    }
+
     private func teamArgs(
         from payload: TeamMutationPayload,
         includeNulls: Bool = false
@@ -683,6 +962,19 @@ final class ConvexService: ObservableObject {
         includeNull: Bool = false
     ) {
         if let value = trimmed(value) {
+            args[key] = value
+        } else if includeNull {
+            args.updateValue(nil, forKey: key)
+        }
+    }
+
+    private func putOptionalNumber(
+        _ key: String,
+        _ value: Double?,
+        into args: inout [String: ConvexEncodable?],
+        includeNull: Bool = false
+    ) {
+        if let value {
             args[key] = value
         } else if includeNull {
             args.updateValue(nil, forKey: key)

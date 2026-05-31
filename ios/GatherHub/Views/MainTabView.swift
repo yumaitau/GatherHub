@@ -21,7 +21,7 @@ struct MainTabView: View {
                 }
                 .tabItem { Label("Home", systemImage: "house") }
 
-                AssetsView()
+                AssetsView(context: context)
                     .tabItem { Label("Assets", systemImage: "qrcode.viewfinder") }
 
                 EventCalendarView(context: context)

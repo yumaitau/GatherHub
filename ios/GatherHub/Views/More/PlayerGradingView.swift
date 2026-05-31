@@ -114,6 +114,15 @@ struct PlayerGradingView: View {
                     Spacer()
                     if savingSkillId == skill.id {
                         ProgressView().scaleEffect(0.8)
+                    } else if hasEvaluation(for: skill) {
+                        Button(role: .destructive) {
+                            Task { await clear(skill) }
+                        } label: {
+                            Label("Clear", systemImage: "trash")
+                                .labelStyle(.iconOnly)
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Clear \(skill.name) score")
                     }
                 }
                 if let desc = skill.description, !desc.isEmpty {
@@ -247,6 +256,29 @@ struct PlayerGradingView: View {
         }
     }
 
+    private func clear(_ skill: SoccerSkill) async {
+        savingSkillId = skill.id
+        defer { savingSkillId = nil }
+        do {
+            let op = try sync.enqueue(
+                kind: .soccerEvaluationDelete,
+                title: "Clear \(skill.name)",
+                payload: EvaluationDeletePayload(memberId: memberId, skillId: skill.id)
+            )
+            applyOptimisticClear(skill: skill)
+            await sync.coordinator?.syncIfOnline()
+            if op.status == .applied {
+                if let fresh = try? await convex.playerGrade(memberId: memberId) {
+                    grade = fresh
+                    try? sync.store?.replacePlayerGrade(fresh, memberId: memberId)
+                    scores = scoreMap(from: fresh.evaluations)
+                }
+            }
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue score deletion.")
+        }
+    }
+
     private func applyOptimisticScore(skill: SoccerSkill, score: Double) {
         var evaluations = grade?.evaluations ?? []
         if let index = evaluations.firstIndex(where: { $0.skillId == skill.id }) {
@@ -271,6 +303,17 @@ struct PlayerGradingView: View {
                 )
             )
         }
+        applyEvaluations(evaluations)
+    }
+
+    private func applyOptimisticClear(skill: SoccerSkill) {
+        scores.removeValue(forKey: skill.id)
+        var evaluations = grade?.evaluations ?? []
+        evaluations.removeAll { $0.skillId == skill.id }
+        applyEvaluations(evaluations)
+    }
+
+    private func applyEvaluations(_ evaluations: [SoccerEvaluation]) {
         let activeSkills = skills.filter { $0.active }
         let evalMap = scoreMap(from: evaluations)
         var weighted = 0.0
@@ -290,6 +333,10 @@ struct PlayerGradingView: View {
         )
         grade = updated
         try? sync.store?.replacePlayerGrade(updated, memberId: memberId)
+    }
+
+    private func hasEvaluation(for skill: SoccerSkill) -> Bool {
+        grade?.evaluations.contains(where: { $0.skillId == skill.id }) == true
     }
 
     private func scoreMap(from evaluations: [SoccerEvaluation]) -> [String: Double] {

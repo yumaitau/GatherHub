@@ -37,15 +37,24 @@ struct MoreView: View {
     private var operationsSection: some View {
         Section("Operations") {
             row("Members", system: "person.2") {
-                MembersListView(canEdit: context.role.canManageMembers)
+                MembersListView(
+                    canEdit: context.role.canManageMembers,
+                    canDelete: context.role.canDeleteAdministrativeRecords
+                )
             }
             row("Teams", system: "shield.lefthalf.filled") {
                 TeamsListView(
                     canEdit: context.role.canManageTeams,
+                    canDelete: context.role.canDeleteAdministrativeRecords,
                     soccerMode: context.org.soccerMode == true
                 )
             }
-            row("Announcements", system: "megaphone") { AnnouncementsListView() }
+            row("Announcements", system: "megaphone") {
+                AnnouncementsListView(
+                    canEdit: context.role.canManageEvents,
+                    canCreateOrgWide: context.role.canCreateOrgAnnouncements
+                )
+            }
             NavigationLink {
                 PendingQueueView()
             } label: {
@@ -77,8 +86,14 @@ struct MoreView: View {
             row("Age groups", system: "person.3.sequence") {
                 AgeGroupsListView(canEdit: context.role.canManageSoccerSetup)
             }
+            row("Competitions", system: "trophy") {
+                SoccerCompetitionsListView(canEdit: context.role.canManageSoccerSetup)
+            }
             row("Divisions", system: "square.3.layers.3d") {
                 SoccerDivisionsListView(canEdit: context.role.canManageSoccerSetup)
+            }
+            row("Grading skills", system: "slider.horizontal.3") {
+                SoccerSkillsListView(canEdit: context.role.canManageSoccerSetup)
             }
         }
     }
@@ -653,6 +668,513 @@ private struct DivisionEditorSheet: View {
             rows.append(division)
         }
         try? sync.store?.replaceSoccerDivisions(rows)
+    }
+
+    private func cleaned(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+struct SoccerCompetitionsListView: View {
+    let canEdit: Bool
+
+    @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
+    @State private var rows: [SoccerCompetition] = []
+    @State private var loading = true
+    @State private var error: String?
+    @State private var creating = false
+    @State private var editing: SoccerCompetition?
+
+    var body: some View {
+        Group {
+            if loading {
+                ProgressView("Loading competitions...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error {
+                OfflineStateView(title: "Couldn't load competitions", message: error, retry: load)
+            } else if rows.isEmpty {
+                EmptyStateView(
+                    title: "No competitions",
+                    systemImage: "trophy",
+                    message: canEdit ? "Add the first competition from this device." : "Competitions will appear here."
+                )
+            } else {
+                List(rows) { competition in
+                    Button {
+                        if canEdit { editing = competition }
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(competition.name)
+                                    .font(.gh.bodyStrong)
+                                    .foregroundStyle(Color.gh.inkStrong)
+                                if let season = competition.season {
+                                    Text(season)
+                                        .font(.gh.caption)
+                                        .foregroundStyle(Color.gh.inkQuiet)
+                                }
+                            }
+                            Spacer()
+                            if competition.id.hasPrefix("local:") {
+                                GHBadge(text: "Queued", variant: .warning)
+                            } else if !competition.active {
+                                GHBadge(text: "Inactive", variant: .muted)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canEdit)
+                }
+                .listStyle(.plain)
+            }
+        }
+        .navigationTitle("Competitions")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if canEdit {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        creating = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Add competition")
+                }
+            }
+        }
+        .task { await load() }
+        .refreshable { await load() }
+        .sheet(isPresented: $creating) {
+            CompetitionEditorSheet(competition: nil) { saved, shouldReload in
+                upsertLocal(saved)
+                if shouldReload {
+                    Task { await load() }
+                }
+            }
+        }
+        .sheet(item: $editing) { competition in
+            CompetitionEditorSheet(competition: competition) { saved, shouldReload in
+                upsertLocal(saved)
+                if shouldReload {
+                    Task { await load() }
+                }
+            }
+        }
+    }
+
+    private func load() async {
+        let hasCached = (try? sync.store?.hasCachedSoccerCompetitions()) ?? false
+        if hasCached {
+            rows = (try? sync.store?.cachedSoccerCompetitions()) ?? []
+            loading = false
+        } else if rows.isEmpty {
+            loading = true
+        }
+        error = nil
+        do {
+            let fresh = try await convex.listSoccerCompetitions()
+            rows = fresh
+            try? sync.store?.replaceSoccerCompetitions(fresh)
+        } catch let err {
+            if !hasCached && rows.isEmpty {
+                error = UserFacingError.message(err, fallback: "Couldn't load competitions.")
+            }
+        }
+        loading = false
+    }
+
+    private func upsertLocal(_ competition: SoccerCompetition) {
+        if let index = rows.firstIndex(where: { $0.id == competition.id }) {
+            rows[index] = competition
+        } else {
+            rows.append(competition)
+        }
+        try? sync.store?.replaceSoccerCompetitions(rows)
+    }
+}
+
+private struct CompetitionEditorSheet: View {
+    let competition: SoccerCompetition?
+    let onSaved: (_ saved: SoccerCompetition, _ shouldReload: Bool) -> Void
+
+    @EnvironmentObject private var sync: SyncEnvironment
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var name: String
+    @State private var season: String
+    @State private var active: Bool
+    @State private var saving = false
+    @State private var error: String?
+
+    init(
+        competition: SoccerCompetition?,
+        onSaved: @escaping (_ saved: SoccerCompetition, _ shouldReload: Bool) -> Void
+    ) {
+        self.competition = competition
+        self.onSaved = onSaved
+        self._name = State(initialValue: competition?.name ?? "")
+        self._season = State(initialValue: competition?.season ?? "")
+        self._active = State(initialValue: competition?.active ?? true)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if let error {
+                    Section {
+                        Text(error)
+                            .font(.gh.caption)
+                            .foregroundStyle(Color.gh.danger)
+                    }
+                }
+                Section("Competition") {
+                    TextField("Name", text: $name)
+                    TextField("Season", text: $season)
+                    if competition != nil {
+                        Toggle("Active", isOn: $active)
+                    }
+                }
+            }
+            .navigationTitle(competition == nil ? "New competition" : "Edit competition")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(saving ? "Saving..." : "Save") {
+                        Task { await save() }
+                    }
+                    .disabled(saving)
+                }
+            }
+        }
+    }
+
+    private func save() async {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            error = "Name is required."
+            return
+        }
+        saving = true
+        defer { saving = false }
+        error = nil
+
+        let payload = CompetitionMutationPayload(
+            id: competition?.id,
+            name: trimmed,
+            season: cleaned(season),
+            active: active
+        )
+
+        do {
+            let op = try sync.enqueue(
+                kind: .soccerCompetition,
+                title: "\(competition == nil ? "Create" : "Update") \(trimmed)",
+                payload: payload
+            )
+            let saved = SoccerCompetition(
+                id: competition?.id ?? "local:\(op.clientId)",
+                name: trimmed,
+                season: payload.season,
+                active: active
+            )
+            updateCached(saved)
+            await sync.coordinator?.syncIfOnline()
+            onSaved(saved, op.status == .applied)
+            dismiss()
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue competition change.")
+        }
+    }
+
+    private func updateCached(_ competition: SoccerCompetition) {
+        var rows = (try? sync.store?.cachedSoccerCompetitions()) ?? []
+        if let index = rows.firstIndex(where: { $0.id == competition.id }) {
+            rows[index] = competition
+        } else {
+            rows.append(competition)
+        }
+        try? sync.store?.replaceSoccerCompetitions(rows)
+    }
+
+    private func cleaned(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+struct SoccerSkillsListView: View {
+    let canEdit: Bool
+
+    @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
+    @State private var rows: [SoccerSkill] = []
+    @State private var loading = true
+    @State private var error: String?
+    @State private var creating = false
+    @State private var editing: SoccerSkill?
+
+    var body: some View {
+        Group {
+            if loading {
+                ProgressView("Loading skills...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error {
+                OfflineStateView(title: "Couldn't load skills", message: error, retry: load)
+            } else if rows.isEmpty {
+                EmptyStateView(
+                    title: "No skills",
+                    systemImage: "slider.horizontal.3",
+                    message: canEdit ? "Add the first grading skill from this device." : "Skills will appear here."
+                )
+            } else {
+                List(rows) { skill in
+                    Button {
+                        if canEdit { editing = skill }
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(skill.name)
+                                    .font(.gh.bodyStrong)
+                                    .foregroundStyle(Color.gh.inkStrong)
+                                Text("Weight \(skill.weight.formatted(.number.precision(.fractionLength(0...2)))) - Max \(skill.maxScore.formatted(.number.precision(.fractionLength(0...2))))")
+                                    .font(.gh.caption)
+                                    .foregroundStyle(Color.gh.inkQuiet)
+                            }
+                            Spacer()
+                            if skill.id.hasPrefix("local:") {
+                                GHBadge(text: "Queued", variant: .warning)
+                            } else if !skill.active {
+                                GHBadge(text: "Inactive", variant: .muted)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canEdit)
+                }
+                .listStyle(.plain)
+            }
+        }
+        .navigationTitle("Grading skills")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if canEdit {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        creating = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Add grading skill")
+                }
+            }
+        }
+        .task { await load() }
+        .refreshable { await load() }
+        .sheet(isPresented: $creating) {
+            SkillEditorSheet(skill: nil) { saved, shouldReload in
+                upsertLocal(saved)
+                if shouldReload {
+                    Task { await load() }
+                }
+            }
+        }
+        .sheet(item: $editing) { skill in
+            SkillEditorSheet(skill: skill) { saved, shouldReload in
+                upsertLocal(saved)
+                if shouldReload {
+                    Task { await load() }
+                }
+            }
+        }
+    }
+
+    private func load() async {
+        let hasCached = (try? sync.store?.hasCachedSoccerSkills()) ?? false
+        if hasCached {
+            rows = (try? sync.store?.cachedSoccerSkills()) ?? []
+            loading = false
+        } else if rows.isEmpty {
+            loading = true
+        }
+        error = nil
+        do {
+            let fresh = try await convex.listSoccerSkills(includeInactive: true)
+            rows = fresh
+            try? sync.store?.replaceSoccerSkills(fresh)
+        } catch let err {
+            if !hasCached && rows.isEmpty {
+                error = UserFacingError.message(err, fallback: "Couldn't load skills.")
+            }
+        }
+        loading = false
+    }
+
+    private func upsertLocal(_ skill: SoccerSkill) {
+        if let index = rows.firstIndex(where: { $0.id == skill.id }) {
+            rows[index] = skill
+        } else {
+            rows.append(skill)
+        }
+        rows.sort { $0.order < $1.order }
+        try? sync.store?.replaceSoccerSkills(rows)
+    }
+}
+
+private struct SkillEditorSheet: View {
+    let skill: SoccerSkill?
+    let onSaved: (_ saved: SoccerSkill, _ shouldReload: Bool) -> Void
+
+    @EnvironmentObject private var sync: SyncEnvironment
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var name: String
+    @State private var description: String
+    @State private var weight: Double
+    @State private var maxScore: Double
+    @State private var active: Bool
+    @State private var saving = false
+    @State private var error: String?
+
+    init(
+        skill: SoccerSkill?,
+        onSaved: @escaping (_ saved: SoccerSkill, _ shouldReload: Bool) -> Void
+    ) {
+        self.skill = skill
+        self.onSaved = onSaved
+        self._name = State(initialValue: skill?.name ?? "")
+        self._description = State(initialValue: skill?.description ?? "")
+        self._weight = State(initialValue: skill?.weight ?? 0.1)
+        self._maxScore = State(initialValue: skill?.maxScore ?? 10)
+        self._active = State(initialValue: skill?.active ?? true)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if let error {
+                    Section {
+                        Text(error)
+                            .font(.gh.caption)
+                            .foregroundStyle(Color.gh.danger)
+                    }
+                }
+                Section("Skill") {
+                    TextField("Name", text: $name)
+                    TextField("Description", text: $description, axis: .vertical)
+                        .lineLimit(2...5)
+                    TextField("Weight", value: $weight, format: .number)
+                        .keyboardType(.decimalPad)
+                    TextField("Max score", value: $maxScore, format: .number)
+                        .keyboardType(.decimalPad)
+                    if skill != nil {
+                        Toggle("Active", isOn: $active)
+                    }
+                }
+            }
+            .navigationTitle(skill == nil ? "New skill" : "Edit skill")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(saving ? "Saving..." : "Save") {
+                        Task { await save() }
+                    }
+                    .disabled(saving)
+                }
+            }
+        }
+    }
+
+    private func save() async {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            error = "Name is required."
+            return
+        }
+        guard weight > 0 else {
+            error = "Weight must be greater than zero."
+            return
+        }
+        guard maxScore > 0 else {
+            error = "Max score must be greater than zero."
+            return
+        }
+        saving = true
+        defer { saving = false }
+        error = nil
+
+        let payload = SkillMutationPayload(
+            name: trimmed,
+            description: cleaned(description),
+            weight: weight,
+            maxScore: maxScore,
+            active: active
+        )
+
+        do {
+            let op: PendingSyncOperation
+            let saved: SoccerSkill
+            if let skill {
+                op = try sync.enqueue(
+                    kind: .soccerSkillUpdate,
+                    title: "Update \(trimmed)",
+                    payload: SkillUpdatePayload(skillId: skill.id, skill: payload)
+                )
+                saved = SoccerSkill(
+                    id: skill.id,
+                    name: payload.name,
+                    description: payload.description,
+                    weight: payload.weight,
+                    maxScore: payload.maxScore,
+                    order: skill.order,
+                    active: payload.active
+                )
+            } else {
+                op = try sync.enqueue(
+                    kind: .soccerSkillCreate,
+                    title: "Create \(trimmed)",
+                    payload: payload
+                )
+                saved = SoccerSkill(
+                    id: "local:\(op.clientId)",
+                    name: payload.name,
+                    description: payload.description,
+                    weight: payload.weight,
+                    maxScore: payload.maxScore,
+                    order: nextOrder(),
+                    active: true
+                )
+            }
+            updateCached(saved)
+            await sync.coordinator?.syncIfOnline()
+            onSaved(saved, op.status == .applied)
+            dismiss()
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue skill change.")
+        }
+    }
+
+    private func updateCached(_ skill: SoccerSkill) {
+        var rows = (try? sync.store?.cachedSoccerSkills()) ?? []
+        if let index = rows.firstIndex(where: { $0.id == skill.id }) {
+            rows[index] = skill
+        } else {
+            rows.append(skill)
+        }
+        rows.sort { $0.order < $1.order }
+        try? sync.store?.replaceSoccerSkills(rows)
+    }
+
+    private func nextOrder() -> Double {
+        let rows = (try? sync.store?.cachedSoccerSkills()) ?? []
+        return (rows.map(\.order).max() ?? -1) + 1
     }
 
     private func cleaned(_ value: String) -> String? {

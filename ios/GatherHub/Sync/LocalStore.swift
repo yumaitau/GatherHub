@@ -235,6 +235,30 @@ final class LocalStore {
         try hasCachedValue(for: "taxonomies.assetCategories")
     }
 
+    func replaceAssetConditions(_ rows: [TaxonomyOption]) throws {
+        try cacheValue(rows, for: "taxonomies.assetConditions")
+    }
+
+    func cachedAssetConditions() throws -> [TaxonomyOption] {
+        try cachedValue(for: "taxonomies.assetConditions", as: [TaxonomyOption].self) ?? []
+    }
+
+    func hasCachedAssetConditions() throws -> Bool {
+        try hasCachedValue(for: "taxonomies.assetConditions")
+    }
+
+    func replaceEventTypes(_ rows: [TaxonomyOption]) throws {
+        try cacheValue(rows, for: "taxonomies.eventTypes")
+    }
+
+    func cachedEventTypes() throws -> [TaxonomyOption] {
+        try cachedValue(for: "taxonomies.eventTypes", as: [TaxonomyOption].self) ?? []
+    }
+
+    func hasCachedEventTypes() throws -> Bool {
+        try hasCachedValue(for: "taxonomies.eventTypes")
+    }
+
     func replaceTeamAgeGroups(_ rows: [TaxonomyOption]) throws {
         try cacheValue(rows, for: "taxonomies.teamAgeGroups")
     }
@@ -393,6 +417,19 @@ final class LocalStore {
 
     func delete(_ op: PendingSyncOperation) throws {
         context.delete(op)
+        try context.save()
+    }
+
+    func deleteOperation(clientId: String) throws {
+        let key = scopeKey
+        let descriptor = FetchDescriptor<PendingSyncOperation>(
+            predicate: #Predicate {
+                $0.scopeKey == key && $0.clientId == clientId
+            }
+        )
+        for op in try context.fetch(descriptor) {
+            context.delete(op)
+        }
         try context.save()
     }
 

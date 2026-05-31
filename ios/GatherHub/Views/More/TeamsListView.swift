@@ -3,6 +3,7 @@ import SwiftUI
 /// Team roster index with offline-first create/edit/deactivate support.
 struct TeamsListView: View {
     let canEdit: Bool
+    let canDelete: Bool
     let soccerMode: Bool
 
     @EnvironmentObject private var convex: ConvexService
@@ -15,9 +16,11 @@ struct TeamsListView: View {
     @State private var ageGroup: String = "All"
     @State private var creatingTeam = false
     @State private var editingTeam: Team?
+    @State private var deletingTeam: Team?
 
-    init(canEdit: Bool = false, soccerMode: Bool = false) {
+    init(canEdit: Bool = false, canDelete: Bool = false, soccerMode: Bool = false) {
         self.canEdit = canEdit
+        self.canDelete = canDelete
         self.soccerMode = soccerMode
     }
 
@@ -65,8 +68,13 @@ struct TeamsListView: View {
             } else {
                 List(filtered) { team in
                     NavigationLink {
-                        TeamDetailView(team: team, canEdit: canEdit, soccerMode: soccerMode) { saved, shouldReload in
+                        TeamDetailView(team: team, canEdit: canEdit, canDelete: canDelete, soccerMode: soccerMode) { saved, shouldReload in
                             upsertLocal(saved)
+                            if shouldReload {
+                                Task { await load() }
+                            }
+                        } onDeleted: { deleted, shouldReload in
+                            removeLocal(deleted.id)
                             if shouldReload {
                                 Task { await load() }
                             }
@@ -82,6 +90,13 @@ struct TeamsListView: View {
                                 Label("Edit", systemImage: "pencil")
                             }
                             .tint(Color.gh.accent)
+                        }
+                        if canDelete {
+                            Button(role: .destructive) {
+                                deletingTeam = team
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                     }
                 }
@@ -136,6 +151,24 @@ struct TeamsListView: View {
                 }
             }
         }
+        .confirmationDialog(
+            "Delete this team?",
+            isPresented: Binding(
+                get: { deletingTeam != nil },
+                set: { if !$0 { deletingTeam = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let team = deletingTeam {
+                Button("Delete", role: .destructive) {
+                    Task { await delete(team) }
+                }
+            }
+        } message: {
+            if let team = deletingTeam {
+                Text(team.name)
+            }
+        }
     }
 
     private func load() async {
@@ -166,6 +199,36 @@ struct TeamsListView: View {
             teams.append(team)
         }
         teams.sort { $0.name < $1.name }
+        try? sync.store?.replaceTeams(teams)
+    }
+
+    private func removeLocal(_ teamId: String) {
+        teams.removeAll { $0.id == teamId }
+        try? sync.store?.replaceTeams(teams)
+    }
+
+    private func delete(_ team: Team) async {
+        do {
+            if team.id.hasPrefix("local:") {
+                let clientId = String(team.id.dropFirst("local:".count))
+                try sync.store?.deleteOperation(clientId: clientId)
+                removeLocal(team.id)
+                sync.coordinator?.refreshUnsettledCount()
+                return
+            }
+            let op = try sync.enqueue(
+                kind: .teamDelete,
+                title: "Delete \(team.name)",
+                payload: TeamDeletePayload(teamId: team.id)
+            )
+            removeLocal(team.id)
+            await sync.coordinator?.syncIfOnline()
+            if op.status == .applied {
+                await load()
+            }
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue team deletion.")
+        }
     }
 }
 
@@ -209,20 +272,30 @@ private struct TeamRow: View {
 struct TeamDetailView: View {
     @State private var team: Team
     let canEdit: Bool
+    let canDelete: Bool
     let soccerMode: Bool
     let onSaved: (_ saved: Team, _ shouldReload: Bool) -> Void
+    let onDeleted: (_ deleted: Team, _ shouldReload: Bool) -> Void
+    @EnvironmentObject private var sync: SyncEnvironment
+    @Environment(\.dismiss) private var dismiss
     @State private var editing = false
+    @State private var confirmingDelete = false
+    @State private var error: String?
 
     init(
         team: Team,
         canEdit: Bool = false,
+        canDelete: Bool = false,
         soccerMode: Bool = false,
-        onSaved: @escaping (_ saved: Team, _ shouldReload: Bool) -> Void = { _, _ in }
+        onSaved: @escaping (_ saved: Team, _ shouldReload: Bool) -> Void = { _, _ in },
+        onDeleted: @escaping (_ deleted: Team, _ shouldReload: Bool) -> Void = { _, _ in }
     ) {
         self._team = State(initialValue: team)
         self.canEdit = canEdit
+        self.canDelete = canDelete
         self.soccerMode = soccerMode
         self.onSaved = onSaved
+        self.onDeleted = onDeleted
     }
 
     var body: some View {
@@ -270,6 +343,20 @@ struct TeamDetailView: View {
                     teamContact("Manager", name: team.manager, email: team.managerEmail, phone: team.managerPhone)
                 }
             }
+            if let error {
+                Section {
+                    Text(error)
+                        .font(.gh.caption)
+                        .foregroundStyle(Color.gh.danger)
+                }
+            }
+            if canDelete {
+                Section {
+                    Button("Delete team", role: .destructive) {
+                        confirmingDelete = true
+                    }
+                }
+            }
         }
         .navigationTitle(team.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -286,6 +373,17 @@ struct TeamDetailView: View {
                 onSaved(saved, shouldReload)
             }
         }
+        .confirmationDialog(
+            "Delete this team?",
+            isPresented: $confirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                Task { await delete() }
+            }
+        } message: {
+            Text(team.name)
+        }
     }
 
     @ViewBuilder
@@ -299,6 +397,29 @@ struct TeamDetailView: View {
                 if let email { Text(email).foregroundStyle(Color.gh.inkSoft) }
                 if let phone { Text(phone).foregroundStyle(Color.gh.inkSoft) }
             }
+        }
+    }
+
+    private func delete() async {
+        do {
+            if team.id.hasPrefix("local:") {
+                let clientId = String(team.id.dropFirst("local:".count))
+                try sync.store?.deleteOperation(clientId: clientId)
+                sync.coordinator?.refreshUnsettledCount()
+                onDeleted(team, false)
+                dismiss()
+                return
+            }
+            let op = try sync.enqueue(
+                kind: .teamDelete,
+                title: "Delete \(team.name)",
+                payload: TeamDeletePayload(teamId: team.id)
+            )
+            await sync.coordinator?.syncIfOnline()
+            onDeleted(team, op.status == .applied)
+            dismiss()
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue team deletion.")
         }
     }
 }

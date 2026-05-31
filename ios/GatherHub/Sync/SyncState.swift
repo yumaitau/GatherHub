@@ -7,6 +7,12 @@ import Foundation
 enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     /// `events:setRsvp` — { eventId, memberId, status }
     case rsvp
+    /// `events:create` — create a calendar event.
+    case eventCreate
+    /// `events:update` — edit a calendar event.
+    case eventUpdate
+    /// `events:remove` — delete a calendar event.
+    case eventDelete
     /// `assetOps:checkOut` — { assetId, custodianMemberId, ... }
     case assetCheckOut
     /// `assetOps:checkIn` — { assetId, ... }
@@ -19,26 +25,52 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     case announcementRead
     /// `soccer:upsertEvaluation` — { memberId, skillId, score, notes? }
     case soccerEvaluation
+    /// `soccer:removeEvaluation` — clear one skill score.
+    case soccerEvaluationDelete
     /// `soccer:upsertRegistration` — assignment quick-edit payload.
     case soccerAssignment
     /// `assets:create` — create a new asset and optionally bind NFC.
     case assetCreate
+    /// `assets:update` — edit asset details.
+    case assetUpdate
+    /// `assetOps:retire` — retire asset from field use.
+    case assetRetire
+    /// `assets:remove` — admin hard-delete asset.
+    case assetDelete
     /// `organizations:updateLocationSettings` — update default address.
     case orgDefaultAddress
+    /// `announcements:create` — post an announcement.
+    case announcementCreate
+    /// `announcements:update` — edit/pin/unpin an announcement.
+    case announcementUpdate
+    /// `announcements:remove` — delete an announcement.
+    case announcementDelete
     /// `members:create` — create a member captured in the field.
     case memberCreate
     /// `members:update` — edit member details/status.
     case memberUpdate
+    /// `members:remove` — delete a member and dependent rows.
+    case memberDelete
     /// `teams:create` — create a team/squad.
     case teamCreate
     /// `teams:update` — edit or deactivate a team/squad.
     case teamUpdate
+    /// `teams:remove` — delete a team/squad.
+    case teamDelete
     /// `soccer:upsertRegistration` — full player registration edit.
     case soccerRegistration
+    /// `soccer:removeRegistration` — remove a player's registration sidecar.
+    case soccerRegistrationDelete
     /// `soccer:createFieldRegistration` — create player + optional guardian/contact + registration.
     case soccerFieldRegistration
     /// `soccer:upsertDivision` — create/edit/deactivate grade band.
     case soccerDivision
+    /// `soccer:upsertCompetition` — create/edit/deactivate competition.
+    case soccerCompetition
+    /// `soccer:createSkill` — create a grading skill.
+    case soccerSkillCreate
+    /// `soccer:updateSkill` — edit/deactivate a grading skill.
+    case soccerSkillUpdate
     /// `taxonomies:create` — create a team age-group taxonomy option.
     case teamAgeGroupCreate
     /// `taxonomies:update` — edit a team age-group label.
@@ -49,22 +81,38 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     var label: String {
         switch self {
         case .rsvp: return "Event RSVP"
+        case .eventCreate: return "Event creation"
+        case .eventUpdate: return "Event edit"
+        case .eventDelete: return "Event deletion"
         case .assetCheckOut: return "Asset check-out"
         case .assetCheckIn: return "Asset check-in"
         case .assetScan: return "Asset scan"
         case .assetRegisterNfc: return "NFC tag bind"
         case .announcementRead: return "Read receipt"
         case .soccerEvaluation: return "Skill score"
+        case .soccerEvaluationDelete: return "Skill score deletion"
         case .soccerAssignment: return "Player assignment"
         case .assetCreate: return "Asset creation"
+        case .assetUpdate: return "Asset edit"
+        case .assetRetire: return "Asset retirement"
+        case .assetDelete: return "Asset deletion"
         case .orgDefaultAddress: return "Organisation address"
+        case .announcementCreate: return "Announcement creation"
+        case .announcementUpdate: return "Announcement edit"
+        case .announcementDelete: return "Announcement deletion"
         case .memberCreate: return "Member creation"
         case .memberUpdate: return "Member edit"
+        case .memberDelete: return "Member deletion"
         case .teamCreate: return "Team creation"
         case .teamUpdate: return "Team edit"
+        case .teamDelete: return "Team deletion"
         case .soccerRegistration: return "Player registration"
+        case .soccerRegistrationDelete: return "Player registration deletion"
         case .soccerFieldRegistration: return "Field registration"
         case .soccerDivision: return "Division"
+        case .soccerCompetition: return "Competition"
+        case .soccerSkillCreate: return "Skill creation"
+        case .soccerSkillUpdate: return "Skill edit"
         case .teamAgeGroupCreate: return "Age group creation"
         case .teamAgeGroupUpdate: return "Age group edit"
         case .teamAgeGroupSetActive: return "Age group status"

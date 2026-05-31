@@ -189,6 +189,23 @@ final class EventListViewModel: ObservableObject {
         }
     }
 
+    func upsertLocal(_ event: Event, sync: SyncEnvironment) {
+        if let index = events.firstIndex(where: { $0.id == event.id }) {
+            events[index] = event
+        } else {
+            events.append(event)
+        }
+        events.sort { $0.startTime < $1.startTime }
+        try? sync.store?.replaceEvents(events)
+        phase = .loaded
+    }
+
+    func removeLocal(_ eventId: String, sync: SyncEnvironment) {
+        events.removeAll { $0.id == eventId }
+        try? sync.store?.replaceEvents(events)
+        phase = .loaded
+    }
+
     private func resolveMyMemberId(context: CurrentContext, members: [Member]) {
         if let email = context.user.email?.lowercased() {
             myMemberId = members.first { $0.email?.lowercased() == email }?.id

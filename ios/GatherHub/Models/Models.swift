@@ -76,6 +76,27 @@ enum Role: String, Codable, Hashable {
         }
     }
 
+    var canManageEvents: Bool {
+        switch self {
+        case .owner, .admin, .committee, .coach: return true
+        case .volunteer, .parent, .player: return false
+        }
+    }
+
+    var canCreateOrgAnnouncements: Bool {
+        switch self {
+        case .owner, .admin, .committee: return true
+        case .coach, .volunteer, .parent, .player: return false
+        }
+    }
+
+    var canDeleteAdministrativeRecords: Bool {
+        switch self {
+        case .owner, .admin: return true
+        case .committee, .coach, .volunteer, .parent, .player: return false
+        }
+    }
+
     var displayName: String {
         rawValue.prefix(1).uppercased() + rawValue.dropFirst()
     }
@@ -217,6 +238,7 @@ struct Announcement: Codable, Identifiable, Hashable {
     let title: String
     let body: String
     let pinned: Bool
+    let teamId: String?
     let teamName: String?
     let authorName: String?
     let isRead: Bool
@@ -227,7 +249,7 @@ struct Announcement: Codable, Identifiable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case title, body, pinned, teamName, authorName, isRead
+        case title, body, pinned, teamId, teamName, authorName, isRead
         case creationTime = "_creationTime"
     }
 }
@@ -488,17 +510,66 @@ struct AssetHistoryEntry: Codable, Identifiable, Hashable {
 
 // MARK: - Events
 
-/// Mirrors `eventTypeValidator` in schema.ts.
-enum EventType: String, Codable, Hashable {
-    case training, match, meeting
+/// Mirrors `eventTypeValidator` in schema.ts while tolerating org-specific
+/// taxonomy values that the native app did not know at compile time.
+enum EventType: Codable, Hashable {
+    case training
+    case match
+    case meeting
+    case social
+    case workingBee
+    case custom(String)
 
-    var displayName: String { rawValue.capitalized }
+    static let editableDefaults: [EventType] = [
+        .training,
+        .match,
+        .meeting,
+        .social,
+        .workingBee,
+    ]
+
+    var rawValue: String {
+        switch self {
+        case .training: return "training"
+        case .match: return "match"
+        case .meeting: return "meeting"
+        case .social: return "social"
+        case .workingBee: return "working_bee"
+        case .custom(let value): return value
+        }
+    }
+
+    init(rawValue: String) {
+        switch rawValue {
+        case "training": self = .training
+        case "match": self = .match
+        case "meeting": self = .meeting
+        case "social": self = .social
+        case "working_bee": self = .workingBee
+        default: self = .custom(rawValue)
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.init(rawValue: try container.decode(String.self))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
+
+    var displayName: String { rawValue.taxonomyDisplayName }
 
     var systemImage: String {
         switch self {
         case .training: return "figure.run"
         case .match: return "sportscourt"
         case .meeting: return "person.3"
+        case .social: return "balloon"
+        case .workingBee: return "hammer"
+        case .custom: return "calendar"
         }
     }
 }

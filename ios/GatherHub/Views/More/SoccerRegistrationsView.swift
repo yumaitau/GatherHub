@@ -16,6 +16,7 @@ struct SoccerRegistrationsView: View {
     @State private var paymentPlanOnly = false
     @State private var editingRow: PlayerListingRow?
     @State private var creatingRegistration = false
+    @State private var deletingRow: PlayerListingRow?
 
     init(canEdit: Bool = false) {
         self.canEdit = canEdit
@@ -160,16 +161,54 @@ struct SoccerRegistrationsView: View {
             Divider()
             List(filtered) { row in
                 Button {
-                    if canEdit {
+                    if canEdit && !row.memberId.hasPrefix("local:") {
                         editingRow = row
                     }
                 } label: {
                     RegistrationRow(row: row)
                 }
                 .buttonStyle(.plain)
-                .disabled(!canEdit)
+                .disabled(!canEdit || row.memberId.hasPrefix("local:"))
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    if canEdit {
+                        if !row.memberId.hasPrefix("local:") {
+                            Button {
+                                editingRow = row
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .tint(Color.gh.accent)
+                        }
+
+                        if row.hasRegistration || row.memberId.hasPrefix("local:") {
+                            Button(role: .destructive) {
+                                deletingRow = row
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
             }
             .listStyle(.plain)
+        }
+        .confirmationDialog(
+            "Delete this registration?",
+            isPresented: Binding(
+                get: { deletingRow != nil },
+                set: { if !$0 { deletingRow = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let row = deletingRow {
+                Button("Delete", role: .destructive) {
+                    Task { await delete(row) }
+                }
+            }
+        } message: {
+            if let row = deletingRow {
+                Text(row.name)
+            }
         }
     }
 
@@ -201,6 +240,73 @@ struct SoccerRegistrationsView: View {
             rows.append(row)
         }
         rows.sort { $0.name < $1.name }
+        try? sync.store?.replacePlayerListings(rows)
+    }
+
+    private func removeLocal(_ memberId: String) {
+        rows.removeAll { $0.memberId == memberId }
+        try? sync.store?.replacePlayerListings(rows)
+    }
+
+    private func delete(_ row: PlayerListingRow) async {
+        do {
+            if row.memberId.hasPrefix("local:") {
+                let clientId = String(row.memberId.dropFirst("local:".count))
+                try sync.store?.deleteOperation(clientId: clientId)
+                removeLocal(row.memberId)
+                removeCachedMember(row.memberId)
+                sync.coordinator?.refreshUnsettledCount()
+                return
+            }
+            let op = try sync.enqueue(
+                kind: .soccerRegistrationDelete,
+                title: "Delete registration for \(row.name)",
+                payload: RegistrationDeletePayload(memberId: row.memberId)
+            )
+            upsertLocal(clearedRegistration(row))
+            await sync.coordinator?.syncIfOnline()
+            if op.status == .applied {
+                await load()
+            }
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue registration deletion.")
+        }
+    }
+
+    private func removeCachedMember(_ memberId: String) {
+        var members = (try? sync.store?.cachedMembers()) ?? []
+        members.removeAll { $0.id == memberId }
+        try? sync.store?.replaceMembers(members)
+    }
+
+    private func clearedRegistration(_ row: PlayerListingRow) -> PlayerListingRow {
+        PlayerListingRow(
+            memberId: row.memberId,
+            name: row.name,
+            email: row.email,
+            dateOfBirth: row.dateOfBirth,
+            hasRegistration: false,
+            registered: false,
+            registeredAt: nil,
+            paid: false,
+            paidAt: nil,
+            paymentPlan: false,
+            paymentPlanStart: nil,
+            paymentPlanEnd: nil,
+            ffaNumber: nil,
+            gender: nil,
+            schoolName: nil,
+            comments: nil,
+            competitionId: nil,
+            ageGroupKey: nil,
+            teamId: nil,
+            teamName: nil,
+            divisionId: nil,
+            divisionName: nil,
+            divisionColor: nil,
+            kitColour: nil,
+            grade: row.grade
+        )
     }
 }
 

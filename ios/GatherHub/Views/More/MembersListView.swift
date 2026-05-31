@@ -3,6 +3,7 @@ import SwiftUI
 /// Member roster with offline-first create/edit support for field capture.
 struct MembersListView: View {
     let canEdit: Bool
+    let canDelete: Bool
 
     @EnvironmentObject private var convex: ConvexService
     @EnvironmentObject private var sync: SyncEnvironment
@@ -15,9 +16,11 @@ struct MembersListView: View {
     @State private var volunteerOnly = false
     @State private var creatingMember = false
     @State private var editingMember: Member?
+    @State private var deletingMember: Member?
 
-    init(canEdit: Bool = false) {
+    init(canEdit: Bool = false, canDelete: Bool = false) {
         self.canEdit = canEdit
+        self.canDelete = canDelete
     }
 
     enum StatusFilter: String, CaseIterable, Identifiable {
@@ -120,13 +123,36 @@ struct MembersListView: View {
                 }
             }
         }
+        .confirmationDialog(
+            "Delete this member?",
+            isPresented: Binding(
+                get: { deletingMember != nil },
+                set: { if !$0 { deletingMember = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let member = deletingMember {
+                Button("Delete", role: .destructive) {
+                    Task { await delete(member) }
+                }
+            }
+        } message: {
+            if let member = deletingMember {
+                Text(member.fullName)
+            }
+        }
     }
 
     private var list: some View {
         List(filtered) { member in
             NavigationLink {
-                MemberDetailView(member: member, canEdit: canEdit) { saved, shouldReload in
+                MemberDetailView(member: member, canEdit: canEdit, canDelete: canDelete) { saved, shouldReload in
                     upsertLocal(saved)
+                    if shouldReload {
+                        Task { await load() }
+                    }
+                } onDeleted: { deleted, shouldReload in
+                    removeLocal(deleted.id)
                     if shouldReload {
                         Task { await load() }
                     }
@@ -142,6 +168,13 @@ struct MembersListView: View {
                         Label("Edit", systemImage: "pencil")
                     }
                     .tint(Color.gh.accent)
+                }
+                if canDelete {
+                    Button(role: .destructive) {
+                        deletingMember = member
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
                 }
             }
         }
@@ -179,6 +212,36 @@ struct MembersListView: View {
         } else {
             members.append(member)
             members.sort { $0.fullName < $1.fullName }
+        }
+        try? sync.store?.replaceMembers(members)
+    }
+
+    private func removeLocal(_ memberId: String) {
+        members.removeAll { $0.id == memberId }
+        try? sync.store?.replaceMembers(members)
+    }
+
+    private func delete(_ member: Member) async {
+        do {
+            if member.id.hasPrefix("local:") {
+                let clientId = String(member.id.dropFirst("local:".count))
+                try sync.store?.deleteOperation(clientId: clientId)
+                removeLocal(member.id)
+                sync.coordinator?.refreshUnsettledCount()
+                return
+            }
+            let op = try sync.enqueue(
+                kind: .memberDelete,
+                title: "Delete \(member.fullName)",
+                payload: MemberDeletePayload(memberId: member.id)
+            )
+            removeLocal(member.id)
+            await sync.coordinator?.syncIfOnline()
+            if op.status == .applied {
+                await load()
+            }
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue member deletion.")
         }
     }
 }
@@ -236,17 +299,27 @@ private struct MemberRow: View {
 struct MemberDetailView: View {
     @State private var member: Member
     let canEdit: Bool
+    let canDelete: Bool
     let onSaved: (_ saved: Member, _ shouldReload: Bool) -> Void
+    let onDeleted: (_ deleted: Member, _ shouldReload: Bool) -> Void
+    @EnvironmentObject private var sync: SyncEnvironment
+    @Environment(\.dismiss) private var dismiss
     @State private var editing = false
+    @State private var confirmingDelete = false
+    @State private var error: String?
 
     init(
         member: Member,
         canEdit: Bool = false,
-        onSaved: @escaping (_ saved: Member, _ shouldReload: Bool) -> Void = { _, _ in }
+        canDelete: Bool = false,
+        onSaved: @escaping (_ saved: Member, _ shouldReload: Bool) -> Void = { _, _ in },
+        onDeleted: @escaping (_ deleted: Member, _ shouldReload: Bool) -> Void = { _, _ in }
     ) {
         self._member = State(initialValue: member)
         self.canEdit = canEdit
+        self.canDelete = canDelete
         self.onSaved = onSaved
+        self.onDeleted = onDeleted
     }
 
     var body: some View {
@@ -292,6 +365,20 @@ struct MemberDetailView: View {
                     Text(notes)
                 }
             }
+            if let error {
+                Section {
+                    Text(error)
+                        .font(.gh.caption)
+                        .foregroundStyle(Color.gh.danger)
+                }
+            }
+            if canDelete {
+                Section {
+                    Button("Delete member", role: .destructive) {
+                        confirmingDelete = true
+                    }
+                }
+            }
         }
         .navigationTitle(member.fullName)
         .navigationBarTitleDisplayMode(.inline)
@@ -308,12 +395,46 @@ struct MemberDetailView: View {
                 onSaved(saved, shouldReload)
             }
         }
+        .confirmationDialog(
+            "Delete this member?",
+            isPresented: $confirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                Task { await delete() }
+            }
+        } message: {
+            Text(member.fullName)
+        }
     }
 
     private var initials: String {
         let first = member.firstName.first.map { String($0) } ?? ""
         let last = member.lastName.first.map { String($0) } ?? ""
         return (first + last).uppercased()
+    }
+
+    private func delete() async {
+        do {
+            if member.id.hasPrefix("local:") {
+                let clientId = String(member.id.dropFirst("local:".count))
+                try sync.store?.deleteOperation(clientId: clientId)
+                sync.coordinator?.refreshUnsettledCount()
+                onDeleted(member, false)
+                dismiss()
+                return
+            }
+            let op = try sync.enqueue(
+                kind: .memberDelete,
+                title: "Delete \(member.fullName)",
+                payload: MemberDeletePayload(memberId: member.id)
+            )
+            await sync.coordinator?.syncIfOnline()
+            onDeleted(member, op.status == .applied)
+            dismiss()
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue member deletion.")
+        }
     }
 }
 

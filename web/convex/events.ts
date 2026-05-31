@@ -11,6 +11,8 @@ import { rsvpStatusValidator } from "./schema";
 import { assertTaxonomyKey } from "./taxonomies";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 
+const nullableString = v.union(v.string(), v.null());
+
 function defaultedLocation(
   explicit: string | undefined,
   fallback: string | undefined,
@@ -114,15 +116,23 @@ export const create = mutation({
     endTime: v.optional(v.number()),
     teamId: v.optional(v.id("teams")),
     opponent: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "coach");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const eventId = ctx.db.normalizeId("events", replay.resultId);
+      if (!eventId) throw new Error("Invalid event idempotency result.");
+      return eventId;
+    }
+    if (replay) throw new Error("Missing event idempotency result.");
     await assertTaxonomyKey(ctx, auth.org._id, "event_type", args.type);
     if (args.teamId) {
       const team = await ctx.db.get(args.teamId);
       assertSameOrg(auth, team);
     }
-    return await ctx.db.insert("events", {
+    const eventId = await ctx.db.insert("events", {
       orgId: auth.org._id,
       type: args.type,
       title: args.title.trim(),
@@ -134,6 +144,14 @@ export const create = mutation({
       opponent: args.opponent,
       createdBy: auth.user._id,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "events:create",
+      String(eventId),
+    );
+    return eventId;
   },
 });
 
@@ -142,35 +160,56 @@ export const update = mutation({
     eventId: v.id("events"),
     type: v.optional(v.string()),
     title: v.optional(v.string()),
-    description: v.optional(v.string()),
-    location: v.optional(v.string()),
+    description: v.optional(nullableString),
+    location: v.optional(nullableString),
     startTime: v.optional(v.number()),
-    endTime: v.optional(v.number()),
-    teamId: v.optional(v.id("teams")),
-    opponent: v.optional(v.string()),
+    endTime: v.optional(v.union(v.number(), v.null())),
+    teamId: v.optional(v.union(v.id("teams"), v.null())),
+    opponent: v.optional(nullableString),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "coach");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay) return;
     const event = await ctx.db.get(args.eventId);
     assertSameOrg(auth, event);
     if (args.type !== undefined) {
       await assertTaxonomyKey(ctx, auth.org._id, "event_type", args.type);
     }
-    const { eventId, ...rest } = args;
+    if (args.teamId !== undefined && args.teamId !== null) {
+      const team = await ctx.db.get(args.teamId);
+      assertSameOrg(auth, team);
+    }
+    const { eventId, clientMutationId, ...rest } = args;
     const patch: Record<string, unknown> = Object.fromEntries(
-      Object.entries(rest).filter(([, v]) => v !== undefined),
+      Object.entries(rest)
+        .filter(([, v]) => v !== undefined)
+        .map(([key, value]) => [key, value === null ? undefined : value]),
     );
     if (args.location !== undefined) {
-      patch.location = args.location.trim() || undefined;
+      patch.location = args.location?.trim() || undefined;
     }
     await ctx.db.patch(eventId, patch);
+    await recordClientMutation(
+      ctx,
+      auth,
+      clientMutationId,
+      "events:update",
+      String(eventId),
+    );
   },
 });
 
 export const remove = mutation({
-  args: { eventId: v.id("events") },
+  args: {
+    eventId: v.id("events"),
+    clientMutationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "coach");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay) return;
     const event = await ctx.db.get(args.eventId);
     assertSameOrg(auth, event);
     for (const table of ["rsvps", "attendance"] as const) {
@@ -181,6 +220,13 @@ export const remove = mutation({
       for (const r of rows) await ctx.db.delete(r._id);
     }
     await ctx.db.delete(args.eventId);
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "events:remove",
+      String(args.eventId),
+    );
   },
 });
 

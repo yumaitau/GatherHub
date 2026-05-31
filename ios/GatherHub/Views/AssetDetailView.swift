@@ -6,6 +6,8 @@ import SwiftUI
 /// check-in/out mutations so the view stays declarative.
 struct AssetDetailView: View {
     let tagId: String
+    let canEdit: Bool
+    let canDelete: Bool
 
     @EnvironmentObject private var convex: ConvexService
     @EnvironmentObject private var sync: SyncEnvironment
@@ -15,11 +17,52 @@ struct AssetDetailView: View {
     @State private var showCheckOutLocation = false
     @State private var showCheckInLocation = false
     @State private var pendingCheckOutMember: Member?
+    @State private var editingAsset: Asset?
+    @State private var retiringAsset: Asset?
+    @State private var deletingAsset: Asset?
+
+    init(tagId: String, canEdit: Bool = false, canDelete: Bool = false) {
+        self.tagId = tagId
+        self.canEdit = canEdit
+        self.canDelete = canDelete
+    }
 
     var body: some View {
         content
             .navigationTitle("Asset")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if let asset = model.loadedAsset, canEdit || canDelete {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            if canEdit {
+                                Button {
+                                    editingAsset = asset
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                if asset.status != .retired {
+                                    Button {
+                                        retiringAsset = asset
+                                    } label: {
+                                        Label("Retire", systemImage: "archivebox")
+                                    }
+                                }
+                            }
+                            if canDelete {
+                                Button(role: .destructive) {
+                                    deletingAsset = asset
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                        .accessibilityLabel("Asset actions")
+                    }
+                }
+            }
             .task {
                 await model.load(tagId: tagId, convex: convex, sync: sync)
                 if case .loaded = model.phase {
@@ -70,6 +113,37 @@ struct AssetDetailView: View {
                     if shouldReload {
                         Task { await model.load(tagId: tagId, convex: convex, sync: sync) }
                     }
+                }
+            }
+            .sheet(item: $editingAsset) { asset in
+                AssetEditorSheet(asset: asset) { saved, shouldReload in
+                    model.applyLocalAsset(saved, sync: sync)
+                    if shouldReload {
+                        Task { await model.load(tagId: tagId, convex: convex, sync: sync) }
+                    }
+                }
+            }
+            .sheet(item: $retiringAsset) { asset in
+                AssetRetireSheet(asset: asset) { notes in
+                    await model.retire(asset: asset, notes: notes, convex: convex, sync: sync)
+                }
+            }
+            .confirmationDialog(
+                "Delete this asset?",
+                isPresented: Binding(
+                    get: { deletingAsset != nil },
+                    set: { if !$0 { deletingAsset = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let asset = deletingAsset {
+                    Button("Delete", role: .destructive) {
+                        Task { await model.delete(asset: asset, convex: convex, sync: sync) }
+                    }
+                }
+            } message: {
+                if let asset = deletingAsset {
+                    Text(asset.name)
                 }
             }
     }
@@ -220,6 +294,13 @@ final class AssetDetailViewModel: ObservableObject {
 
     private var currentTagId: String?
     private var currentLookup: TagLookupResult?
+    var loadedAsset: Asset? {
+        if case .loaded(let asset, _) = phase {
+            return asset
+        }
+        return nil
+    }
+
     var currentAssetLocation: String? {
         if case .loaded(let asset, _) = phase {
             return asset.location
@@ -329,6 +410,72 @@ final class AssetDetailViewModel: ObservableObject {
         }
     }
 
+    func applyLocalAsset(_ asset: Asset, sync: SyncEnvironment) {
+        let custodian = currentLookup?.custodian
+        phase = .loaded(asset, custodian: custodian)
+        cacheCurrentLookup(asset: asset, custodian: custodian, sync: sync)
+        upsertAssetListCache(asset: asset, custodian: custodian, sync: sync)
+    }
+
+    func retire(
+        asset: Asset,
+        notes: String?,
+        convex: ConvexService,
+        sync: SyncEnvironment
+    ) async {
+        await enqueueWrite(
+            kind: .assetRetire,
+            title: "Retire \(asset.name)",
+            payload: AssetLifecyclePayload(assetId: asset.id, notes: notes),
+            convex: convex,
+            sync: sync
+        ) {
+            let updated = self.updated(
+                asset,
+                status: .retired,
+                custodianMemberId: nil,
+                location: asset.location,
+                dueBack: nil
+            )
+            self.phase = .loaded(updated, custodian: nil)
+            self.cacheCurrentLookup(asset: updated, custodian: nil, sync: sync)
+            self.upsertAssetListCache(asset: updated, custodian: nil, sync: sync)
+            self.removeCheckedOutAsset(assetId: updated.id, sync: sync)
+        }
+    }
+
+    func delete(asset: Asset, convex: ConvexService, sync: SyncEnvironment) async {
+        guard let tagId = currentTagId else { return }
+        isBusy = true
+        actionError = nil
+        defer { isBusy = false }
+        do {
+            let op = try sync.enqueue(
+                kind: .assetDelete,
+                title: "Delete \(asset.name)",
+                payload: AssetDeletePayload(assetId: asset.id)
+            )
+            phase = .notFound
+            removeAssetFromCaches(assetId: asset.id, sync: sync)
+            if let lookup = currentLookup {
+                let cleared = TagLookupResult(
+                    found: false,
+                    asset: nil,
+                    custodian: nil,
+                    tag: lookup.tag
+                )
+                currentLookup = cleared
+                try? sync.store?.replaceTagLookup(cleared, tagId: tagId)
+            }
+            await sync.coordinator?.syncIfOnline()
+            if op.status == .applied {
+                await load(tagId: tagId, convex: convex, sync: sync)
+            }
+        } catch {
+            actionError = UserFacingError.message(error, fallback: "Couldn't queue asset deletion.")
+        }
+    }
+
     func logScan(convex: ConvexService, sync: SyncEnvironment) async {
         guard case .loaded(let asset, _) = phase else { return }
         let location = await LocationService.shared.currentLocation()
@@ -416,10 +563,44 @@ final class AssetDetailViewModel: ObservableObject {
         try? sync.store?.replaceCheckedOutAssets(rows)
     }
 
+    private func upsertAssetListCache(asset: Asset, custodian: Member?, sync: SyncEnvironment) {
+        var rows = (try? sync.store?.cachedAssets()) ?? []
+        rows.removeAll { $0.id == asset.id }
+        rows.append(
+            AssetSummary(
+                id: asset.id,
+                name: asset.name,
+                category: asset.category,
+                status: asset.status,
+                custodianName: custodian?.fullName,
+                location: asset.location,
+                dueBack: asset.dueBack,
+                qrTagId: asset.qrTagId,
+                nfcTagId: asset.nfcTagId,
+                serialNumber: asset.serialNumber
+            )
+        )
+        rows.sort { $0.name < $1.name }
+        try? sync.store?.replaceAssets(rows)
+
+        if (asset.status == .checkedOut || asset.status == .inUse), let custodian {
+            cacheCheckedOutAsset(asset: asset, custodian: custodian, sync: sync)
+        } else {
+            removeCheckedOutAsset(assetId: asset.id, sync: sync)
+        }
+    }
+
     private func removeCheckedOutAsset(assetId: String, sync: SyncEnvironment) {
         var rows = (try? sync.store?.cachedCheckedOutAssets()) ?? []
         rows.removeAll { $0.id == assetId }
         try? sync.store?.replaceCheckedOutAssets(rows)
+    }
+
+    private func removeAssetFromCaches(assetId: String, sync: SyncEnvironment) {
+        var rows = (try? sync.store?.cachedAssets()) ?? []
+        rows.removeAll { $0.id == assetId }
+        try? sync.store?.replaceAssets(rows)
+        removeCheckedOutAsset(assetId: assetId, sync: sync)
     }
 
     private func updated(
@@ -447,6 +628,272 @@ final class AssetDetailViewModel: ObservableObject {
     }
 
 }
+
+private struct AssetEditorSheet: View {
+    let asset: Asset
+    let onSaved: (_ saved: Asset, _ shouldReload: Bool) -> Void
+
+    @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var categories: [TaxonomyOption] = []
+    @State private var conditions: [TaxonomyOption] = []
+    @State private var name: String
+    @State private var category: String
+    @State private var description: String
+    @State private var serialNumber: String
+    @State private var condition: String
+    @State private var location: String
+    @State private var notes: String
+    @State private var loadingOptions = false
+    @State private var saving = false
+    @State private var error: String?
+
+    init(
+        asset: Asset,
+        onSaved: @escaping (_ saved: Asset, _ shouldReload: Bool) -> Void
+    ) {
+        self.asset = asset
+        self.onSaved = onSaved
+        self._name = State(initialValue: asset.name)
+        self._category = State(initialValue: asset.category)
+        self._description = State(initialValue: asset.description ?? "")
+        self._serialNumber = State(initialValue: asset.serialNumber ?? "")
+        self._condition = State(initialValue: asset.condition)
+        self._location = State(initialValue: asset.location ?? "")
+        self._notes = State(initialValue: asset.notes ?? "")
+    }
+
+    private var categoryOptions: [(key: String, label: String)] {
+        mergedOptions(
+            rows: categories,
+            fallback: defaultAssetCategories,
+            selectedKey: category
+        )
+    }
+
+    private var conditionOptions: [(key: String, label: String)] {
+        mergedOptions(
+            rows: conditions,
+            fallback: defaultAssetConditions,
+            selectedKey: condition
+        )
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if let error {
+                    Section {
+                        Text(error)
+                            .font(.gh.caption)
+                            .foregroundStyle(Color.gh.danger)
+                    }
+                }
+                Section("Asset") {
+                    TextField("Name", text: $name)
+                    Picker("Category", selection: $category) {
+                        ForEach(categoryOptions, id: \.key) { option in
+                            Text(option.label).tag(option.key)
+                        }
+                    }
+                    Picker("Condition", selection: $condition) {
+                        ForEach(conditionOptions, id: \.key) { option in
+                            Text(option.label).tag(option.key)
+                        }
+                    }
+                    TextField("Description", text: $description, axis: .vertical)
+                        .lineLimit(2...5)
+                    TextField("Serial number", text: $serialNumber)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                    TextField("Location", text: $location)
+                    TextField("Notes", text: $notes, axis: .vertical)
+                        .lineLimit(2...5)
+                }
+            }
+            .overlay {
+                if loadingOptions {
+                    ProgressView()
+                }
+            }
+            .navigationTitle("Edit asset")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(saving ? "Saving..." : "Save") {
+                        Task { await save() }
+                    }
+                    .disabled(saving)
+                }
+            }
+            .task { await loadOptions() }
+        }
+    }
+
+    private func loadOptions() async {
+        let hasCachedCategories = (try? sync.store?.hasCachedAssetCategories()) ?? false
+        let hasCachedConditions = (try? sync.store?.hasCachedAssetConditions()) ?? false
+        if hasCachedCategories {
+            categories = (try? sync.store?.cachedAssetCategories()) ?? []
+        }
+        if hasCachedConditions {
+            conditions = (try? sync.store?.cachedAssetConditions()) ?? []
+        }
+        loadingOptions = !(hasCachedCategories && hasCachedConditions)
+        defer { loadingOptions = false }
+        do {
+            async let categoryTask = convex.listAssetCategories()
+            async let conditionTask = convex.listAssetConditions()
+            let (categoryRows, conditionRows) = try await (categoryTask, conditionTask)
+            categories = categoryRows
+            conditions = conditionRows
+            try? sync.store?.replaceAssetCategories(categoryRows)
+            try? sync.store?.replaceAssetConditions(conditionRows)
+        } catch {
+            // Cached/default taxonomy values keep editing available offline.
+        }
+    }
+
+    private func save() async {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            error = "Name is required."
+            return
+        }
+        guard !category.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            error = "Category is required."
+            return
+        }
+        guard !condition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            error = "Condition is required."
+            return
+        }
+        saving = true
+        defer { saving = false }
+        error = nil
+
+        let payload = AssetMutationPayload(
+            name: trimmedName,
+            category: category,
+            description: cleaned(description),
+            serialNumber: cleaned(serialNumber),
+            condition: condition,
+            location: cleaned(location),
+            notes: cleaned(notes)
+        )
+
+        do {
+            let op = try sync.enqueue(
+                kind: .assetUpdate,
+                title: "Update \(trimmedName)",
+                payload: AssetUpdatePayload(assetId: asset.id, asset: payload)
+            )
+            let saved = Asset(
+                id: asset.id,
+                name: payload.name,
+                category: payload.category,
+                description: payload.description,
+                serialNumber: payload.serialNumber,
+                condition: payload.condition,
+                status: asset.status,
+                custodianMemberId: asset.custodianMemberId,
+                location: payload.location,
+                notes: payload.notes,
+                qrTagId: asset.qrTagId,
+                nfcTagId: asset.nfcTagId,
+                dueBack: asset.dueBack
+            )
+            await sync.coordinator?.syncIfOnline()
+            onSaved(saved, op.status == .applied)
+            dismiss()
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue asset update.")
+        }
+    }
+
+    private func mergedOptions(
+        rows: [TaxonomyOption],
+        fallback: [(key: String, label: String)],
+        selectedKey: String
+    ) -> [(key: String, label: String)] {
+        var options = rows.isEmpty ? fallback : rows.map { ($0.key, $0.label) }
+        if !selectedKey.isEmpty && !options.contains(where: { $0.key == selectedKey }) {
+            options.insert((selectedKey, selectedKey.taxonomyDisplayName), at: 0)
+        }
+        return options
+    }
+
+    private func cleaned(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+private struct AssetRetireSheet: View {
+    let asset: Asset
+    let onRetire: (_ notes: String?) async -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var notes = ""
+    @State private var retiring = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Retire asset") {
+                    LabeledContent("Asset", value: asset.name)
+                    TextField("Notes", text: $notes, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+            }
+            .navigationTitle("Retire asset")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(retiring ? "Retiring..." : "Retire", role: .destructive) {
+                        Task { await retire() }
+                    }
+                    .disabled(retiring)
+                }
+            }
+        }
+    }
+
+    private func retire() async {
+        retiring = true
+        defer { retiring = false }
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        await onRetire(trimmed.isEmpty ? nil : trimmed)
+        dismiss()
+    }
+}
+
+private let defaultAssetCategories: [(key: String, label: String)] = [
+    ("equipment", "Equipment"),
+    ("apparel", "Apparel"),
+    ("tool", "Tool"),
+    ("electronics", "Electronics"),
+    ("safety_equipment", "Safety equipment"),
+    ("vehicle", "Vehicle"),
+    ("key", "Key"),
+    ("other", "Other"),
+]
+
+private let defaultAssetConditions: [(key: String, label: String)] = [
+    ("new", "New"),
+    ("good", "Good"),
+    ("fair", "Fair"),
+    ("poor", "Poor"),
+    ("damaged", "Damaged"),
+]
 
 private struct AssetHistoryEntryRow: View {
     let entry: AssetHistoryEntry

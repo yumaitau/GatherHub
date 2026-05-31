@@ -251,9 +251,13 @@ export const update = mutation({
 });
 
 export const remove = mutation({
-  args: { memberId: v.id("members") },
+  args: {
+    memberId: v.id("members"),
+    clientMutationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "admin");
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
 
@@ -274,6 +278,13 @@ export const remove = mutation({
       for (const r of rows) await ctx.db.delete(r._id);
     }
     await ctx.db.delete(args.memberId);
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "members:remove",
+      String(args.memberId),
+    );
   },
 });
 

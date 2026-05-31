@@ -348,16 +348,24 @@ export const createSkill = mutation({
     description: v.optional(v.string()),
     weight: v.number(),
     maxScore: v.optional(v.number()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const skillId = ctx.db.normalizeId("soccerSkills", replay.resultId);
+      if (!skillId) throw new Error("Invalid skill idempotency result.");
+      return skillId;
+    }
+    if (replay) throw new Error("Missing skill idempotency result.");
     await assertSoccerMode(ctx, auth.org._id);
     const last = await ctx.db
       .query("soccerSkills")
       .withIndex("by_org_order", (q) => q.eq("orgId", auth.org._id))
       .order("desc")
       .first();
-    return await ctx.db.insert("soccerSkills", {
+    const skillId = await ctx.db.insert("soccerSkills", {
       orgId: auth.org._id,
       name: args.name.trim(),
       description: args.description,
@@ -366,6 +374,14 @@ export const createSkill = mutation({
       order: last ? last.order + 1 : 0,
       active: true,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "soccer:createSkill",
+      String(skillId),
+    );
+    return skillId;
   },
 });
 
@@ -373,23 +389,34 @@ export const updateSkill = mutation({
   args: {
     id: v.id("soccerSkills"),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
+    description: v.optional(nullableString),
     weight: v.optional(v.number()),
     maxScore: v.optional(v.number()),
     active: v.optional(v.boolean()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const row = await ctx.db.get(args.id);
     assertSameOrg(auth, row);
     if (!row) return;
     const patch: Record<string, unknown> = {};
     if (args.name !== undefined) patch.name = args.name.trim();
-    if (args.description !== undefined) patch.description = args.description;
+    if (args.description !== undefined) {
+      patch.description = args.description ?? undefined;
+    }
     if (args.weight !== undefined) patch.weight = args.weight;
     if (args.maxScore !== undefined) patch.maxScore = args.maxScore;
     if (args.active !== undefined) patch.active = args.active;
     await ctx.db.patch(args.id, patch);
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "soccer:updateSkill",
+      String(args.id),
+    );
   },
 });
 
@@ -414,7 +441,7 @@ export const upsertDivision = mutation({
     name: v.string(),
     minGrade: v.number(),
     maxGrade: v.number(),
-    color: v.optional(v.string()),
+    color: v.optional(nullableString),
     active: v.optional(v.boolean()),
     clientMutationId: v.optional(v.string()),
   },
@@ -442,7 +469,7 @@ export const upsertDivision = mutation({
         name: args.name.trim(),
         minGrade: args.minGrade,
         maxGrade: args.maxGrade,
-        color: args.color,
+        color: args.color ?? undefined,
         active: args.active ?? row.active,
       });
       await recordClientMutation(
@@ -464,7 +491,7 @@ export const upsertDivision = mutation({
       name: args.name.trim(),
       minGrade: args.minGrade,
       maxGrade: args.maxGrade,
-      color: args.color,
+      color: args.color ?? undefined,
       order: last ? last.order + 1 : 0,
       active: true,
     });
@@ -498,11 +525,24 @@ export const upsertCompetition = mutation({
   args: {
     id: v.optional(v.id("soccerCompetitions")),
     name: v.string(),
-    season: v.optional(v.string()),
+    season: v.optional(nullableString),
     active: v.optional(v.boolean()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const competitionId = ctx.db.normalizeId(
+        "soccerCompetitions",
+        replay.resultId,
+      );
+      if (!competitionId) {
+        throw new Error("Invalid competition idempotency result.");
+      }
+      return competitionId;
+    }
+    if (replay) throw new Error("Missing competition idempotency result.");
     await assertSoccerMode(ctx, auth.org._id);
     if (args.id) {
       const row = await ctx.db.get(args.id);
@@ -510,9 +550,16 @@ export const upsertCompetition = mutation({
       if (!row) return;
       await ctx.db.patch(args.id, {
         name: args.name.trim(),
-        season: args.season,
+        season: args.season ?? undefined,
         active: args.active ?? row.active,
       });
+      await recordClientMutation(
+        ctx,
+        auth,
+        args.clientMutationId,
+        "soccer:upsertCompetition",
+        String(args.id),
+      );
       return args.id;
     }
     const last = await ctx.db
@@ -520,13 +567,21 @@ export const upsertCompetition = mutation({
       .withIndex("by_org_order", (q) => q.eq("orgId", auth.org._id))
       .order("desc")
       .first();
-    return await ctx.db.insert("soccerCompetitions", {
+    const competitionId = await ctx.db.insert("soccerCompetitions", {
       orgId: auth.org._id,
       name: args.name.trim(),
-      season: args.season,
+      season: args.season ?? undefined,
       order: last ? last.order + 1 : 0,
       active: true,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "soccer:upsertCompetition",
+      String(competitionId),
+    );
+    return competitionId;
   },
 });
 
@@ -719,6 +774,37 @@ export const upsertRegistration = mutation({
       String(registrationId),
     );
     return registrationId;
+  },
+});
+
+export const removeRegistration = mutation({
+  args: {
+    memberId: v.id("members"),
+    clientMutationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay) return;
+    await assertSoccerMode(ctx, auth.org._id);
+    const member = await ctx.db.get(args.memberId);
+    assertSameOrg(auth, member);
+    const existing = await ctx.db
+      .query("soccerRegistrations")
+      .withIndex("by_org_member", (q) =>
+        q.eq("orgId", auth.org._id).eq("memberId", args.memberId),
+      )
+      .first();
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "soccer:removeRegistration",
+      existing ? String(existing._id) : undefined,
+    );
   },
 });
 
@@ -1136,6 +1222,40 @@ export const upsertEvaluation = mutation({
       String(evaluationId),
     );
     return evaluationId;
+  },
+});
+
+export const removeEvaluation = mutation({
+  args: {
+    memberId: v.id("members"),
+    skillId: v.id("soccerSkills"),
+    clientMutationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireRole(ctx, "coach");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay) return;
+    await assertSoccerMode(ctx, auth.org._id);
+    const member = await ctx.db.get(args.memberId);
+    assertSameOrg(auth, member);
+    const skill = await ctx.db.get(args.skillId);
+    assertSameOrg(auth, skill);
+    const existing = await ctx.db
+      .query("soccerEvaluations")
+      .withIndex("by_member_skill", (q) =>
+        q.eq("memberId", args.memberId).eq("skillId", args.skillId),
+      )
+      .first();
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "soccer:removeEvaluation",
+      existing ? String(existing._id) : undefined,
+    );
   },
 });
 

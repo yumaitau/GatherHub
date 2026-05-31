@@ -136,6 +136,17 @@ final class AppDataPreloader {
         )
 
         record(
+            await run("Event types") {
+                try guardActive(shouldContinue)
+                let rows = try await convex.listEventTypes()
+                try guardActive(shouldContinue)
+                try store.replaceEventTypes(rows)
+            },
+            loaded: &loaded,
+            failures: &failures
+        )
+
+        record(
             await run("Announcements") {
                 try guardActive(shouldContinue)
                 let rows = try await convex.listAnnouncements()
@@ -152,6 +163,17 @@ final class AppDataPreloader {
                 let rows = try await convex.listAssetCategories()
                 try guardActive(shouldContinue)
                 try store.replaceAssetCategories(rows)
+            },
+            loaded: &loaded,
+            failures: &failures
+        )
+
+        record(
+            await run("Asset conditions") {
+                try guardActive(shouldContinue)
+                let rows = try await convex.listAssetConditions()
+                try guardActive(shouldContinue)
+                try store.replaceAssetConditions(rows)
             },
             loaded: &loaded,
             failures: &failures
@@ -275,7 +297,7 @@ final class AppDataPreloader {
         record(
             await run("Soccer skills") {
                 try guardActive(shouldContinue)
-                let rows = try await convex.listSoccerSkills(includeInactive: false)
+                let rows = try await convex.listSoccerSkills(includeInactive: true)
                 try guardActive(shouldContinue)
                 try store.replaceSoccerSkills(rows)
             },

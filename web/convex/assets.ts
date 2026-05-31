@@ -14,6 +14,8 @@ import { assetStatusValidator } from "./schema";
 import { assertTaxonomyKey } from "./taxonomies";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 
+const nullableString = v.union(v.string(), v.null());
+
 function defaultedLocation(
   explicit: string | undefined,
   fallback: string | undefined,
@@ -319,17 +321,20 @@ export const update = mutation({
     assetId: v.id("assets"),
     name: v.optional(v.string()),
     category: v.optional(v.string()),
-    description: v.optional(v.string()),
-    serialNumber: v.optional(v.string()),
-    purchaseDate: v.optional(v.string()),
-    replacementValue: v.optional(v.number()),
+    description: v.optional(nullableString),
+    serialNumber: v.optional(nullableString),
+    purchaseDate: v.optional(nullableString),
+    replacementValue: v.optional(v.union(v.number(), v.null())),
     condition: v.optional(v.string()),
-    location: v.optional(v.string()),
-    notes: v.optional(v.string()),
+    location: v.optional(nullableString),
+    notes: v.optional(nullableString),
     sponsorId: v.optional(v.union(v.id("sponsors"), v.null())),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay) return;
     const asset = await ctx.db.get(args.assetId);
     assertSameOrg(auth, asset);
     if (args.category !== undefined) {
@@ -349,12 +354,14 @@ export const update = mutation({
       );
     }
 
-    const { assetId, sponsorId, ...rest } = args;
+    const { assetId, sponsorId, clientMutationId, ...rest } = args;
     const patch: Record<string, unknown> = Object.fromEntries(
-      Object.entries(rest).filter(([, v]) => v !== undefined),
+      Object.entries(rest)
+        .filter(([, v]) => v !== undefined)
+        .map(([key, value]) => [key, value === null ? undefined : value]),
     );
     if (args.location !== undefined) {
-      patch.location = args.location.trim() || undefined;
+      patch.location = args.location?.trim() || undefined;
     }
     if (sponsorId !== undefined) {
       if (sponsorId !== null) {
@@ -372,6 +379,13 @@ export const update = mutation({
       performedBy: auth.user._id,
       notes: "Asset details updated.",
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      clientMutationId,
+      "assets:update",
+      String(assetId),
+    );
   },
 });
 
@@ -496,10 +510,15 @@ export const registerNfc = mutation({
 });
 
 export const remove = mutation({
-  args: { assetId: v.id("assets") },
+  args: {
+    assetId: v.id("assets"),
+    clientMutationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     // Deleting an asset is reserved for admins; prefer "retire" in normal use.
     const auth = await requireRole(ctx, "admin");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay) return;
     const asset = await ctx.db.get(args.assetId);
     assertSameOrg(auth, asset);
     const tags = await ctx.db
@@ -509,6 +528,13 @@ export const remove = mutation({
     for (const t of tags) await ctx.db.delete(t._id);
     // Note: audit log rows are intentionally retained.
     await ctx.db.delete(args.assetId);
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "assets:remove",
+      String(args.assetId),
+    );
   },
 });
 
