@@ -57,17 +57,18 @@ struct OrganizationAddressView: View {
     private func load() async {
         guard address.isEmpty else { return }
         address = initialAddress ?? ""
+        let hasCachedLocationDefaults = (try? sync.store?.hasCachedLocationDefaults()) ?? false
         if let cached = try? sync.store?.cachedLocationDefaults() {
             address = cached.defaultAddress ?? ""
         }
-        isLoading = true
+        isLoading = !hasCachedLocationDefaults
         defer { isLoading = false }
         do {
             let defaults = try await convex.locationDefaults()
             address = defaults.defaultAddress ?? ""
             try? sync.store?.replaceLocationDefaults(defaults)
         } catch {
-            if address.isEmpty {
+            if !hasCachedLocationDefaults && address.isEmpty {
                 errorMessage = UserFacingError.message(error, fallback: "Couldn't load the default address.")
             }
         }

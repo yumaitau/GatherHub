@@ -228,10 +228,11 @@ struct AssetsView: View {
     }
 
     private func loadCheckedOutAssets() async {
-        if let cached = try? sync.store?.cachedCheckedOutAssets(), !cached.isEmpty {
-            checkedOutAssets = cached
+        let hasCachedCheckedOutAssets = (try? sync.store?.hasCachedCheckedOutAssets()) ?? false
+        if hasCachedCheckedOutAssets {
+            checkedOutAssets = (try? sync.store?.cachedCheckedOutAssets()) ?? []
         }
-        loadingCheckedOut = checkedOutAssets.isEmpty
+        loadingCheckedOut = !hasCachedCheckedOutAssets && checkedOutAssets.isEmpty
         checkedOutError = nil
         defer { loadingCheckedOut = false }
         do {
@@ -239,7 +240,7 @@ struct AssetsView: View {
             checkedOutAssets = fresh
             try? sync.store?.replaceCheckedOutAssets(fresh)
         } catch {
-            if checkedOutAssets.isEmpty {
+            if !hasCachedCheckedOutAssets && checkedOutAssets.isEmpty {
                 checkedOutError = UserFacingError.message(
                     error,
                     fallback: "Couldn't load checked out assets."

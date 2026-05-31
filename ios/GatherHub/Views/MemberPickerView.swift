@@ -83,8 +83,9 @@ struct MemberPickerView: View {
     }
 
     private func load() async {
-        if let cached = try? sync.store?.cachedMembers(), !cached.isEmpty {
-            members = cached
+        let hasCachedMembers = (try? sync.store?.hasCachedMembers()) ?? false
+        if hasCachedMembers {
+            members = (try? sync.store?.cachedMembers()) ?? []
             phase = .loaded
         } else {
             phase = .loading
@@ -95,7 +96,7 @@ struct MemberPickerView: View {
             try? sync.store?.replaceMembers(fresh)
             phase = .loaded
         } catch {
-            if members.isEmpty {
+            if !hasCachedMembers && members.isEmpty {
                 phase = .failed(UserFacingError.message(error, fallback: "Couldn't load members."))
             } else {
                 phase = .loaded

@@ -10,26 +10,14 @@ struct OfflineBanner: View {
     var body: some View {
         let isOffline = !sync.monitor.isOnline
         let pending = sync.coordinator?.unsettledCount ?? 0
-        let isPreparingOfflineData = sync.preloadStatus.isRunning
-        let showingSomething = isOffline || pending > 0 || isPreparingOfflineData
+        let showingSomething = isOffline || pending > 0
 
         if showingSomething {
             HStack(spacing: GHSpacing.sm) {
-                if isPreparingOfflineData && !isOffline {
-                    ProgressView()
-                        .scaleEffect(0.75)
-                } else {
-                    Image(systemName: isOffline ? "wifi.slash" : "arrow.triangle.2.circlepath")
-                        .font(.gh.caption.weight(.semibold))
-                        .foregroundStyle(isOffline ? Color.gh.warning : Color.gh.info)
-                }
-                Text(
-                    label(
-                        isOffline: isOffline,
-                        pending: pending,
-                        isPreparingOfflineData: isPreparingOfflineData
-                    )
-                )
+                Image(systemName: isOffline ? "wifi.slash" : "arrow.triangle.2.circlepath")
+                    .font(.gh.caption.weight(.semibold))
+                    .foregroundStyle(isOffline ? Color.gh.warning : Color.gh.info)
+                Text(label(isOffline: isOffline, pending: pending))
                     .font(.gh.caption)
                     .foregroundStyle(Color.gh.inkStrong)
                     .multilineTextAlignment(.leading)
@@ -66,17 +54,11 @@ struct OfflineBanner: View {
         }
     }
 
-    private func label(isOffline: Bool, pending: Int, isPreparingOfflineData: Bool) -> String {
+    private func label(isOffline: Bool, pending: Int) -> String {
         if isOffline && pending > 0 {
             return "Offline · \(pending) change\(pending == 1 ? "" : "s") will sync when connected"
         }
         if isOffline { return "Offline — showing last-known data" }
-        if isPreparingOfflineData && pending > 0 {
-            return "Preparing offline data · \(pending) change\(pending == 1 ? "" : "s") waiting to sync"
-        }
-        if isPreparingOfflineData {
-            return "Preparing offline data for this organisation"
-        }
         return "\(pending) change\(pending == 1 ? "" : "s") waiting to sync"
     }
 }

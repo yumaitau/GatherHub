@@ -86,10 +86,11 @@ struct OrgSwitcherSheet: View {
     }
 
     private func load() async {
-        if let cached = try? sync.store?.cachedOrgMemberships(), !cached.isEmpty {
-            memberships = cached
+        let hasCachedOrgMemberships = (try? sync.store?.hasCachedOrgMemberships()) ?? false
+        if hasCachedOrgMemberships {
+            memberships = (try? sync.store?.cachedOrgMemberships()) ?? []
         }
-        isLoading = true
+        isLoading = !hasCachedOrgMemberships
         error = nil
         defer { isLoading = false }
         do {
@@ -97,7 +98,7 @@ struct OrgSwitcherSheet: View {
             memberships = fresh
             try? sync.store?.replaceOrgMemberships(fresh)
         } catch let err {
-            if memberships.isEmpty {
+            if !hasCachedOrgMemberships && memberships.isEmpty {
                 error = UserFacingError.message(err, fallback: "Couldn't load your clubs.")
             }
         }

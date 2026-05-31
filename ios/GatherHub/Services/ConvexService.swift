@@ -92,8 +92,11 @@ final class ConvexService: ObservableObject {
     func updateDefaultAddress(_ defaultAddress: String?, clientMutationId: String? = nil) async throws {
         var args: [String: ConvexEncodable?] = [:]
         if let defaultAddress { args["defaultAddress"] = defaultAddress }
-        addClientMutationId(clientMutationId, to: &args)
-        try await client.mutation("organizations:updateLocationSettings", with: args)
+        try await performMutation(
+            "organizations:updateLocationSettings",
+            with: args,
+            clientMutationId: clientMutationId
+        )
     }
 
     /// `taxonomies:list` (query) — active KitTrace asset categories for the
@@ -132,8 +135,11 @@ final class ConvexService: ObservableObject {
         if let location { args["location"] = location }
         if let dueBack { args["dueBack"] = dueBack.timeIntervalSince1970 * 1000 }
         if let notes { args["notes"] = notes }
-        addClientMutationId(clientMutationId, to: &args)
-        try await client.mutation("assetOps:checkOut", with: args)
+        try await performMutation(
+            "assetOps:checkOut",
+            with: args,
+            clientMutationId: clientMutationId
+        )
     }
 
     /// `assetOps:checkIn` (mutation).
@@ -146,8 +152,11 @@ final class ConvexService: ObservableObject {
         var args: [String: ConvexEncodable?] = ["assetId": assetId]
         if let location { args["location"] = location }
         if let notes { args["notes"] = notes }
-        addClientMutationId(clientMutationId, to: &args)
-        try await client.mutation("assetOps:checkIn", with: args)
+        try await performMutation(
+            "assetOps:checkIn",
+            with: args,
+            clientMutationId: clientMutationId
+        )
     }
 
     // MARK: - Events
@@ -166,15 +175,15 @@ final class ConvexService: ObservableObject {
         status: RsvpStatus,
         clientMutationId: String? = nil
     ) async throws {
-        var args: [String: ConvexEncodable?] = [
+        let args: [String: ConvexEncodable?] = [
             "eventId": eventId,
             "memberId": memberId,
             "status": status.rawValue,
         ]
-        addClientMutationId(clientMutationId, to: &args)
-        try await client.mutation(
+        try await performMutation(
             "events:setRsvp",
-            with: args
+            with: args,
+            clientMutationId: clientMutationId
         )
     }
 
@@ -194,16 +203,16 @@ final class ConvexService: ObservableObject {
 
     /// `announcements:list` (query).
     func listAnnouncements() async throws -> [Announcement] {
-        try await once("announcements:list")
+        try await once("announcements:list", with: [:])
     }
 
     /// `announcements:markRead` (mutation).
     func markAnnouncementRead(_ id: String, clientMutationId: String? = nil) async throws {
-        var args: [String: ConvexEncodable?] = ["announcementId": id]
-        addClientMutationId(clientMutationId, to: &args)
-        try await client.mutation(
+        let args: [String: ConvexEncodable?] = ["announcementId": id]
+        try await performMutation(
             "announcements:markRead",
-            with: args
+            with: args,
+            clientMutationId: clientMutationId
         )
     }
 
@@ -236,8 +245,11 @@ final class ConvexService: ObservableObject {
         if clearTeam { args["clearTeam"] = true }
         if clearDivision { args["clearDivision"] = true }
         if let kitColour { args["kitColour"] = kitColour }
-        addClientMutationId(clientMutationId, to: &args)
-        try await client.mutation("soccer:upsertRegistration", with: args)
+        try await performMutation(
+            "soccer:upsertRegistration",
+            with: args,
+            clientMutationId: clientMutationId
+        )
     }
 
     /// `soccer:coachesAndManagers` (query).
@@ -280,8 +292,11 @@ final class ConvexService: ObservableObject {
             "score": score,
         ]
         if let notes { args["notes"] = notes }
-        addClientMutationId(clientMutationId, to: &args)
-        try await client.mutation("soccer:upsertEvaluation", with: args)
+        try await performMutation(
+            "soccer:upsertEvaluation",
+            with: args,
+            clientMutationId: clientMutationId
+        )
     }
 
     // MARK: - Scan + asset registration
@@ -299,8 +314,11 @@ final class ConvexService: ObservableObject {
         if let latitude { args["geoLatitude"] = latitude }
         if let longitude { args["geoLongitude"] = longitude }
         if let accuracy { args["geoAccuracy"] = accuracy }
-        addClientMutationId(clientMutationId, to: &args)
-        try await client.mutation("assetOps:recordScan", with: args)
+        try await performMutation(
+            "assetOps:recordScan",
+            with: args,
+            clientMutationId: clientMutationId
+        )
     }
 
     /// `assets:registerNfc` (mutation) — bind an NFC tag UID to an
@@ -308,11 +326,11 @@ final class ConvexService: ObservableObject {
     /// returns "not found" so the user can attach the physical tag to
     /// a known asset record.
     func registerNfc(assetId: String, nfcTagId: String, clientMutationId: String? = nil) async throws {
-        var args: [String: ConvexEncodable?] = ["assetId": assetId, "nfcTagId": nfcTagId]
-        addClientMutationId(clientMutationId, to: &args)
-        try await client.mutation(
+        let args: [String: ConvexEncodable?] = ["assetId": assetId, "nfcTagId": nfcTagId]
+        try await performMutation(
             "assets:registerNfc",
-            with: args
+            with: args,
+            clientMutationId: clientMutationId
         )
     }
 
@@ -335,8 +353,11 @@ final class ConvexService: ObservableObject {
         if let serialNumber { args["serialNumber"] = serialNumber }
         if let location { args["location"] = location }
         if let nfcTagId { args["nfcTagId"] = nfcTagId }
-        addClientMutationId(clientMutationId, to: &args)
-        let assetId: String = try await client.mutation("assets:create", with: args)
+        let assetId: String = try await performMutation(
+            "assets:create",
+            with: args,
+            clientMutationId: clientMutationId
+        )
         return assetId
     }
 
@@ -406,13 +427,54 @@ final class ConvexService: ObservableObject {
             }
     }
 
-    private func addClientMutationId(
-        _ clientMutationId: String?,
-        to args: inout [String: ConvexEncodable?]
-    ) {
+    private func performMutation(
+        _ name: String,
+        with args: [String: ConvexEncodable?],
+        clientMutationId: String?
+    ) async throws {
+        var argsWithClientId = args
         if let clientMutationId {
-            args["clientMutationId"] = clientMutationId
+            argsWithClientId["clientMutationId"] = clientMutationId
         }
+        do {
+            try await client.mutation(name, with: argsWithClientId)
+        } catch {
+            if shouldRetryWithoutClientMutationId(error, clientMutationId: clientMutationId) {
+                try await client.mutation(name, with: args)
+            } else {
+                throw error
+            }
+        }
+    }
+
+    private func performMutation<T: Decodable>(
+        _ name: String,
+        with args: [String: ConvexEncodable?],
+        clientMutationId: String?
+    ) async throws -> T {
+        var argsWithClientId = args
+        if let clientMutationId {
+            argsWithClientId["clientMutationId"] = clientMutationId
+        }
+        do {
+            return try await client.mutation(name, with: argsWithClientId)
+        } catch {
+            if shouldRetryWithoutClientMutationId(error, clientMutationId: clientMutationId) {
+                return try await client.mutation(name, with: args)
+            }
+            throw error
+        }
+    }
+
+    private func shouldRetryWithoutClientMutationId(
+        _ error: Error,
+        clientMutationId: String?
+    ) -> Bool {
+        guard clientMutationId != nil else { return false }
+        let message = error.localizedDescription.lowercased()
+        return message.contains("clientmutationid")
+            || message.contains("extra field")
+            || message.contains("object contains extra")
     }
 }
 

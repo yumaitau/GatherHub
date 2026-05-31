@@ -154,8 +154,9 @@ struct SoccerRegistrationsView: View {
     }
 
     private func load() async {
-        if let cached = try? sync.store?.cachedPlayerListings(), !cached.isEmpty {
-            rows = cached
+        let hasCachedPlayerListings = (try? sync.store?.hasCachedPlayerListings()) ?? false
+        if hasCachedPlayerListings {
+            rows = (try? sync.store?.cachedPlayerListings()) ?? []
             loading = false
         } else if rows.isEmpty {
             loading = true
@@ -166,7 +167,7 @@ struct SoccerRegistrationsView: View {
             rows = fresh
             try? sync.store?.replacePlayerListings(fresh)
         } catch let err {
-            if rows.isEmpty {
+            if !hasCachedPlayerListings && rows.isEmpty {
                 error = UserFacingError.message(err, fallback: "Couldn't load registrations.")
             }
         }

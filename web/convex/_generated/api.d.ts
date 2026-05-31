@@ -20,6 +20,7 @@ import type * as invitations from "../invitations.js";
 import type * as invitationsAdmin from "../invitationsAdmin.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_idempotency from "../lib/idempotency.js";
 import type * as lib_ids from "../lib/ids.js";
 import type * as members from "../members.js";
 import type * as news from "../news.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   invitationsAdmin: typeof invitationsAdmin;
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
+  "lib/idempotency": typeof lib_idempotency;
   "lib/ids": typeof lib_ids;
   members: typeof members;
   news: typeof news;

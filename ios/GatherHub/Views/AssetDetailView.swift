@@ -250,11 +250,12 @@ final class AssetDetailViewModel: ObservableObject {
             try? sync.store?.replaceTagLookup(result, tagId: tagId)
             apply(result)
             if result.found, let asset = result.asset {
+                let hasCachedHistory = (try? sync.store?.hasCachedAssetHistory(assetId: asset.id)) ?? false
                 do {
                     history = try await convex.assetHistory(assetId: asset.id)
                     try? sync.store?.replaceAssetHistory(history, assetId: asset.id)
                 } catch {
-                    if history.isEmpty {
+                    if !hasCachedHistory && history.isEmpty {
                         actionError = UserFacingError.message(
                             error,
                             fallback: "Couldn't load this asset's history."

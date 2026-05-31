@@ -107,23 +107,25 @@ struct PlayerAssignmentSheet: View {
     }
 
     private func load() async {
-        if let cachedTeams = try? sync.store?.cachedTeams(), !cachedTeams.isEmpty {
-            teams = cachedTeams.filter { $0.isActive }
+        let hasCachedTeams = (try? sync.store?.hasCachedTeams()) ?? false
+        let hasCachedSoccerDivisions = (try? sync.store?.hasCachedSoccerDivisions()) ?? false
+        if hasCachedTeams {
+            teams = ((try? sync.store?.cachedTeams()) ?? []).filter { $0.isActive }
         }
-        if let cachedDivisions = try? sync.store?.cachedSoccerDivisions(), !cachedDivisions.isEmpty {
-            divisions = cachedDivisions.filter { $0.active }
+        if hasCachedSoccerDivisions {
+            divisions = ((try? sync.store?.cachedSoccerDivisions()) ?? []).filter { $0.active }
         }
         teamId = row.teamId ?? ""
         divisionId = row.divisionId ?? ""
         kitColour = row.kitColour ?? ""
-        loading = teams.isEmpty || divisions.isEmpty
+        loading = !hasCachedTeams || !hasCachedSoccerDivisions
         error = nil
         defer { loading = false }
         do {
-            async let teamsTask = convex.listTeams(includeInactive: false)
+            async let teamsTask = convex.listTeams(includeInactive: true)
             async let divisionsTask = convex.listSoccerDivisions()
             let (t, d) = try await (teamsTask, divisionsTask)
-            teams = t
+            teams = t.filter { $0.isActive }
             divisions = d.filter { $0.active }
             try? sync.store?.replaceTeams(t)
             try? sync.store?.replaceSoccerDivisions(d)
@@ -131,7 +133,7 @@ struct PlayerAssignmentSheet: View {
             divisionId = row.divisionId ?? ""
             kitColour = row.kitColour ?? ""
         } catch let err {
-            if teams.isEmpty || divisions.isEmpty {
+            if !hasCachedTeams || !hasCachedSoccerDivisions {
                 error = UserFacingError.message(err, fallback: "Couldn't load assignment options.")
             }
         }

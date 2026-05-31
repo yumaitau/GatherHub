@@ -97,10 +97,11 @@ struct GradingListView: View {
     }
 
     private func load() async {
-        if let cached = try? sync.store?.cachedPlayerRoster(), !cached.isEmpty {
-            rows = cached
+        let hasCachedPlayerRoster = (try? sync.store?.hasCachedPlayerRoster()) ?? false
+        if hasCachedPlayerRoster {
+            rows = (try? sync.store?.cachedPlayerRoster()) ?? []
         }
-        loading = rows.isEmpty
+        loading = !hasCachedPlayerRoster && rows.isEmpty
         error = nil
         defer { loading = false }
         do {
@@ -108,7 +109,7 @@ struct GradingListView: View {
             rows = fresh
             try? sync.store?.replacePlayerRoster(fresh)
         } catch let err {
-            if rows.isEmpty {
+            if !hasCachedPlayerRoster && rows.isEmpty {
                 error = UserFacingError.message(err, fallback: "Couldn't load grading.")
             }
         }

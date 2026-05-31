@@ -30,9 +30,9 @@ final class AppDataPreloader {
 
         var summary: String {
             if failures.isEmpty {
-                return "Offline data is ready."
+                return "Data is up to date."
             }
-            return "Offline data partially prepared (\(failures.count) issue\(failures.count == 1 ? "" : "s"))."
+            return "Data refresh completed with \(failures.count) issue\(failures.count == 1 ? "" : "s")."
         }
     }
 
@@ -52,7 +52,7 @@ final class AppDataPreloader {
         let noun: String
 
         var errorDescription: String? {
-            "\(count) \(noun)\(count == 1 ? "" : "s") could not be prepared for offline use."
+            "\(count) \(noun)\(count == 1 ? "" : "s") could not be refreshed."
         }
     }
 
@@ -386,7 +386,7 @@ final class AppDataPreloader {
                     label: label,
                     message: UserFacingError.message(
                         error,
-                        fallback: "\(label) could not be prepared for offline use."
+                        fallback: "\(label) could not be refreshed."
                     )
                 )
             )

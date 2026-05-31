@@ -135,9 +135,11 @@ final class EventListViewModel: ObservableObject {
     var canRsvp: Bool { myMemberId != nil }
 
     func load(context: CurrentContext, convex: ConvexService, sync: SyncEnvironment) async {
-        if let cachedEvents = try? sync.store?.cachedEvents(), !cachedEvents.isEmpty {
-            events = cachedEvents
-            if let cachedMembers = try? sync.store?.cachedMembers() {
+        let hasCachedEvents = (try? sync.store?.hasCachedEvents()) ?? false
+        if hasCachedEvents {
+            events = (try? sync.store?.cachedEvents()) ?? []
+            if (try? sync.store?.hasCachedMembers()) == true {
+                let cachedMembers = (try? sync.store?.cachedMembers()) ?? []
                 resolveMyMemberId(context: context, members: cachedMembers)
             }
             phase = .loaded
@@ -156,7 +158,7 @@ final class EventListViewModel: ObservableObject {
             try? sync.store?.replaceMembers(members)
             phase = .loaded
         } catch {
-            if events.isEmpty {
+            if !hasCachedEvents && events.isEmpty {
                 phase = .failed(UserFacingError.message(error, fallback: "Couldn't load events. Try again."))
             } else {
                 phase = .loaded

@@ -36,6 +36,7 @@ final class LocalStore {
             context.insert(try CachedEvent(event: event, scopeKey: key))
         }
         try context.save()
+        try markCollectionCached("events")
     }
 
     func cachedEvents() throws -> [Event] {
@@ -47,6 +48,15 @@ final class LocalStore {
         return try context.fetch(descriptor).compactMap { try? $0.decoded() }
     }
 
+    func hasCachedEvents() throws -> Bool {
+        if try hasCollectionCache("events") { return true }
+        let key = scopeKey
+        let descriptor = FetchDescriptor<CachedEvent>(
+            predicate: #Predicate { $0.scopeKey == key }
+        )
+        return try context.fetchCount(descriptor) > 0
+    }
+
     // MARK: - Members
 
     func replaceMembers(_ members: [Member]) throws {
@@ -56,6 +66,7 @@ final class LocalStore {
             context.insert(try CachedMember(member: m, scopeKey: key))
         }
         try context.save()
+        try markCollectionCached("members")
     }
 
     func cachedMembers() throws -> [Member] {
@@ -67,6 +78,15 @@ final class LocalStore {
         return try context.fetch(descriptor).compactMap { try? $0.decoded() }
     }
 
+    func hasCachedMembers() throws -> Bool {
+        if try hasCollectionCache("members") { return true }
+        let key = scopeKey
+        let descriptor = FetchDescriptor<CachedMember>(
+            predicate: #Predicate { $0.scopeKey == key }
+        )
+        return try context.fetchCount(descriptor) > 0
+    }
+
     // MARK: - Teams
 
     func replaceTeams(_ teams: [Team]) throws {
@@ -76,6 +96,7 @@ final class LocalStore {
             context.insert(try CachedTeam(team: t, scopeKey: key))
         }
         try context.save()
+        try markCollectionCached("teams")
     }
 
     func cachedTeams() throws -> [Team] {
@@ -87,6 +108,15 @@ final class LocalStore {
         return try context.fetch(descriptor).compactMap { try? $0.decoded() }
     }
 
+    func hasCachedTeams() throws -> Bool {
+        if try hasCollectionCache("teams") { return true }
+        let key = scopeKey
+        let descriptor = FetchDescriptor<CachedTeam>(
+            predicate: #Predicate { $0.scopeKey == key }
+        )
+        return try context.fetchCount(descriptor) > 0
+    }
+
     // MARK: - Announcements
 
     func replaceAnnouncements(_ rows: [Announcement]) throws {
@@ -96,6 +126,7 @@ final class LocalStore {
             context.insert(try CachedAnnouncement(announcement: a, scopeKey: key))
         }
         try context.save()
+        try markCollectionCached("announcements")
     }
 
     func cachedAnnouncements() throws -> [Announcement] {
@@ -107,6 +138,15 @@ final class LocalStore {
         return try context.fetch(descriptor).compactMap { try? $0.decoded() }
     }
 
+    func hasCachedAnnouncements() throws -> Bool {
+        if try hasCollectionCache("announcements") { return true }
+        let key = scopeKey
+        let descriptor = FetchDescriptor<CachedAnnouncement>(
+            predicate: #Predicate { $0.scopeKey == key }
+        )
+        return try context.fetchCount(descriptor) > 0
+    }
+
     // MARK: - Soccer registrations
 
     func replacePlayerListings(_ rows: [PlayerListingRow]) throws {
@@ -116,6 +156,7 @@ final class LocalStore {
             context.insert(try CachedPlayerListing(row: r, scopeKey: key))
         }
         try context.save()
+        try markCollectionCached("soccer.playerListings")
     }
 
     func cachedPlayerListings() throws -> [PlayerListingRow] {
@@ -125,6 +166,15 @@ final class LocalStore {
             sortBy: [SortDescriptor(\.name)]
         )
         return try context.fetch(descriptor).compactMap { try? $0.decoded() }
+    }
+
+    func hasCachedPlayerListings() throws -> Bool {
+        if try hasCollectionCache("soccer.playerListings") { return true }
+        let key = scopeKey
+        let descriptor = FetchDescriptor<CachedPlayerListing>(
+            predicate: #Predicate { $0.scopeKey == key }
+        )
+        return try context.fetchCount(descriptor) > 0
     }
 
     // MARK: - Generic read-through cache
@@ -145,12 +195,20 @@ final class LocalStore {
         try cachedValue(for: "assets.checkedOut", as: [AssetSummary].self) ?? []
     }
 
+    func hasCachedCheckedOutAssets() throws -> Bool {
+        try hasCachedValue(for: "assets.checkedOut")
+    }
+
     func replaceAssets(_ rows: [AssetSummary], status: String? = nil) throws {
         try cacheValue(rows, for: assetListKey(status: status))
     }
 
     func cachedAssets(status: String? = nil) throws -> [AssetSummary] {
         try cachedValue(for: assetListKey(status: status), as: [AssetSummary].self) ?? []
+    }
+
+    func hasCachedAssets(status: String? = nil) throws -> Bool {
+        try hasCachedValue(for: assetListKey(status: status))
     }
 
     func replaceLocationDefaults(_ defaults: LocationDefaults) throws {
@@ -161,12 +219,20 @@ final class LocalStore {
         try cachedValue(for: "org.locationDefaults", as: LocationDefaults.self)
     }
 
+    func hasCachedLocationDefaults() throws -> Bool {
+        try hasCachedValue(for: "org.locationDefaults")
+    }
+
     func replaceAssetCategories(_ rows: [TaxonomyOption]) throws {
         try cacheValue(rows, for: "taxonomies.assetCategories")
     }
 
     func cachedAssetCategories() throws -> [TaxonomyOption] {
         try cachedValue(for: "taxonomies.assetCategories", as: [TaxonomyOption].self) ?? []
+    }
+
+    func hasCachedAssetCategories() throws -> Bool {
+        try hasCachedValue(for: "taxonomies.assetCategories")
     }
 
     func replaceTagLookup(_ result: TagLookupResult, tagId: String) throws {
@@ -185,6 +251,10 @@ final class LocalStore {
         try cachedValue(for: "assets.history.\(assetId)", as: [AssetHistoryEntry].self) ?? []
     }
 
+    func hasCachedAssetHistory(assetId: String) throws -> Bool {
+        try hasCachedValue(for: "assets.history.\(assetId)")
+    }
+
     func replaceSoccerDivisions(_ rows: [SoccerDivision]) throws {
         try cacheValue(rows, for: "soccer.divisions")
     }
@@ -193,12 +263,20 @@ final class LocalStore {
         try cachedValue(for: "soccer.divisions", as: [SoccerDivision].self) ?? []
     }
 
+    func hasCachedSoccerDivisions() throws -> Bool {
+        try hasCachedValue(for: "soccer.divisions")
+    }
+
     func replaceSoccerSkills(_ rows: [SoccerSkill]) throws {
         try cacheValue(rows, for: "soccer.skills")
     }
 
     func cachedSoccerSkills() throws -> [SoccerSkill] {
         try cachedValue(for: "soccer.skills", as: [SoccerSkill].self) ?? []
+    }
+
+    func hasCachedSoccerSkills() throws -> Bool {
+        try hasCachedValue(for: "soccer.skills")
     }
 
     func replacePlayerGrade(_ grade: PlayerGrade, memberId: String) throws {
@@ -217,6 +295,10 @@ final class LocalStore {
         try cachedValue(for: "soccer.playerRoster", as: [PlayerRosterRow].self) ?? []
     }
 
+    func hasCachedPlayerRoster() throws -> Bool {
+        try hasCachedValue(for: "soccer.playerRoster")
+    }
+
     func replaceCoachesManagers(_ rows: [CoachManagerRow]) throws {
         try cacheValue(rows, for: "soccer.coachesManagers")
     }
@@ -225,12 +307,20 @@ final class LocalStore {
         try cachedValue(for: "soccer.coachesManagers", as: [CoachManagerRow].self) ?? []
     }
 
+    func hasCachedCoachesManagers() throws -> Bool {
+        try hasCachedValue(for: "soccer.coachesManagers")
+    }
+
     func replaceOrgMemberships(_ rows: [OrgMembership]) throws {
         try cacheValue(rows, for: "org.memberships")
     }
 
     func cachedOrgMemberships() throws -> [OrgMembership] {
         try cachedValue(for: "org.memberships", as: [OrgMembership].self) ?? []
+    }
+
+    func hasCachedOrgMemberships() throws -> Bool {
+        try hasCachedValue(for: "org.memberships")
     }
 
     // MARK: - Sync queue
@@ -330,7 +420,31 @@ final class LocalStore {
         return try context.fetch(descriptor).first?.decoded(as: type)
     }
 
+    private func hasCachedValue(for resourceKey: String) throws -> Bool {
+        let id = CachedResource.cacheId(scopeKey: scopeKey, resourceKey: resourceKey)
+        let descriptor = FetchDescriptor<CachedResource>(
+            predicate: #Predicate { $0.id == id }
+        )
+        return try context.fetch(descriptor).first != nil
+    }
+
+    private func markCollectionCached(_ key: String) throws {
+        try cacheValue(CollectionCacheMarker(cachedAt: .now), for: collectionCacheKey(key))
+    }
+
+    private func hasCollectionCache(_ key: String) throws -> Bool {
+        try hasCachedValue(for: collectionCacheKey(key))
+    }
+
+    private func collectionCacheKey(_ key: String) -> String {
+        "collection.\(key)"
+    }
+
     private func assetListKey(status: String?) -> String {
         "assets.list.\(status ?? "all")"
     }
+}
+
+private struct CollectionCacheMarker: Codable {
+    let cachedAt: Date
 }

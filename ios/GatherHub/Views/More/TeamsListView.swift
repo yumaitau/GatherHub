@@ -87,19 +87,20 @@ struct TeamsListView: View {
     }
 
     private func load() async {
-        if let cached = try? sync.store?.cachedTeams(), !cached.isEmpty {
-            teams = cached
+        let hasCachedTeams = (try? sync.store?.hasCachedTeams()) ?? false
+        if hasCachedTeams {
+            teams = (try? sync.store?.cachedTeams()) ?? []
             loading = false
         } else if teams.isEmpty {
             loading = true
         }
         error = nil
         do {
-            let fresh = try await convex.listTeams()
+            let fresh = try await convex.listTeams(includeInactive: true)
             teams = fresh
             try? sync.store?.replaceTeams(fresh)
         } catch let err {
-            if teams.isEmpty {
+            if !hasCachedTeams && teams.isEmpty {
                 error = UserFacingError.message(err, fallback: "Couldn't load teams.")
             }
         }

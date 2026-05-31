@@ -100,8 +100,9 @@ struct MembersListView: View {
     }
 
     private func load() async {
-        if let cached = try? sync.store?.cachedMembers(), !cached.isEmpty {
-            members = cached
+        let hasCachedMembers = (try? sync.store?.hasCachedMembers()) ?? false
+        if hasCachedMembers {
+            members = (try? sync.store?.cachedMembers()) ?? []
             isStale = true
             loading = false
         } else if members.isEmpty {
@@ -114,7 +115,7 @@ struct MembersListView: View {
             try? sync.store?.replaceMembers(fresh)
             isStale = false
         } catch let err {
-            if members.isEmpty {
+            if !hasCachedMembers && members.isEmpty {
                 error = UserFacingError.message(err, fallback: "Couldn't load members.")
             } else {
                 isStale = true

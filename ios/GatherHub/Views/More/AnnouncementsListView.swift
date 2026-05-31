@@ -96,8 +96,9 @@ struct AnnouncementsListView: View {
     }
 
     private func load() async {
-        if let cached = try? sync.store?.cachedAnnouncements(), !cached.isEmpty {
-            announcements = cached
+        let hasCachedAnnouncements = (try? sync.store?.hasCachedAnnouncements()) ?? false
+        if hasCachedAnnouncements {
+            announcements = (try? sync.store?.cachedAnnouncements()) ?? []
             loading = false
         } else if announcements.isEmpty {
             loading = true
@@ -108,7 +109,7 @@ struct AnnouncementsListView: View {
             announcements = fresh
             try? sync.store?.replaceAnnouncements(fresh)
         } catch let err {
-            if announcements.isEmpty {
+            if !hasCachedAnnouncements && announcements.isEmpty {
                 error = UserFacingError.message(err, fallback: "Couldn't load announcements.")
             }
         }

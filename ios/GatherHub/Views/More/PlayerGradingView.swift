@@ -184,14 +184,15 @@ struct PlayerGradingView: View {
     }
 
     private func load() async {
-        if let cachedSkills = try? sync.store?.cachedSoccerSkills(), !cachedSkills.isEmpty {
-            skills = cachedSkills
+        let hasCachedSoccerSkills = (try? sync.store?.hasCachedSoccerSkills()) ?? false
+        if hasCachedSoccerSkills {
+            skills = (try? sync.store?.cachedSoccerSkills()) ?? []
         }
         if let cachedGrade = try? sync.store?.cachedPlayerGrade(memberId: memberId) {
             grade = cachedGrade
             scores = scoreMap(from: cachedGrade.evaluations)
         }
-        loading = skills.isEmpty || grade == nil
+        loading = !hasCachedSoccerSkills || grade == nil
         error = nil
         defer { loading = false }
         do {
@@ -206,7 +207,7 @@ struct PlayerGradingView: View {
             for ev in g.evaluations { map[ev.skillId] = ev.score }
             scores = map
         } catch let err {
-            if skills.isEmpty || grade == nil {
+            if !hasCachedSoccerSkills || grade == nil {
                 error = UserFacingError.message(err, fallback: "Couldn't load this player's grading.")
             }
         }

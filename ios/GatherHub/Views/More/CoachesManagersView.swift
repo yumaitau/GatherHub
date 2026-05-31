@@ -111,10 +111,11 @@ struct CoachesManagersView: View {
     }
 
     private func load() async {
-        if let cached = try? sync.store?.cachedCoachesManagers(), !cached.isEmpty {
-            rows = cached
+        let hasCachedCoachesManagers = (try? sync.store?.hasCachedCoachesManagers()) ?? false
+        if hasCachedCoachesManagers {
+            rows = (try? sync.store?.cachedCoachesManagers()) ?? []
         }
-        loading = rows.isEmpty
+        loading = !hasCachedCoachesManagers && rows.isEmpty
         error = nil
         defer { loading = false }
         do {
@@ -122,7 +123,7 @@ struct CoachesManagersView: View {
             rows = fresh
             try? sync.store?.replaceCoachesManagers(fresh)
         } catch let err {
-            if rows.isEmpty {
+            if !hasCachedCoachesManagers && rows.isEmpty {
                 error = UserFacingError.message(err, fallback: "Couldn't load coaches and managers.")
             }
         }

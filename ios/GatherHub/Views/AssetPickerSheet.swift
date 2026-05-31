@@ -166,20 +166,22 @@ struct AssetPickerSheet: View {
     }
 
     private func load() async {
+        let hasCachedAssetCategories = (try? sync.store?.hasCachedAssetCategories()) ?? false
+        let hasCachedAssets = (try? sync.store?.hasCachedAssets()) ?? false
         if let defaults = try? sync.store?.cachedLocationDefaults() {
             defaultAddress = defaults.defaultAddress
             if newAssetLocation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 newAssetLocation = defaults.defaultAddress ?? ""
             }
         }
-        if let categories = try? sync.store?.cachedAssetCategories(), !categories.isEmpty {
-            assetCategories = categories
-            selectDefaultCategory(from: categories)
+        if hasCachedAssetCategories {
+            assetCategories = (try? sync.store?.cachedAssetCategories()) ?? []
+            selectDefaultCategory(from: assetCategories)
         }
-        if let cachedAssets = try? sync.store?.cachedAssets(), !cachedAssets.isEmpty {
-            assets = cachedAssets
+        if hasCachedAssets {
+            assets = (try? sync.store?.cachedAssets()) ?? []
         }
-        isLoading = true
+        isLoading = !hasCachedAssets
         error = nil
         defer { isLoading = false }
         do {
@@ -200,7 +202,7 @@ struct AssetPickerSheet: View {
             assets = freshAssets
             try? sync.store?.replaceAssets(freshAssets)
         } catch let err {
-            if assets.isEmpty {
+            if !hasCachedAssets && assets.isEmpty {
                 error = UserFacingError.message(err, fallback: "Couldn't load assets.")
             }
         }
