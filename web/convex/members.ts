@@ -7,6 +7,9 @@ import {
   canViewRestricted,
 } from "./lib/auth";
 import { memberStatusValidator } from "./schema";
+import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+
+const nullableString = v.union(v.string(), v.null());
 
 /** List members in the caller's organisation. */
 export const list = query({
@@ -170,10 +173,19 @@ export const create = mutation({
     status: v.optional(memberStatusValidator),
     notes: v.optional(v.string()),
     isVolunteer: v.optional(v.boolean()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "coach");
-    return await ctx.db.insert("members", {
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const memberId = ctx.db.normalizeId("members", replay.resultId);
+      if (!memberId) throw new Error("Invalid member idempotency result.");
+      return memberId;
+    }
+    if (replay) throw new Error("Missing member idempotency result.");
+
+    const memberId = await ctx.db.insert("members", {
       orgId: auth.org._id,
       firstName: args.firstName.trim(),
       lastName: args.lastName.trim(),
@@ -184,6 +196,14 @@ export const create = mutation({
       notes: args.notes,
       isVolunteer: args.isVolunteer ?? false,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "members:create",
+      String(memberId),
+    );
+    return memberId;
   },
 });
 
@@ -192,29 +212,41 @@ export const update = mutation({
     memberId: v.id("members"),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
-    email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    dateOfBirth: v.optional(v.string()),
+    email: v.optional(nullableString),
+    phone: v.optional(nullableString),
+    dateOfBirth: v.optional(nullableString),
     status: v.optional(memberStatusValidator),
-    notes: v.optional(v.string()),
+    notes: v.optional(nullableString),
     isVolunteer: v.optional(v.boolean()),
     volunteerSkills: v.optional(v.array(v.string())),
-    volunteerAvailability: v.optional(v.string()),
-    volunteerNotes: v.optional(v.string()),
-    clubRole: v.optional(v.union(v.string(), v.null())),
+    volunteerAvailability: v.optional(nullableString),
+    volunteerNotes: v.optional(nullableString),
+    clubRole: v.optional(nullableString),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "coach");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay) return;
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
-    const { memberId, clubRole, ...rest } = args;
+    const { memberId, clubRole, clientMutationId, ...rest } = args;
     const patch: Record<string, unknown> = Object.fromEntries(
-      Object.entries(rest).filter(([, v]) => v !== undefined),
+      Object.entries(rest)
+        .filter(([, v]) => v !== undefined)
+        .map(([key, value]) => [key, value === null ? undefined : value]),
     );
     if (clubRole !== undefined) {
       patch.clubRole = clubRole ?? undefined;
     }
     await ctx.db.patch(memberId, patch);
+    await recordClientMutation(
+      ctx,
+      auth,
+      clientMutationId,
+      "members:update",
+      String(memberId),
+    );
   },
 });
 

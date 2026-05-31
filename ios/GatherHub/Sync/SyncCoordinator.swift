@@ -160,6 +160,62 @@ final class SyncCoordinator {
                     clientMutationId: op.clientId
                 )
                 await refreshLocationDefaultsCache()
+            case .memberCreate:
+                let args = try JSONDecoder().decode(MemberMutationPayload.self, from: op.payload)
+                try await convex.createMember(args, clientMutationId: op.clientId)
+                await refreshMemberCaches()
+            case .memberUpdate:
+                let args = try JSONDecoder().decode(MemberUpdatePayload.self, from: op.payload)
+                try await convex.updateMember(
+                    memberId: args.memberId,
+                    payload: args.member,
+                    clientMutationId: op.clientId
+                )
+                await refreshMemberCaches()
+            case .teamCreate:
+                let args = try JSONDecoder().decode(TeamMutationPayload.self, from: op.payload)
+                try await convex.createTeam(args, clientMutationId: op.clientId)
+                await refreshTeamCaches()
+            case .teamUpdate:
+                let args = try JSONDecoder().decode(TeamUpdatePayload.self, from: op.payload)
+                try await convex.updateTeam(
+                    teamId: args.teamId,
+                    payload: args.team,
+                    clientMutationId: op.clientId
+                )
+                await refreshTeamCaches()
+            case .soccerRegistration:
+                let args = try JSONDecoder().decode(RegistrationMutationPayload.self, from: op.payload)
+                try await convex.upsertRegistration(args, clientMutationId: op.clientId)
+                await refreshRegistrationCaches(memberId: args.memberId)
+            case .soccerFieldRegistration:
+                let args = try JSONDecoder().decode(FieldRegistrationPayload.self, from: op.payload)
+                try await convex.createFieldRegistration(args, clientMutationId: op.clientId)
+                await refreshFieldRegistrationCaches()
+            case .soccerDivision:
+                let args = try JSONDecoder().decode(DivisionMutationPayload.self, from: op.payload)
+                try await convex.upsertSoccerDivision(args, clientMutationId: op.clientId)
+                await refreshSoccerSetupCaches()
+            case .teamAgeGroupCreate:
+                let args = try JSONDecoder().decode(AgeGroupMutationPayload.self, from: op.payload)
+                try await convex.createTeamAgeGroup(label: args.label, clientMutationId: op.clientId)
+                await refreshAgeGroupCaches()
+            case .teamAgeGroupUpdate:
+                let args = try JSONDecoder().decode(AgeGroupUpdatePayload.self, from: op.payload)
+                try await convex.updateTeamAgeGroup(
+                    id: args.id,
+                    label: args.label,
+                    clientMutationId: op.clientId
+                )
+                await refreshAgeGroupCaches()
+            case .teamAgeGroupSetActive:
+                let args = try JSONDecoder().decode(AgeGroupActivePayload.self, from: op.payload)
+                try await convex.setTeamAgeGroupActive(
+                    id: args.id,
+                    active: args.active,
+                    clientMutationId: op.clientId
+                )
+                await refreshAgeGroupCaches()
             }
             op.transition(to: .applied)
             try? store.save()
@@ -235,6 +291,47 @@ final class SyncCoordinator {
         }
     }
 
+    private func refreshMemberCaches() async {
+        if let rows = try? await convex.listMembers() {
+            try? store.replaceMembers(rows)
+        }
+        await refreshPlayerListingCache()
+        if let rows = try? await convex.listPlayerRoster() {
+            try? store.replacePlayerRoster(rows)
+        }
+    }
+
+    private func refreshTeamCaches() async {
+        if let rows = try? await convex.listTeams(includeInactive: true) {
+            try? store.replaceTeams(rows)
+        }
+        await refreshPlayerListingCache()
+    }
+
+    private func refreshRegistrationCaches(memberId: String) async {
+        await refreshPlayerListingCache()
+        await refreshSoccerEvaluationCaches(memberId: memberId)
+    }
+
+    private func refreshFieldRegistrationCaches() async {
+        await refreshMemberCaches()
+        await refreshPlayerListingCache()
+    }
+
+    private func refreshSoccerSetupCaches() async {
+        if let rows = try? await convex.listSoccerDivisions() {
+            try? store.replaceSoccerDivisions(rows)
+        }
+        await refreshPlayerListingCache()
+    }
+
+    private func refreshAgeGroupCaches() async {
+        if let rows = try? await convex.listTeamAgeGroups(includeInactive: true) {
+            try? store.replaceTeamAgeGroups(rows)
+        }
+        await refreshPlayerListingCache()
+    }
+
     private func refreshLocationDefaultsCache() async {
         if let defaults = try? await convex.locationDefaults() {
             try? store.replaceLocationDefaults(defaults)
@@ -306,4 +403,116 @@ struct CreateAssetPayload: Codable {
 
 struct OrgDefaultAddressPayload: Codable {
     let defaultAddress: String?
+}
+
+struct MemberMutationPayload: Codable {
+    let firstName: String
+    let lastName: String
+    let email: String?
+    let phone: String?
+    let dateOfBirth: String?
+    let status: MemberStatus
+    let notes: String?
+    let isVolunteer: Bool
+    let clubRole: String?
+}
+
+struct MemberUpdatePayload: Codable {
+    let memberId: String
+    let member: MemberMutationPayload
+}
+
+struct TeamMutationPayload: Codable {
+    let name: String
+    let ageGroup: String?
+    let season: String?
+    let description: String?
+    let isActive: Bool
+    let kitColour: String?
+    let kitBagNumber: String?
+    let competitionId: String?
+    let divisionId: String?
+    let coach: String?
+    let coachEmail: String?
+    let coachPhone: String?
+    let additionalCoach: String?
+    let additionalCoachEmail: String?
+    let additionalCoachPhone: String?
+    let manager: String?
+    let managerEmail: String?
+    let managerPhone: String?
+    let teamRegistered: Bool?
+    let teamRegisteredDate: String?
+    let teamRegistrationPaid: Bool?
+}
+
+struct TeamUpdatePayload: Codable {
+    let teamId: String
+    let team: TeamMutationPayload
+}
+
+struct RegistrationDetailsPayload: Codable {
+    let competitionId: String?
+    let ageGroupKey: String?
+    let teamId: String?
+    let divisionId: String?
+    let clearTeam: Bool
+    let clearDivision: Bool
+    let ffaNumber: String?
+    let gender: String?
+    let schoolName: String?
+    let registered: Bool
+    let paid: Bool
+    let paymentPlan: Bool
+    let paymentPlanStart: String?
+    let paymentPlanEnd: String?
+    let comments: String?
+    let kitColour: String?
+}
+
+struct RegistrationMutationPayload: Codable {
+    let memberId: String
+    let details: RegistrationDetailsPayload
+}
+
+struct FieldRegistrationPayload: Codable {
+    let firstName: String
+    let lastName: String
+    let email: String?
+    let phone: String?
+    let dateOfBirth: String?
+    let notes: String?
+    let guardianFirstName: String?
+    let guardianLastName: String?
+    let guardianEmail: String?
+    let guardianPhone: String?
+    let guardianRelationship: String?
+    let emergencyName: String?
+    let emergencyRelationship: String?
+    let emergencyPhone: String?
+    let emergencyEmail: String?
+    let registration: RegistrationDetailsPayload
+}
+
+struct DivisionMutationPayload: Codable {
+    let id: String?
+    let name: String
+    let minGrade: Double
+    let maxGrade: Double
+    let color: String?
+    let active: Bool
+}
+
+struct AgeGroupMutationPayload: Codable {
+    let label: String
+}
+
+struct AgeGroupUpdatePayload: Codable {
+    let id: String
+    let label: String
+}
+
+struct AgeGroupActivePayload: Codable {
+    let id: String
+    let active: Bool
 }

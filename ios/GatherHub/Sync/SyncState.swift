@@ -25,6 +25,26 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     case assetCreate
     /// `organizations:updateLocationSettings` — update default address.
     case orgDefaultAddress
+    /// `members:create` — create a member captured in the field.
+    case memberCreate
+    /// `members:update` — edit member details/status.
+    case memberUpdate
+    /// `teams:create` — create a team/squad.
+    case teamCreate
+    /// `teams:update` — edit or deactivate a team/squad.
+    case teamUpdate
+    /// `soccer:upsertRegistration` — full player registration edit.
+    case soccerRegistration
+    /// `soccer:createFieldRegistration` — create player + optional guardian/contact + registration.
+    case soccerFieldRegistration
+    /// `soccer:upsertDivision` — create/edit/deactivate grade band.
+    case soccerDivision
+    /// `taxonomies:create` — create a team age-group taxonomy option.
+    case teamAgeGroupCreate
+    /// `taxonomies:update` — edit a team age-group label.
+    case teamAgeGroupUpdate
+    /// `taxonomies:setActive` — activate/deactivate a team age-group.
+    case teamAgeGroupSetActive
 
     var label: String {
         switch self {
@@ -38,6 +58,16 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
         case .soccerAssignment: return "Player assignment"
         case .assetCreate: return "Asset creation"
         case .orgDefaultAddress: return "Organisation address"
+        case .memberCreate: return "Member creation"
+        case .memberUpdate: return "Member edit"
+        case .teamCreate: return "Team creation"
+        case .teamUpdate: return "Team edit"
+        case .soccerRegistration: return "Player registration"
+        case .soccerFieldRegistration: return "Field registration"
+        case .soccerDivision: return "Division"
+        case .teamAgeGroupCreate: return "Age group creation"
+        case .teamAgeGroupUpdate: return "Age group edit"
+        case .teamAgeGroupSetActive: return "Age group status"
         }
     }
 }

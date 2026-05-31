@@ -55,6 +55,27 @@ enum Role: String, Codable, Hashable {
         }
     }
 
+    var canManageMembers: Bool {
+        switch self {
+        case .owner, .admin, .committee, .coach: return true
+        case .volunteer, .parent, .player: return false
+        }
+    }
+
+    var canManageTeams: Bool {
+        switch self {
+        case .owner, .admin, .committee: return true
+        case .coach, .volunteer, .parent, .player: return false
+        }
+    }
+
+    var canManageSoccerSetup: Bool {
+        switch self {
+        case .owner, .admin, .committee: return true
+        case .coach, .volunteer, .parent, .player: return false
+        }
+    }
+
     var displayName: String {
         rawValue.prefix(1).uppercased() + rawValue.dropFirst()
     }
@@ -78,6 +99,9 @@ struct TaxonomyOption: Codable, Identifiable, Hashable {
     let key: String
     let label: String
     let isDefault: Bool
+    let order: Double?
+    let active: Bool?
+    let color: String?
 }
 
 // MARK: - Members
@@ -90,19 +114,24 @@ struct Member: Codable, Identifiable, Hashable {
     let lastName: String
     let email: String?
     let phone: String?
+    let dateOfBirth: String?
     let status: MemberStatus
+    let notes: String?
     let isVolunteer: Bool?
+    let clubRole: String?
 
-    var fullName: String { "\(firstName) \(lastName)" }
+    var fullName: String { "\(firstName) \(lastName)".trimmingCharacters(in: .whitespaces) }
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case firstName, lastName, email, phone, status, isVolunteer
+        case firstName, lastName, email, phone, dateOfBirth, status, notes, isVolunteer, clubRole
     }
 }
 
-enum MemberStatus: String, Codable, Hashable {
+enum MemberStatus: String, Codable, Hashable, CaseIterable, Identifiable {
     case active, inactive
+
+    var id: String { rawValue }
 }
 
 /// Slim asset row used by pickers (e.g. "register tag against which asset?").
@@ -147,13 +176,36 @@ struct Team: Codable, Identifiable, Hashable {
     let name: String
     let ageGroup: String?
     let season: String?
+    let description: String?
     let isActive: Bool
+    let kitColour: String?
+    let kitBagNumber: String?
+    let competitionId: String?
+    let divisionId: String?
+    let coach: String?
+    let coachEmail: String?
+    let coachPhone: String?
+    let additionalCoach: String?
+    let additionalCoachEmail: String?
+    let additionalCoachPhone: String?
+    let manager: String?
+    let managerEmail: String?
+    let managerPhone: String?
+    let teamRegistered: Bool?
+    let teamRegisteredDate: String?
+    let teamRegistrationPaid: Bool?
     let playerCount: Int
     let staffCount: Int
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case name, ageGroup, season, isActive, playerCount, staffCount
+        case name, ageGroup, season, description, isActive, kitColour, kitBagNumber
+        case competitionId, divisionId
+        case coach, coachEmail, coachPhone
+        case additionalCoach, additionalCoachEmail, additionalCoachPhone
+        case manager, managerEmail, managerPhone
+        case teamRegistered, teamRegisteredDate, teamRegistrationPaid
+        case playerCount, staffCount
     }
 }
 
@@ -187,11 +239,21 @@ struct PlayerListingRow: Codable, Identifiable, Hashable {
     let memberId: String
     let name: String
     let email: String?
+    let dateOfBirth: String?
     let hasRegistration: Bool
     let registered: Bool
+    let registeredAt: Double?
     let paid: Bool
+    let paidAt: Double?
     let paymentPlan: Bool
+    let paymentPlanStart: String?
+    let paymentPlanEnd: String?
     let ffaNumber: String?
+    let gender: String?
+    let schoolName: String?
+    let comments: String?
+    let competitionId: String?
+    let ageGroupKey: String?
     let teamId: String?
     let teamName: String?
     let divisionId: String?
@@ -201,6 +263,19 @@ struct PlayerListingRow: Codable, Identifiable, Hashable {
     let grade: Double?
 
     var id: String { memberId }
+}
+
+/// Row returned by `soccer:listCompetitions`.
+struct SoccerCompetition: Codable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let season: String?
+    let active: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case name, season, active
+    }
 }
 
 /// Row returned by `soccer:listDivisions`.

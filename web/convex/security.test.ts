@@ -581,6 +581,248 @@ describe("asset operations & audit log", () => {
     expect(evaluation.score).toBe(4);
   });
 
+  test("offline CRUD mutations are idempotent and clear optional fields", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_mobile_crud_retry",
+      clerkUser: "user_mobile_crud_retry_admin",
+      role: "admin",
+    });
+
+    await club.as.mutation(api.soccer.setSoccerMode, { enabled: true });
+
+    const memberId = await club.as.mutation(api.members.create, {
+      firstName: "Offline",
+      lastName: "Member",
+      email: "offline-member@example.test",
+      phone: "0400000000",
+      dateOfBirth: "2012-01-02",
+      notes: "Captured on field",
+      isVolunteer: true,
+      clientMutationId: "crud-member-create-1",
+    });
+    const replayedMemberId = await club.as.mutation(api.members.create, {
+      firstName: "Duplicate",
+      lastName: "Member",
+      clientMutationId: "crud-member-create-1",
+    });
+    expect(replayedMemberId).toBe(memberId);
+
+    await club.as.mutation(api.members.update, {
+      memberId,
+      email: null,
+      phone: null,
+      dateOfBirth: null,
+      notes: null,
+      clubRole: null,
+      clientMutationId: "crud-member-clear-1",
+    });
+    await club.as.mutation(api.members.update, {
+      memberId,
+      email: "ignored@example.test",
+      phone: "ignored",
+      notes: "ignored",
+      clientMutationId: "crud-member-clear-1",
+    });
+    const memberDetail = await club.as.query(api.members.get, { memberId });
+    expect(memberDetail.member.email ?? null).toBeNull();
+    expect(memberDetail.member.phone ?? null).toBeNull();
+    expect(memberDetail.member.dateOfBirth ?? null).toBeNull();
+    expect(memberDetail.member.notes ?? null).toBeNull();
+
+    const ageGroupId = await club.as.mutation(api.taxonomies.create, {
+      kind: "team_age_group",
+      label: "U21",
+      clientMutationId: "crud-age-create-1",
+    });
+    const replayedAgeGroupId = await club.as.mutation(api.taxonomies.create, {
+      kind: "team_age_group",
+      label: "U21 duplicate",
+      clientMutationId: "crud-age-create-1",
+    });
+    expect(replayedAgeGroupId).toBe(ageGroupId);
+    await club.as.mutation(api.taxonomies.update, {
+      id: ageGroupId,
+      label: "U22",
+      clientMutationId: "crud-age-update-1",
+    });
+    await club.as.mutation(api.taxonomies.update, {
+      id: ageGroupId,
+      label: "Ignored",
+      clientMutationId: "crud-age-update-1",
+    });
+    await club.as.mutation(api.taxonomies.setActive, {
+      id: ageGroupId,
+      active: false,
+      clientMutationId: "crud-age-active-1",
+    });
+    await club.as.mutation(api.taxonomies.setActive, {
+      id: ageGroupId,
+      active: true,
+      clientMutationId: "crud-age-active-1",
+    });
+    const ageGroups = await club.as.query(api.taxonomies.list, {
+      kind: "team_age_group",
+      includeInactive: true,
+    });
+    const editedAgeGroup = ageGroups.find((row) => row.id === ageGroupId);
+    expect(editedAgeGroup?.label).toBe("U22");
+    expect(editedAgeGroup?.active).toBe(false);
+
+    const divisionId = await club.as.mutation(api.soccer.upsertDivision, {
+      name: "Offline Division",
+      minGrade: 0,
+      maxGrade: 50,
+      color: "#111111",
+      active: true,
+      clientMutationId: "crud-division-create-1",
+    });
+    const replayedDivisionId = await club.as.mutation(
+      api.soccer.upsertDivision,
+      {
+        name: "Duplicate Division",
+        minGrade: 51,
+        maxGrade: 100,
+        color: "#222222",
+        active: false,
+        clientMutationId: "crud-division-create-1",
+      },
+    );
+    expect(replayedDivisionId).toBe(divisionId);
+    if (!divisionId) throw new Error("Expected division id.");
+
+    const teamId = await club.as.mutation(api.teams.create, {
+      name: "Offline Team",
+      ageGroup: "u22",
+      season: "2026",
+      description: "Field capture",
+      kitColour: "Red",
+      kitBagNumber: "12",
+      divisionId,
+      coach: "Casey Coach",
+      manager: "Morgan Manager",
+      teamRegistered: true,
+      teamRegisteredDate: "2026-02-01",
+      teamRegistrationPaid: true,
+      clientMutationId: "crud-team-create-1",
+    });
+    const replayedTeamId = await club.as.mutation(api.teams.create, {
+      name: "Duplicate Team",
+      clientMutationId: "crud-team-create-1",
+    });
+    expect(replayedTeamId).toBe(teamId);
+    await club.as.mutation(api.teams.update, {
+      teamId,
+      ageGroup: null,
+      season: null,
+      description: null,
+      kitColour: null,
+      kitBagNumber: null,
+      divisionId: null,
+      coach: null,
+      manager: null,
+      teamRegisteredDate: null,
+      clientMutationId: "crud-team-clear-1",
+    });
+    await club.as.mutation(api.teams.update, {
+      teamId,
+      ageGroup: "ignored",
+      kitColour: "ignored",
+      clientMutationId: "crud-team-clear-1",
+    });
+    const teams = await club.as.query(api.teams.list, {
+      includeInactive: true,
+    });
+    const team = teams.find((row) => row._id === teamId);
+    expect(team?.ageGroup ?? null).toBeNull();
+    expect(team?.season ?? null).toBeNull();
+    expect(team?.description ?? null).toBeNull();
+    expect(team?.kitColour ?? null).toBeNull();
+    expect(team?.kitBagNumber ?? null).toBeNull();
+    expect(team?.divisionId ?? null).toBeNull();
+    expect(team?.coach ?? null).toBeNull();
+    expect(team?.manager ?? null).toBeNull();
+    expect(team?.teamRegisteredDate ?? null).toBeNull();
+
+    const fieldPlayerId = await club.as.mutation(
+      api.soccer.createFieldRegistration,
+      {
+        firstName: "Pitch",
+        lastName: "Player",
+        email: "pitch-player@example.test",
+        guardianFirstName: "Pat",
+        guardianLastName: "Parent",
+        guardianRelationship: "Guardian",
+        emergencyName: "Emergency Contact",
+        emergencyPhone: "0499999999",
+        teamId,
+        registered: true,
+        paid: false,
+        paymentPlan: true,
+        paymentPlanStart: "2026-03-01",
+        paymentPlanEnd: "2026-08-01",
+        comments: "Captured beside field",
+        kitColour: "Blue",
+        clientMutationId: "crud-field-registration-1",
+      },
+    );
+    const replayedFieldPlayerId = await club.as.mutation(
+      api.soccer.createFieldRegistration,
+      {
+        firstName: "Duplicate",
+        lastName: "Player",
+        clientMutationId: "crud-field-registration-1",
+      },
+    );
+    expect(replayedFieldPlayerId).toBe(fieldPlayerId);
+
+    await club.as.mutation(api.soccer.upsertRegistration, {
+      memberId: fieldPlayerId,
+      ffaNumber: null,
+      schoolName: null,
+      paymentPlanStart: null,
+      paymentPlanEnd: null,
+      comments: null,
+      kitColour: null,
+      clientMutationId: "crud-registration-clear-1",
+    });
+    await club.as.mutation(api.soccer.upsertRegistration, {
+      memberId: fieldPlayerId,
+      comments: "ignored",
+      kitColour: "ignored",
+      clientMutationId: "crud-registration-clear-1",
+    });
+
+    const fieldRegistration = await club.as.query(api.soccer.getRegistration, {
+      memberId: fieldPlayerId,
+    });
+    expect(fieldRegistration?.comments ?? null).toBeNull();
+    expect(fieldRegistration?.kitColour ?? null).toBeNull();
+    expect(fieldRegistration?.paymentPlanStart ?? null).toBeNull();
+    expect(fieldRegistration?.paymentPlanEnd ?? null).toBeNull();
+
+    const counts = await t.run(async (ctx) => {
+      const players = await ctx.db
+        .query("members")
+        .withIndex("by_org", (q) => q.eq("orgId", club.orgId))
+        .collect();
+      const guardians = await ctx.db
+        .query("guardians")
+        .withIndex("by_member", (q) => q.eq("memberId", fieldPlayerId))
+        .collect();
+      const emergencyContacts = await ctx.db
+        .query("emergencyContacts")
+        .withIndex("by_member", (q) => q.eq("memberId", fieldPlayerId))
+        .collect();
+      return { players, guardians, emergencyContacts };
+    });
+    expect(
+      counts.players.filter((row) => row.firstName === "Pitch"),
+    ).toHaveLength(1);
+    expect(counts.guardians).toHaveLength(1);
+    expect(counts.emergencyContacts).toHaveLength(1);
+  });
+
   test("public tag lookup never leaks private data", async () => {
     const t = convexTest(schema, modules);
     const club = await seedOrg(t, {

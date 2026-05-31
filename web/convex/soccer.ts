@@ -9,6 +9,9 @@ import {
 import { Id } from "./_generated/dataModel";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+import { assertTaxonomyKey } from "./taxonomies";
+
+const nullableString = v.union(v.string(), v.null());
 
 /**
  * Soccer-mode features: configurable skill rubric, weighted evaluations,
@@ -413,9 +416,17 @@ export const upsertDivision = mutation({
     maxGrade: v.number(),
     color: v.optional(v.string()),
     active: v.optional(v.boolean()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const divisionId = ctx.db.normalizeId("soccerDivisions", replay.resultId);
+      if (!divisionId) throw new Error("Invalid division idempotency result.");
+      return divisionId;
+    }
+    if (replay) throw new Error("Missing division idempotency result.");
     await assertSoccerMode(ctx, auth.org._id);
     if (args.minGrade > args.maxGrade) {
       throw new ConvexError({
@@ -434,6 +445,13 @@ export const upsertDivision = mutation({
         color: args.color,
         active: args.active ?? row.active,
       });
+      await recordClientMutation(
+        ctx,
+        auth,
+        args.clientMutationId,
+        "soccer:upsertDivision",
+        String(args.id),
+      );
       return args.id;
     }
     const last = await ctx.db
@@ -441,7 +459,7 @@ export const upsertDivision = mutation({
       .withIndex("by_org_order", (q) => q.eq("orgId", auth.org._id))
       .order("desc")
       .first();
-    return await ctx.db.insert("soccerDivisions", {
+    const divisionId = await ctx.db.insert("soccerDivisions", {
       orgId: auth.org._id,
       name: args.name.trim(),
       minGrade: args.minGrade,
@@ -450,6 +468,14 @@ export const upsertDivision = mutation({
       order: last ? last.order + 1 : 0,
       active: true,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "soccer:upsertDivision",
+      String(divisionId),
+    );
+    return divisionId;
   },
 });
 
@@ -560,20 +586,20 @@ export const getRegistration = query({
 export const upsertRegistration = mutation({
   args: {
     memberId: v.id("members"),
-    competitionId: v.optional(v.id("soccerCompetitions")),
-    ageGroupKey: v.optional(v.string()),
-    divisionId: v.optional(v.id("soccerDivisions")),
-    teamId: v.optional(v.id("teams")),
-    ffaNumber: v.optional(v.string()),
-    gender: v.optional(v.string()),
-    schoolName: v.optional(v.string()),
+    competitionId: v.optional(v.union(v.id("soccerCompetitions"), v.null())),
+    ageGroupKey: v.optional(nullableString),
+    divisionId: v.optional(v.union(v.id("soccerDivisions"), v.null())),
+    teamId: v.optional(v.union(v.id("teams"), v.null())),
+    ffaNumber: v.optional(nullableString),
+    gender: v.optional(nullableString),
+    schoolName: v.optional(nullableString),
     registered: v.optional(v.boolean()),
     paid: v.optional(v.boolean()),
     paymentPlan: v.optional(v.boolean()),
-    paymentPlanStart: v.optional(v.string()),
-    paymentPlanEnd: v.optional(v.string()),
-    comments: v.optional(v.string()),
-    kitColour: v.optional(v.string()),
+    paymentPlanStart: v.optional(nullableString),
+    paymentPlanEnd: v.optional(nullableString),
+    comments: v.optional(nullableString),
+    kitColour: v.optional(nullableString),
     /// Pass `true` to explicitly clear divisionId (so the auto
     /// grade-banding takes over). `divisionId` alone is treated as
     /// "leave unchanged" when undefined, so we need a separate flag.
@@ -589,24 +615,27 @@ export const upsertRegistration = mutation({
         "soccerRegistrations",
         replay.resultId,
       );
-      if (registrationId) return registrationId;
+      if (!registrationId) {
+        throw new Error("Invalid registration idempotency result.");
+      }
+      return registrationId;
     }
-    if (replay) return;
+    if (replay) throw new Error("Missing registration idempotency result.");
     await assertSoccerMode(ctx, auth.org._id);
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
     // Each FK must resolve to a record in the caller's org. Otherwise a
     // committee member could write cross-org references and violate the
     // tenant-isolation invariant.
-    if (args.competitionId !== undefined) {
+    if (args.competitionId !== undefined && args.competitionId !== null) {
       const comp = await ctx.db.get(args.competitionId);
       assertSameOrg(auth, comp);
     }
-    if (args.divisionId !== undefined) {
+    if (args.divisionId !== undefined && args.divisionId !== null) {
       const div = await ctx.db.get(args.divisionId);
       assertSameOrg(auth, div);
     }
-    if (args.teamId !== undefined) {
+    if (args.teamId !== undefined && args.teamId !== null) {
       const team = await ctx.db.get(args.teamId);
       assertSameOrg(auth, team);
     }
@@ -620,7 +649,9 @@ export const upsertRegistration = mutation({
     if (existing) {
       const patch: Record<string, unknown> = {};
       const k = <K extends keyof typeof args>(key: K) => {
-        if (args[key] !== undefined) patch[key] = args[key];
+        const value = args[key];
+        if (value !== undefined)
+          patch[key] = value === null ? undefined : value;
       };
       k("competitionId");
       k("ageGroupKey");
@@ -661,22 +692,24 @@ export const upsertRegistration = mutation({
     const registrationId = await ctx.db.insert("soccerRegistrations", {
       orgId: auth.org._id,
       memberId: args.memberId,
-      competitionId: args.competitionId,
-      ageGroupKey: args.ageGroupKey,
-      divisionId: args.clearDivision ? undefined : args.divisionId,
-      teamId: args.clearTeam ? undefined : args.teamId,
-      ffaNumber: args.ffaNumber,
-      gender: args.gender,
-      schoolName: args.schoolName,
+      competitionId: args.competitionId ?? undefined,
+      ageGroupKey: args.ageGroupKey ?? undefined,
+      divisionId: args.clearDivision
+        ? undefined
+        : (args.divisionId ?? undefined),
+      teamId: args.clearTeam ? undefined : (args.teamId ?? undefined),
+      ffaNumber: args.ffaNumber ?? undefined,
+      gender: args.gender ?? undefined,
+      schoolName: args.schoolName ?? undefined,
       registered: args.registered ?? false,
       registeredAt: args.registered ? now : undefined,
       paid: args.paid ?? false,
       paidAt: args.paid ? now : undefined,
       paymentPlan: args.paymentPlan,
-      paymentPlanStart: args.paymentPlanStart,
-      paymentPlanEnd: args.paymentPlanEnd,
-      comments: args.comments,
-      kitColour: args.kitColour,
+      paymentPlanStart: args.paymentPlanStart ?? undefined,
+      paymentPlanEnd: args.paymentPlanEnd ?? undefined,
+      comments: args.comments ?? undefined,
+      kitColour: args.kitColour ?? undefined,
     });
     await recordClientMutation(
       ctx,
@@ -686,6 +719,186 @@ export const upsertRegistration = mutation({
       String(registrationId),
     );
     return registrationId;
+  },
+});
+
+export const createFieldRegistration = mutation({
+  args: {
+    firstName: v.string(),
+    lastName: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    dateOfBirth: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    guardianFirstName: v.optional(v.string()),
+    guardianLastName: v.optional(v.string()),
+    guardianEmail: v.optional(v.string()),
+    guardianPhone: v.optional(v.string()),
+    guardianRelationship: v.optional(v.string()),
+    emergencyName: v.optional(v.string()),
+    emergencyRelationship: v.optional(v.string()),
+    emergencyPhone: v.optional(v.string()),
+    emergencyEmail: v.optional(v.string()),
+    competitionId: v.optional(v.id("soccerCompetitions")),
+    ageGroupKey: v.optional(v.string()),
+    divisionId: v.optional(v.id("soccerDivisions")),
+    teamId: v.optional(v.id("teams")),
+    ffaNumber: v.optional(v.string()),
+    gender: v.optional(v.string()),
+    schoolName: v.optional(v.string()),
+    registered: v.optional(v.boolean()),
+    paid: v.optional(v.boolean()),
+    paymentPlan: v.optional(v.boolean()),
+    paymentPlanStart: v.optional(v.string()),
+    paymentPlanEnd: v.optional(v.string()),
+    comments: v.optional(v.string()),
+    kitColour: v.optional(v.string()),
+    clearDivision: v.optional(v.boolean()),
+    clearTeam: v.optional(v.boolean()),
+    clientMutationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const memberId = ctx.db.normalizeId("members", replay.resultId);
+      if (!memberId) throw new Error("Invalid member idempotency result.");
+      return memberId;
+    }
+    if (replay) throw new Error("Missing member idempotency result.");
+
+    await assertSoccerMode(ctx, auth.org._id);
+    const firstName = args.firstName.trim();
+    const lastName = args.lastName.trim();
+    if (!firstName || !lastName) {
+      throw new ConvexError({
+        code: "invalid_member_name",
+        message: "Player first and last name are required.",
+      });
+    }
+
+    if (args.competitionId !== undefined) {
+      const comp = await ctx.db.get(args.competitionId);
+      assertSameOrg(auth, comp);
+    }
+    if (args.divisionId !== undefined) {
+      const div = await ctx.db.get(args.divisionId);
+      assertSameOrg(auth, div);
+    }
+    if (args.teamId !== undefined) {
+      const team = await ctx.db.get(args.teamId);
+      assertSameOrg(auth, team);
+    }
+    if (args.ageGroupKey !== undefined) {
+      await assertTaxonomyKey(
+        ctx,
+        auth.org._id,
+        "team_age_group",
+        args.ageGroupKey,
+      );
+    }
+
+    const guardianFirstName = args.guardianFirstName?.trim();
+    const guardianLastName = args.guardianLastName?.trim();
+    const hasGuardian =
+      Boolean(guardianFirstName) ||
+      Boolean(guardianLastName) ||
+      Boolean(args.guardianEmail?.trim()) ||
+      Boolean(args.guardianPhone?.trim());
+    if (hasGuardian && (!guardianFirstName || !guardianLastName)) {
+      throw new ConvexError({
+        code: "invalid_guardian",
+        message: "Guardian first and last name are required.",
+      });
+    }
+
+    const emergencyName = args.emergencyName?.trim();
+    const emergencyPhone = args.emergencyPhone?.trim();
+    const hasEmergency =
+      Boolean(emergencyName) ||
+      Boolean(emergencyPhone) ||
+      Boolean(args.emergencyEmail?.trim()) ||
+      Boolean(args.emergencyRelationship?.trim());
+    if (hasEmergency && (!emergencyName || !emergencyPhone)) {
+      throw new ConvexError({
+        code: "invalid_emergency_contact",
+        message: "Emergency contact name and phone are required.",
+      });
+    }
+
+    const now = Date.now();
+    const playerId = await ctx.db.insert("members", {
+      orgId: auth.org._id,
+      firstName,
+      lastName,
+      email: args.email?.trim() || undefined,
+      phone: args.phone?.trim() || undefined,
+      dateOfBirth: args.dateOfBirth,
+      status: "active",
+      notes: args.notes?.trim() || undefined,
+      isVolunteer: false,
+      clubRole: "player",
+    });
+
+    if (hasGuardian && guardianFirstName && guardianLastName) {
+      const guardianId = await ctx.db.insert("members", {
+        orgId: auth.org._id,
+        firstName: guardianFirstName,
+        lastName: guardianLastName,
+        email: args.guardianEmail?.trim() || undefined,
+        phone: args.guardianPhone?.trim() || undefined,
+        status: "active",
+        isVolunteer: false,
+        clubRole: "parent",
+      });
+      await ctx.db.insert("guardians", {
+        orgId: auth.org._id,
+        memberId: playerId,
+        guardianMemberId: guardianId,
+        relationship: args.guardianRelationship?.trim() || undefined,
+      });
+    }
+
+    if (hasEmergency && emergencyName && emergencyPhone) {
+      await ctx.db.insert("emergencyContacts", {
+        orgId: auth.org._id,
+        memberId: playerId,
+        name: emergencyName,
+        relationship: args.emergencyRelationship?.trim() || undefined,
+        phone: emergencyPhone,
+        email: args.emergencyEmail?.trim() || undefined,
+      });
+    }
+
+    await ctx.db.insert("soccerRegistrations", {
+      orgId: auth.org._id,
+      memberId: playerId,
+      competitionId: args.competitionId,
+      ageGroupKey: args.ageGroupKey,
+      divisionId: args.clearDivision ? undefined : args.divisionId,
+      teamId: args.clearTeam ? undefined : args.teamId,
+      ffaNumber: args.ffaNumber?.trim() || undefined,
+      gender: args.gender?.trim() || undefined,
+      schoolName: args.schoolName?.trim() || undefined,
+      registered: args.registered ?? false,
+      registeredAt: args.registered ? now : undefined,
+      paid: args.paid ?? false,
+      paidAt: args.paid ? now : undefined,
+      paymentPlan: args.paymentPlan,
+      paymentPlanStart: args.paymentPlanStart,
+      paymentPlanEnd: args.paymentPlanEnd,
+      comments: args.comments?.trim() || undefined,
+      kitColour: args.kitColour?.trim() || undefined,
+    });
+
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "soccer:createFieldRegistration",
+      String(playerId),
+    );
+    return playerId;
   },
 });
 
@@ -865,9 +1078,12 @@ export const upsertEvaluation = mutation({
         "soccerEvaluations",
         replay.resultId,
       );
-      if (evaluationId) return evaluationId;
+      if (!evaluationId) {
+        throw new Error("Invalid evaluation idempotency result.");
+      }
+      return evaluationId;
     }
-    if (replay) return;
+    if (replay) throw new Error("Missing evaluation idempotency result.");
     await assertSoccerMode(ctx, auth.org._id);
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);

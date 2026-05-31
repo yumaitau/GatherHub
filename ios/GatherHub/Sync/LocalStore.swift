@@ -235,6 +235,18 @@ final class LocalStore {
         try hasCachedValue(for: "taxonomies.assetCategories")
     }
 
+    func replaceTeamAgeGroups(_ rows: [TaxonomyOption]) throws {
+        try cacheValue(rows, for: "taxonomies.teamAgeGroups")
+    }
+
+    func cachedTeamAgeGroups() throws -> [TaxonomyOption] {
+        try cachedValue(for: "taxonomies.teamAgeGroups", as: [TaxonomyOption].self) ?? []
+    }
+
+    func hasCachedTeamAgeGroups() throws -> Bool {
+        try hasCachedValue(for: "taxonomies.teamAgeGroups")
+    }
+
     func replaceTagLookup(_ result: TagLookupResult, tagId: String) throws {
         try cacheValue(result, for: "tags.lookup.\(tagId)")
     }
@@ -265,6 +277,18 @@ final class LocalStore {
 
     func hasCachedSoccerDivisions() throws -> Bool {
         try hasCachedValue(for: "soccer.divisions")
+    }
+
+    func replaceSoccerCompetitions(_ rows: [SoccerCompetition]) throws {
+        try cacheValue(rows, for: "soccer.competitions")
+    }
+
+    func cachedSoccerCompetitions() throws -> [SoccerCompetition] {
+        try cachedValue(for: "soccer.competitions", as: [SoccerCompetition].self) ?? []
+    }
+
+    func hasCachedSoccerCompetitions() throws -> Bool {
+        try hasCachedValue(for: "soccer.competitions")
     }
 
     func replaceSoccerSkills(_ rows: [SoccerSkill]) throws {

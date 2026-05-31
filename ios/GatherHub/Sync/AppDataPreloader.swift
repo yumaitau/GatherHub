@@ -157,6 +157,17 @@ final class AppDataPreloader {
             failures: &failures
         )
 
+        record(
+            await run("Team age groups") {
+                try guardActive(shouldContinue)
+                let rows = try await convex.listTeamAgeGroups(includeInactive: true)
+                try guardActive(shouldContinue)
+                try store.replaceTeamAgeGroups(rows)
+            },
+            loaded: &loaded,
+            failures: &failures
+        )
+
         var assetDetailCandidates: [AssetSummary] = []
         let assets = await runValue("Assets") {
             try guardActive(shouldContinue)
@@ -234,6 +245,17 @@ final class AppDataPreloader {
                 let rows = try await convex.listSoccerDivisions()
                 try guardActive(shouldContinue)
                 try store.replaceSoccerDivisions(rows)
+            },
+            loaded: &loaded,
+            failures: &failures
+        )
+
+        record(
+            await run("Soccer competitions") {
+                try guardActive(shouldContinue)
+                let rows = try await convex.listSoccerCompetitions()
+                try guardActive(shouldContinue)
+                try store.replaceSoccerCompetitions(rows)
             },
             loaded: &loaded,
             failures: &failures

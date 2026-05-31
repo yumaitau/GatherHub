@@ -105,6 +105,50 @@ final class ConvexService: ObservableObject {
         try await once("taxonomies:list", with: ["kind": "asset_category"])
     }
 
+    /// `taxonomies:list` (query) — soccer team age-group options.
+    func listTeamAgeGroups(includeInactive: Bool = false) async throws -> [TaxonomyOption] {
+        try await once(
+            "taxonomies:list",
+            with: ["kind": "team_age_group", "includeInactive": includeInactive]
+        )
+    }
+
+    @discardableResult
+    func createTeamAgeGroup(
+        label: String,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        try await performMutation(
+            "taxonomies:create",
+            with: ["kind": "team_age_group", "label": label],
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func updateTeamAgeGroup(
+        id: String,
+        label: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "taxonomies:update",
+            with: ["id": id, "label": label],
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func setTeamAgeGroupActive(
+        id: String,
+        active: Bool,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "taxonomies:setActive",
+            with: ["id": id, "active": active],
+            clientMutationId: clientMutationId
+        )
+    }
+
     // MARK: - Tags / assets
 
     /// `tags:lookupAuthed` (query, `{ tagId }`) — full asset for a scanned tag
@@ -196,9 +240,86 @@ final class ConvexService: ObservableObject {
         return try await once("members:list", with: args)
     }
 
+    @discardableResult
+    func createMember(
+        _ payload: MemberMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args: [String: ConvexEncodable?] = [
+            "firstName": payload.firstName,
+            "lastName": payload.lastName,
+            "status": payload.status.rawValue,
+            "isVolunteer": payload.isVolunteer,
+        ]
+        putOptionalString("email", payload.email, into: &args)
+        putOptionalString("phone", payload.phone, into: &args)
+        putOptionalString("dateOfBirth", payload.dateOfBirth, into: &args)
+        putOptionalString("notes", payload.notes, into: &args)
+        putOptionalString("clubRole", payload.clubRole, into: &args)
+        return try await performMutation(
+            "members:create",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func updateMember(
+        memberId: String,
+        payload: MemberMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = [
+            "memberId": memberId,
+            "firstName": payload.firstName,
+            "lastName": payload.lastName,
+            "status": payload.status.rawValue,
+            "isVolunteer": payload.isVolunteer,
+        ]
+        putOptionalString("email", payload.email, into: &args, includeNull: true)
+        putOptionalString("phone", payload.phone, into: &args, includeNull: true)
+        putOptionalString("dateOfBirth", payload.dateOfBirth, into: &args, includeNull: true)
+        putOptionalString("notes", payload.notes, into: &args, includeNull: true)
+        putOptionalString("clubRole", payload.clubRole, into: &args, includeNull: true)
+        try await performMutation(
+            "members:update",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
     /// `teams:list` (query) — all teams in active org with roster counts.
     func listTeams(includeInactive: Bool = false) async throws -> [Team] {
         try await once("teams:list", with: ["includeInactive": includeInactive])
+    }
+
+    @discardableResult
+    func createTeam(
+        _ payload: TeamMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args = teamArgs(from: payload)
+        args["name"] = payload.name
+        return try await performMutation(
+            "teams:create",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func updateTeam(
+        teamId: String,
+        payload: TeamMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args = teamArgs(from: payload, includeNulls: true)
+        args["teamId"] = teamId
+        args["name"] = payload.name
+        args["isActive"] = payload.isActive
+        try await performMutation(
+            "teams:update",
+            with: args,
+            clientMutationId: clientMutationId
+        )
     }
 
     /// `announcements:list` (query).
@@ -226,6 +347,31 @@ final class ConvexService: ObservableObject {
         try await once("soccer:listDivisions")
     }
 
+    /// `soccer:listCompetitions` (query).
+    func listSoccerCompetitions() async throws -> [SoccerCompetition] {
+        try await once("soccer:listCompetitions")
+    }
+
+    @discardableResult
+    func upsertSoccerDivision(
+        _ payload: DivisionMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args: [String: ConvexEncodable?] = [
+            "name": payload.name,
+            "minGrade": payload.minGrade,
+            "maxGrade": payload.maxGrade,
+            "active": payload.active,
+        ]
+        if let id = payload.id { args["id"] = id }
+        if let color = trimmed(payload.color) { args["color"] = color }
+        return try await performMutation(
+            "soccer:upsertDivision",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
     /// `soccer:upsertRegistration` (mutation) — minimal assignment
     /// surface for the iOS quick-edit sheet. `teamId` / `divisionId`
     /// nil + the respective `clear*` flag explicitly removes the
@@ -247,6 +393,55 @@ final class ConvexService: ObservableObject {
         if let kitColour { args["kitColour"] = kitColour }
         try await performMutation(
             "soccer:upsertRegistration",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func upsertRegistration(
+        _ payload: RegistrationMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args = registrationArgs(from: payload.details, includeNulls: true)
+        args["memberId"] = payload.memberId
+        try await performMutation(
+            "soccer:upsertRegistration",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    @discardableResult
+    func createFieldRegistration(
+        _ payload: FieldRegistrationPayload,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args = registrationArgs(from: payload.registration)
+        args["firstName"] = payload.firstName
+        args["lastName"] = payload.lastName
+        if let email = trimmed(payload.email) { args["email"] = email }
+        if let phone = trimmed(payload.phone) { args["phone"] = phone }
+        if let dateOfBirth = trimmed(payload.dateOfBirth) { args["dateOfBirth"] = dateOfBirth }
+        if let notes = trimmed(payload.notes) { args["notes"] = notes }
+        if let guardianFirstName = trimmed(payload.guardianFirstName) {
+            args["guardianFirstName"] = guardianFirstName
+        }
+        if let guardianLastName = trimmed(payload.guardianLastName) {
+            args["guardianLastName"] = guardianLastName
+        }
+        if let guardianEmail = trimmed(payload.guardianEmail) { args["guardianEmail"] = guardianEmail }
+        if let guardianPhone = trimmed(payload.guardianPhone) { args["guardianPhone"] = guardianPhone }
+        if let guardianRelationship = trimmed(payload.guardianRelationship) {
+            args["guardianRelationship"] = guardianRelationship
+        }
+        if let emergencyName = trimmed(payload.emergencyName) { args["emergencyName"] = emergencyName }
+        if let emergencyRelationship = trimmed(payload.emergencyRelationship) {
+            args["emergencyRelationship"] = emergencyRelationship
+        }
+        if let emergencyPhone = trimmed(payload.emergencyPhone) { args["emergencyPhone"] = emergencyPhone }
+        if let emergencyEmail = trimmed(payload.emergencyEmail) { args["emergencyEmail"] = emergencyEmail }
+        return try await performMutation(
+            "soccer:createFieldRegistration",
             with: args,
             clientMutationId: clientMutationId
         )
@@ -425,6 +620,79 @@ final class ConvexService: ObservableObject {
                     }
                 )
             }
+    }
+
+    private func teamArgs(
+        from payload: TeamMutationPayload,
+        includeNulls: Bool = false
+    ) -> [String: ConvexEncodable?] {
+        var args: [String: ConvexEncodable?] = [:]
+        putOptionalString("ageGroup", payload.ageGroup, into: &args, includeNull: includeNulls)
+        putOptionalString("season", payload.season, into: &args, includeNull: includeNulls)
+        putOptionalString("description", payload.description, into: &args, includeNull: includeNulls)
+        putOptionalString("kitColour", payload.kitColour, into: &args, includeNull: includeNulls)
+        putOptionalString("kitBagNumber", payload.kitBagNumber, into: &args, includeNull: includeNulls)
+        putOptionalString("competitionId", payload.competitionId, into: &args, includeNull: includeNulls)
+        putOptionalString("divisionId", payload.divisionId, into: &args, includeNull: includeNulls)
+        putOptionalString("coach", payload.coach, into: &args, includeNull: includeNulls)
+        putOptionalString("coachEmail", payload.coachEmail, into: &args, includeNull: includeNulls)
+        putOptionalString("coachPhone", payload.coachPhone, into: &args, includeNull: includeNulls)
+        putOptionalString("additionalCoach", payload.additionalCoach, into: &args, includeNull: includeNulls)
+        putOptionalString("additionalCoachEmail", payload.additionalCoachEmail, into: &args, includeNull: includeNulls)
+        putOptionalString("additionalCoachPhone", payload.additionalCoachPhone, into: &args, includeNull: includeNulls)
+        putOptionalString("manager", payload.manager, into: &args, includeNull: includeNulls)
+        putOptionalString("managerEmail", payload.managerEmail, into: &args, includeNull: includeNulls)
+        putOptionalString("managerPhone", payload.managerPhone, into: &args, includeNull: includeNulls)
+        if let teamRegistered = payload.teamRegistered { args["teamRegistered"] = teamRegistered }
+        putOptionalString("teamRegisteredDate", payload.teamRegisteredDate, into: &args, includeNull: includeNulls)
+        if let teamRegistrationPaid = payload.teamRegistrationPaid {
+            args["teamRegistrationPaid"] = teamRegistrationPaid
+        }
+        return args
+    }
+
+    private func registrationArgs(
+        from payload: RegistrationDetailsPayload,
+        includeNulls: Bool = false
+    ) -> [String: ConvexEncodable?] {
+        var args: [String: ConvexEncodable?] = [
+            "registered": payload.registered,
+            "paid": payload.paid,
+            "paymentPlan": payload.paymentPlan,
+            "clearTeam": payload.clearTeam,
+            "clearDivision": payload.clearDivision,
+        ]
+        putOptionalString("competitionId", payload.competitionId, into: &args, includeNull: includeNulls)
+        putOptionalString("ageGroupKey", payload.ageGroupKey, into: &args, includeNull: includeNulls)
+        putOptionalString("teamId", payload.teamId, into: &args, includeNull: includeNulls)
+        putOptionalString("divisionId", payload.divisionId, into: &args, includeNull: includeNulls)
+        putOptionalString("ffaNumber", payload.ffaNumber, into: &args, includeNull: includeNulls)
+        putOptionalString("gender", payload.gender, into: &args, includeNull: includeNulls)
+        putOptionalString("schoolName", payload.schoolName, into: &args, includeNull: includeNulls)
+        putOptionalString("paymentPlanStart", payload.paymentPlanStart, into: &args, includeNull: includeNulls)
+        putOptionalString("paymentPlanEnd", payload.paymentPlanEnd, into: &args, includeNull: includeNulls)
+        putOptionalString("comments", payload.comments, into: &args, includeNull: includeNulls)
+        putOptionalString("kitColour", payload.kitColour, into: &args, includeNull: includeNulls)
+        return args
+    }
+
+    private func putOptionalString(
+        _ key: String,
+        _ value: String?,
+        into args: inout [String: ConvexEncodable?],
+        includeNull: Bool = false
+    ) {
+        if let value = trimmed(value) {
+            args[key] = value
+        } else if includeNull {
+            args.updateValue(nil, forKey: key)
+        }
+    }
+
+    private func trimmed(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private func performMutation(

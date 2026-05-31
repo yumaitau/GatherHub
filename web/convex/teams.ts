@@ -2,6 +2,9 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
 import { teamRoleValidator } from "./schema";
+import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+
+const nullableString = v.union(v.string(), v.null());
 
 export const list = query({
   args: { includeInactive: v.optional(v.boolean()) },
@@ -83,9 +86,17 @@ export const create = mutation({
     teamRegistered: v.optional(v.boolean()),
     teamRegisteredDate: v.optional(v.string()),
     teamRegistrationPaid: v.optional(v.boolean()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const teamId = ctx.db.normalizeId("teams", replay.resultId);
+      if (!teamId) throw new Error("Invalid team idempotency result.");
+      return teamId;
+    }
+    if (replay) throw new Error("Missing team idempotency result.");
     if (args.competitionId !== undefined) {
       const comp = await ctx.db.get(args.competitionId);
       assertSameOrg(auth, comp);
@@ -94,7 +105,7 @@ export const create = mutation({
       const div = await ctx.db.get(args.divisionId);
       assertSameOrg(auth, div);
     }
-    return await ctx.db.insert("teams", {
+    const teamId = await ctx.db.insert("teams", {
       orgId: auth.org._id,
       name: args.name.trim(),
       ageGroup: args.ageGroup,
@@ -118,6 +129,14 @@ export const create = mutation({
       teamRegisteredDate: args.teamRegisteredDate,
       teamRegistrationPaid: args.teamRegistrationPaid,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "teams:create",
+      String(teamId),
+    );
+    return teamId;
   },
 });
 
@@ -125,44 +144,56 @@ export const update = mutation({
   args: {
     teamId: v.id("teams"),
     name: v.optional(v.string()),
-    ageGroup: v.optional(v.string()),
-    season: v.optional(v.string()),
-    description: v.optional(v.string()),
+    ageGroup: v.optional(nullableString),
+    season: v.optional(nullableString),
+    description: v.optional(nullableString),
     isActive: v.optional(v.boolean()),
-    kitColour: v.optional(v.string()),
-    kitBagNumber: v.optional(v.string()),
-    competitionId: v.optional(v.id("soccerCompetitions")),
-    divisionId: v.optional(v.id("soccerDivisions")),
-    coach: v.optional(v.string()),
-    coachEmail: v.optional(v.string()),
-    coachPhone: v.optional(v.string()),
-    additionalCoach: v.optional(v.string()),
-    additionalCoachEmail: v.optional(v.string()),
-    additionalCoachPhone: v.optional(v.string()),
-    manager: v.optional(v.string()),
-    managerEmail: v.optional(v.string()),
-    managerPhone: v.optional(v.string()),
+    kitColour: v.optional(nullableString),
+    kitBagNumber: v.optional(nullableString),
+    competitionId: v.optional(v.union(v.id("soccerCompetitions"), v.null())),
+    divisionId: v.optional(v.union(v.id("soccerDivisions"), v.null())),
+    coach: v.optional(nullableString),
+    coachEmail: v.optional(nullableString),
+    coachPhone: v.optional(nullableString),
+    additionalCoach: v.optional(nullableString),
+    additionalCoachEmail: v.optional(nullableString),
+    additionalCoachPhone: v.optional(nullableString),
+    manager: v.optional(nullableString),
+    managerEmail: v.optional(nullableString),
+    managerPhone: v.optional(nullableString),
     teamRegistered: v.optional(v.boolean()),
-    teamRegisteredDate: v.optional(v.string()),
+    teamRegisteredDate: v.optional(nullableString),
     teamRegistrationPaid: v.optional(v.boolean()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay) return;
     const team = await ctx.db.get(args.teamId);
     assertSameOrg(auth, team);
-    if (args.competitionId !== undefined) {
+    if (args.competitionId !== undefined && args.competitionId !== null) {
       const comp = await ctx.db.get(args.competitionId);
       assertSameOrg(auth, comp);
     }
-    if (args.divisionId !== undefined) {
+    if (args.divisionId !== undefined && args.divisionId !== null) {
       const div = await ctx.db.get(args.divisionId);
       assertSameOrg(auth, div);
     }
-    const { teamId, ...rest } = args;
+    const { teamId, clientMutationId, ...rest } = args;
     const patch = Object.fromEntries(
-      Object.entries(rest).filter(([, v]) => v !== undefined),
+      Object.entries(rest)
+        .filter(([, v]) => v !== undefined)
+        .map(([key, value]) => [key, value === null ? undefined : value]),
     );
     await ctx.db.patch(teamId, patch);
+    await recordClientMutation(
+      ctx,
+      auth,
+      clientMutationId,
+      "teams:update",
+      String(teamId),
+    );
   },
 });
 

@@ -3,6 +3,7 @@ import { MutationCtx, mutation, query, QueryCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
 import { taxonomyKindValidator } from "./schema";
+import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 
 /**
  * Per-org configurable taxonomies for event types, asset categories,
@@ -213,9 +214,17 @@ export const create = mutation({
     label: v.string(),
     key: v.optional(v.string()),
     color: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const taxonomyId = ctx.db.normalizeId("taxonomies", replay.resultId);
+      if (!taxonomyId) throw new Error("Invalid taxonomy idempotency result.");
+      return taxonomyId;
+    }
+    if (replay) throw new Error("Missing taxonomy idempotency result.");
     const label = args.label.trim();
     if (!label) {
       throw new ConvexError({
@@ -251,6 +260,13 @@ export const create = mutation({
         active: true,
         color: args.color,
       });
+      await recordClientMutation(
+        ctx,
+        auth,
+        args.clientMutationId,
+        "taxonomies:create",
+        String(existing._id),
+      );
       return existing._id;
     }
 
@@ -264,7 +280,7 @@ export const create = mutation({
       .first();
     const order = last ? last.order + 1 : 0;
 
-    return await ctx.db.insert("taxonomies", {
+    const taxonomyId = await ctx.db.insert("taxonomies", {
       orgId: auth.org._id,
       kind: args.kind,
       key,
@@ -273,6 +289,14 @@ export const create = mutation({
       active: true,
       color: args.color,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "taxonomies:create",
+      String(taxonomyId),
+    );
+    return taxonomyId;
   },
 });
 
@@ -281,9 +305,12 @@ export const update = mutation({
     id: v.id("taxonomies"),
     label: v.optional(v.string()),
     color: v.optional(v.union(v.string(), v.null())),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay) return;
     const row = await ctx.db.get(args.id);
     assertSameOrg(auth, row);
     if (!row) return;
@@ -304,13 +331,26 @@ export const update = mutation({
     if (Object.keys(patch).length > 0) {
       await ctx.db.patch(args.id, patch);
     }
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "taxonomies:update",
+      String(args.id),
+    );
   },
 });
 
 export const setActive = mutation({
-  args: { id: v.id("taxonomies"), active: v.boolean() },
+  args: {
+    id: v.id("taxonomies"),
+    active: v.boolean(),
+    clientMutationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay) return;
     const row = await ctx.db.get(args.id);
     assertSameOrg(auth, row);
     if (!row) return;
@@ -319,6 +359,13 @@ export const setActive = mutation({
     if (!args.active && row.isDefault) {
       await ctx.db.patch(args.id, { isDefault: false });
     }
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "taxonomies:setActive",
+      String(args.id),
+    );
   },
 });
 
