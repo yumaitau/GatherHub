@@ -62,16 +62,34 @@ capability in the Apple Developer portal:
 
 ### 4. Configure secrets
 
-Open `GatherHub/Config/Secrets.swift` and replace the placeholders:
+`GatherHub/Config/Secrets.swift` contains the public Clerk/Convex client
+configuration committed with the app. The Google Maps key is intentionally read
+from build settings so the open-source repo does not carry a real key.
 
-```swift
-static let clerkPublishableKey = "pk_test_…"          // Clerk dashboard ▸ API Keys
-static let convexDeploymentURL = "https://….convex.cloud" // Convex dashboard
+For local or TestFlight builds, copy the example xcconfig and set the iOS key:
+
+```bash
+cp ios/Config/AppSecrets.xcconfig.example ios/Config/AppSecrets.xcconfig
+# edit GOOGLE_MAPS_API_KEY in ios/Config/AppSecrets.xcconfig
 ```
 
-Both values are **public by design** (publishable key + deployment URL); real
-secrets live in the Convex deployment environment. Prefer injecting them via an
-`.xcconfig` / Info.plist in CI rather than committing them.
+These values are **public by design** (publishable/client keys + deployment
+URL); real secrets live in the Convex deployment environment. Use a separate
+Google key from the web app, restrict it to the iOS bundle id
+`au.com.gatherhub`, and API-restrict it to the Places API you use. Prefer
+injecting them via an `.xcconfig` / Info.plist in CI rather than committing
+them.
+
+For CI/TestFlight, pass the key as a build setting instead of writing a file:
+
+```bash
+xcodebuild \
+  -project ios/GatherHub.xcodeproj \
+  -scheme GatherHub \
+  -configuration Release \
+  GOOGLE_MAPS_API_KEY="$IOS_GOOGLE_MAPS_API_KEY" \
+  archive
+```
 
 The Convex deployment must validate Clerk JWTs from a template named **`convex`**
 (see `../web/convex/auth.config.ts`). `AuthService` requests that template when
@@ -86,7 +104,15 @@ two stay in lockstep). All are Clerk-JWT authenticated.
 | --- | --- | --- |
 | `sync:ensureFromClient` | mutation | on login, upsert user/org/membership |
 | `sync:currentContext` | query | resolve `{ user, org, role }` |
+| `organizations:locationDefaults` | query | default organisation address |
+| `organizations:updateLocationSettings` | mutation | admin address setting |
+| `taxonomies:list` | query `{ kind }` | asset category picker |
 | `tags:lookupAuthed` | query `{ tagId }` | scan / asset lookup |
+| `assets:history` | query `{ assetId }` | asset lifecycle trail |
+| `assets:create` | mutation | create asset from a scanned NFC tag |
+| `assets:list` | query `{ status? }` | checked-out list and bind unknown NFC tag |
+| `assets:registerNfc` | mutation | register NFC UID against an asset |
+| `assetOps:recordScan` | mutation | audit a successful scan |
 | `assetOps:checkOut` | mutation | check out to a custodian |
 | `assetOps:checkIn` | mutation | check in |
 | `events:list` | query `{ upcomingOnly?, teamId? }` | events tab |
@@ -95,7 +121,8 @@ two stay in lockstep). All are Clerk-JWT authenticated.
 
 QR codes encode either `https://app.gatherhub.au/a/tag_xxx` or the deep link
 `gatherhub://asset/tag_xxx`; `Utilities/TagParser.swift` extracts the bare
-`tag_…` id from any form (including a raw id).
+`tag_...` id from any form. Raw NFC hardware UIDs are passed through as opaque
+NFC tag ids and can be registered to a new or existing KitTrace asset.
 
 ## Screens
 
@@ -105,7 +132,9 @@ QR codes encode either `https://app.gatherhub.au/a/tag_xxx` or the deep link
 - **OrgPickerView** — choose the active club when a user belongs to several.
 - **MainTabView** — tabs: **Scan, Assets, Events, Profile**.
 - **ScanView** — QR scanning via `AVCaptureSession` + an NFC button via
-  `NFCNDEFReaderSession`; navigates to the asset on a successful tag read.
+  `NFCTagReaderSession`; polls ISO 14443 + ISO 15693 tags to match
+  Kit-Trace's `flutter_nfc_kit` flow, then navigates to the asset on a
+  successful tag read.
 - **AssetLookupView / AssetDetailView** — manual lookup and the asset detail
   with **Check Out** (member-picker sheet) / **Check In** actions.
 - **MemberPickerView** — searchable custodian picker (`members:list`).
@@ -124,7 +153,9 @@ ios/
     ├── GatherHubApp.swift               # @main, Clerk init, env objects, deep links
     ├── Info.plist                       # camera/NFC usage strings, URL scheme
     ├── GatherHub.entitlements           # NFC reader formats entitlement
-    ├── Config/Secrets.swift             # placeholder key + URL
+    ├── Config/Secrets.swift             # public Clerk/Convex client config
+    ├── Config/BuildSettings.xcconfig    # optional local/CI includes
+    ├── Config/AppSecrets.xcconfig.example
     ├── Models/Models.swift              # Codable models + snake_case enums
     ├── Services/
     │   ├── ConvexService.swift          # Convex function wrapper

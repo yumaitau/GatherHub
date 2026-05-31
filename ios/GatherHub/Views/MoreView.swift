@@ -9,11 +9,15 @@ import SwiftUI
 /// destinations get backfilled feature-by-feature.
 struct MoreView: View {
     let context: CurrentContext
+    @EnvironmentObject private var sync: SyncEnvironment
 
     var body: some View {
         NavigationStack {
             List {
                 operationsSection
+                if context.role.canManageOrgSettings {
+                    adminSection
+                }
                 if context.org.soccerMode == true {
                     soccerSection
                 }
@@ -35,6 +39,20 @@ struct MoreView: View {
             row("Members", system: "person.2") { MembersListView() }
             row("Teams", system: "shield.lefthalf.filled") { TeamsListView() }
             row("Announcements", system: "megaphone") { AnnouncementsListView() }
+            NavigationLink {
+                PendingQueueView()
+            } label: {
+                HStack {
+                    Label("Sync queue", systemImage: "arrow.triangle.2.circlepath")
+                    Spacer()
+                    let count = sync.coordinator?.unsettledCount ?? 0
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.gh.caption.weight(.semibold))
+                            .foregroundStyle(Color.gh.accent)
+                    }
+                }
+            }
         }
     }
 
@@ -52,12 +70,20 @@ struct MoreView: View {
         }
     }
 
+    private var adminSection: some View {
+        Section("Admin") {
+            row("Organisation address", system: "mappin.and.ellipse") {
+                OrganizationAddressView(initialAddress: context.org.defaultAddress)
+            }
+        }
+    }
+
     /// Honest footnote so admins know where to go for the surfaces that
     /// intentionally don't ship on iOS.
     private var adminFootnote: some View {
         VStack(spacing: GHSpacing.xs) {
             Text("Full admin lives on the web.").ghLabelStyle()
-            Text("Volunteers, sponsors, news, settings, invitations and audit logs are configured at app.gatherhub.au.")
+            Text("Volunteers, sponsors, news, invitations and audit logs are configured at app.gatherhub.au.")
                 .font(.gh.caption)
                 .foregroundStyle(Color.gh.inkQuiet)
                 .multilineTextAlignment(.center)
@@ -115,4 +141,3 @@ struct MorePlaceholderView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-

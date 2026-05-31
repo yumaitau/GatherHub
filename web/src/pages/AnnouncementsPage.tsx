@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { cn, formatDateTime } from "@/lib/utils";
 
 type Announcement = {
@@ -99,8 +100,11 @@ function AnnouncementRow({ announcement }: { announcement: Announcement }) {
         announcementId: announcement._id,
         pinned: !announcement.pinned,
       });
+      toastSuccess(
+        announcement.pinned ? "Announcement unpinned." : "Announcement pinned.",
+      );
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not update announcement."));
     }
   }
 
@@ -110,8 +114,9 @@ function AnnouncementRow({ announcement }: { announcement: Announcement }) {
     setError(null);
     try {
       await remove({ announcementId: announcement._id });
+      toastSuccess("Announcement deleted.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not delete announcement."));
     }
   }
 
@@ -245,8 +250,9 @@ function NewAnnouncementDialog() {
       });
       reset();
       setOpen(false);
+      toastSuccess("Announcement posted.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not post announcement."));
     } finally {
       setSaving(false);
     }

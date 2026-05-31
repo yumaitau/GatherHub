@@ -8,13 +8,15 @@ import Observation
 @MainActor
 @Observable
 final class NetworkMonitor {
-    private(set) var isOnline: Bool = true
+    private(set) var isOnline: Bool = false
     /// `true` when the path is cellular vs Wi-Fi/Ethernet — useful for
     /// deferring heavy syncs until on Wi-Fi.
     private(set) var isExpensive: Bool = false
 
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "au.gatherhub.network-monitor")
+    @ObservationIgnored
+    var onStatusChange: (() -> Void)?
 
     init() {
         monitor.pathUpdateHandler = { [weak self] path in
@@ -22,6 +24,7 @@ final class NetworkMonitor {
                 guard let self else { return }
                 self.isOnline = path.status == .satisfied
                 self.isExpensive = path.isExpensive
+                self.onStatusChange?()
             }
         }
         monitor.start(queue: queue)

@@ -5,6 +5,7 @@ import SwiftUI
 /// training without a laptop.
 struct GradingListView: View {
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @State private var rows: [PlayerRosterRow] = []
     @State private var loading = true
     @State private var error: String?
@@ -88,17 +89,28 @@ struct GradingListView: View {
         }
         .task { await load() }
         .refreshable { await load() }
-        .searchable(text: $query, prompt: "Search player or division")
+        .searchable(
+            text: $query,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Search player or division"
+        )
     }
 
     private func load() async {
+        if let cached = try? sync.store?.cachedPlayerRoster(), !cached.isEmpty {
+            rows = cached
+        }
         loading = rows.isEmpty
         error = nil
         defer { loading = false }
         do {
-            rows = try await convex.listPlayerRoster()
+            let fresh = try await convex.listPlayerRoster()
+            rows = fresh
+            try? sync.store?.replacePlayerRoster(fresh)
         } catch let err {
-            error = err.localizedDescription
+            if rows.isEmpty {
+                error = UserFacingError.message(err, fallback: "Couldn't load grading.")
+            }
         }
     }
 }
@@ -141,7 +153,7 @@ private struct GradingRow: View {
         if row.scoredCount == 0 {
             GHBadge(text: "—", variant: .outline)
         } else {
-            Text(String(format: "%.1f", row.grade))
+            Text(row.grade.formatted(.number.precision(.fractionLength(1))))
                 .font(.gh.bodyStrong)
                 .foregroundStyle(Color.gh.inkStrong)
                 .monospacedDigit()

@@ -7,6 +7,7 @@ import SwiftUI
 struct DashboardView: View {
     let context: CurrentContext
     @State private var model: DashboardViewModel
+    @EnvironmentObject private var sync: SyncEnvironment
 
     init(context: CurrentContext, convex: ConvexService) {
         self.context = context
@@ -31,7 +32,7 @@ struct DashboardView: View {
                                 .font(.gh.body)
                                 .foregroundStyle(Color.gh.inkSoft)
                             Button("Try again") {
-                                Task { await model.load() }
+                                Task { await model.load(sync: sync) }
                             }
                             .buttonStyle(.gh(.outline))
                         }
@@ -51,8 +52,8 @@ struct DashboardView: View {
         .background(Color.gh.paper.ignoresSafeArea())
         .navigationTitle("Dashboard")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await model.load() }
-        .refreshable { await model.load() }
+        .task { await model.load(sync: sync) }
+        .refreshable { await model.load(sync: sync) }
     }
 
     // MARK: Header

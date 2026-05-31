@@ -28,6 +28,7 @@ import {
 import { DataTable } from "@/components/ui/data-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { downloadCsv, humanise, toCsv } from "@/lib/utils";
 
 type Row = NonNullable<
@@ -305,8 +306,9 @@ function EditWwvpDialog({
         registeredDate: nextRegDate || undefined,
       });
       setOpen(false);
+      toastSuccess("WWVP status updated.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not update WWVP status."));
     } finally {
       setSaving(false);
     }

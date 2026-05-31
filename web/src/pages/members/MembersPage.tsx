@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { Link } from "react-router-dom";
 import { Users, Plus, Download, Mail, X } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { toCsv, downloadCsv, humanise, formatDateTime, cn } from "@/lib/utils";
 import type { Role } from "@/lib/roles";
 
@@ -257,8 +258,9 @@ function AddMemberDialog() {
       });
       reset();
       setOpen(false);
+      toastSuccess("Member added.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not add member."));
     } finally {
       setSaving(false);
     }
@@ -355,7 +357,7 @@ const INVITE_ROLES: Role[] = [
 ];
 
 function InviteUserDialog() {
-  const send = useMutation(api.invitations.send);
+  const send = useAction(api.invitations.send);
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
@@ -369,11 +371,12 @@ function InviteUserDialog() {
     setError(null);
     try {
       await send({ email: email.trim(), role });
+      toastSuccess(`Invitation sent to ${email.trim()}.`);
       setEmail("");
       setRole("player");
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send invite.");
+      setError(toastFailure(err, "Could not send invite."));
     } finally {
       setBusy(false);
     }
@@ -436,8 +439,20 @@ function InviteUserDialog() {
 }
 
 function PendingInvitesPanel() {
-  const invites = useQuery(api.invitations.list);
-  const revoke = useMutation(api.invitations.revoke);
+  // Clerk-native invitations: fetched on-demand via action (no live query).
+  const list = useAction(api.invitations.list);
+  const revoke = useAction(api.invitations.revoke);
+  const [invites, setInvites] = React.useState<
+    Awaited<ReturnType<typeof list>> | undefined
+  >(undefined);
+
+  const refresh = React.useCallback(async () => {
+    setInvites(await list({}));
+  }, [list]);
+
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   if (invites === undefined) return null;
   const pending = invites.filter((i) => i.status === "pending");
@@ -479,7 +494,15 @@ function PendingInvitesPanel() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => revoke({ invitationId: i.id })}
+                  onClick={async () => {
+                    try {
+                      await revoke({ invitationId: i.id });
+                      await refresh();
+                      toastSuccess(`Invitation revoked for ${i.email}.`);
+                    } catch (err) {
+                      toastFailure(err, "Could not revoke invitation.");
+                    }
+                  }}
                 >
                   <X className="h-4 w-4" />
                   Revoke

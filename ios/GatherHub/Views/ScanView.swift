@@ -16,7 +16,6 @@ struct ScanView: View {
     @EnvironmentObject private var convex: ConvexService
     @StateObject private var camera = QRScannerController()
     @StateObject private var nfcRaw = NFCRawReader()
-    @StateObject private var nfcNdef = NFCScanner()
 
     @State private var scannedTagId: String?
     @State private var showError = false
@@ -51,14 +50,13 @@ struct ScanView: View {
                 camera.start()
                 // Auto-start an NFC session the first time the tab appears
                 // in a session, mirroring Kit-Trace's "tap to scan" feel.
-                if !autoStartedNfc, NFCTagReaderSession.readingAvailable {
+                if !autoStartedNfc, NFCReaderSession.readingAvailable {
                     autoStartedNfc = true
                     nfcRaw.beginScanning()
                 }
             }
             .onDisappear { camera.stop() }
             .onChange(of: camera.lastScanned) { _, value in handleScanned(value) }
-            .onChange(of: nfcNdef.lastScanned) { _, value in handleScanned(value) }
             .onChange(of: nfcRaw.lastUid) { _, uid in handleScanned(uid) }
             .onReceive(DeepLinkRouter.shared.$pendingTagId) { tagId in
                 if let tagId {
@@ -67,7 +65,6 @@ struct ScanView: View {
                 }
             }
             .alert("Not a GatherHub tag", isPresented: $showError) {
-                Button("OK", role: .cancel) {}
             } message: {
                 Text("That code doesn't look like a club asset tag. Try again.")
             }
@@ -91,7 +88,7 @@ struct ScanView: View {
     @ViewBuilder
     private var controls: some View {
         VStack(spacing: 12) {
-            if NFCTagReaderSession.readingAvailable {
+            if NFCReaderSession.readingAvailable {
                 Button {
                     nfcRaw.beginScanning()
                 } label: {
@@ -104,6 +101,11 @@ struct ScanView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .disabled(nfcRaw.isScanning)
+            }
+            if let error = UserFacingError.message(nfcRaw.lastError) {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(Color.gh.danger)
             }
         }
         .padding()
@@ -214,73 +216,5 @@ struct QRScannerView: UIViewRepresentable {
         var videoPreviewLayer: AVCaptureVideoPreviewLayer {
             layer as! AVCaptureVideoPreviewLayer
         }
-    }
-}
-
-// MARK: - NFC NDEF scanning (Core NFC)
-
-/// NDEF reader retained for tags provisioned with a club URL. Newer
-/// blank tags emit only a UID — handled by `NFCRawReader` above.
-final class NFCScanner: NSObject, ObservableObject, NFCNDEFReaderSessionDelegate {
-    @Published var lastScanned: String?
-
-    private var session: NFCNDEFReaderSession?
-
-    func beginScanning() {
-        guard NFCNDEFReaderSession.readingAvailable else { return }
-        let session = NFCNDEFReaderSession(delegate: self, queue: nil, invalidateAfterFirstRead: true)
-        session.alertMessage = "Hold your iPhone near the asset tag."
-        self.session = session
-        session.begin()
-    }
-
-    func readerSession(_ session: NFCNDEFReaderSession, didDetectNDEFs messages: [NFCNDEFMessage]) {
-        for message in messages {
-            for record in message.records {
-                if let payload = Self.string(from: record) {
-                    DispatchQueue.main.async { self.lastScanned = payload }
-                    session.invalidate()
-                    return
-                }
-            }
-        }
-        session.invalidate(errorMessage: "No GatherHub tag found.")
-    }
-
-    func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {
-        self.session = nil
-    }
-
-    private static func string(from record: NFCNDEFPayload) -> String? {
-        if record.typeNameFormat == .nfcWellKnown,
-           let type = String(data: record.type, encoding: .utf8) {
-            if type == "U" { return uriString(from: record.payload) }
-            if type == "T" { return textString(from: record.payload) }
-        }
-        return String(data: record.payload, encoding: .utf8)
-    }
-
-    private static func uriString(from payload: Data) -> String? {
-        guard let first = payload.first else { return nil }
-        let prefixes = [
-            "", "http://www.", "https://www.", "http://", "https://",
-            "tel:", "mailto:", "ftp://anonymous:anonymous@", "ftp://ftp.",
-            "ftps://", "sftp://", "smb://", "nfs://", "ftp://", "dav://",
-            "news:", "telnet://", "imap:", "rtsp://", "urn:", "pop:",
-            "sip:", "sips:", "tftp:", "btspp://", "btl2cap://", "btgoep://",
-            "tcpobex://", "irdaobex://", "file://", "urn:epc:id:",
-            "urn:epc:tag:", "urn:epc:pat:", "urn:epc:raw:", "urn:epc:",
-            "urn:nfc:",
-        ]
-        let prefix = Int(first) < prefixes.count ? prefixes[Int(first)] : ""
-        let rest = payload.dropFirst()
-        return prefix + (String(data: rest, encoding: .utf8) ?? "")
-    }
-
-    private static func textString(from payload: Data) -> String? {
-        guard let status = payload.first else { return nil }
-        let langCodeLength = Int(status & 0x3F)
-        let textData = payload.dropFirst(1 + langCodeLength)
-        return String(data: textData, encoding: .utf8)
     }
 }

@@ -7,14 +7,18 @@ import CoreNFC
 /// the most common operation (scan a tag) lives at the top, with a
 /// manual lookup fallback underneath.
 struct AssetsView: View {
+    @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @StateObject private var camera = QRScannerController()
     @StateObject private var nfcRaw = NFCRawReader()
-    @StateObject private var nfcNdef = NFCScanner()
 
     @State private var scannedTagId: String?
     @State private var rawInput = ""
     @State private var invalid = false
     @State private var showError = false
+    @State private var checkedOutAssets: [AssetSummary] = []
+    @State private var checkedOutError: String?
+    @State private var loadingCheckedOut = false
 
     var body: some View {
         NavigationStack {
@@ -22,10 +26,12 @@ struct AssetsView: View {
                 VStack(spacing: GHSpacing.xl) {
                     cameraSection
                     nfcSection
+                    checkedOutSection
                     manualLookupSection
                 }
                 .padding(GHSpacing.pageInset)
             }
+            .refreshable { await loadCheckedOutAssets() }
             .background(Color.gh.paper.ignoresSafeArea())
             .navigationTitle("Assets")
             .navigationDestination(
@@ -43,13 +49,13 @@ struct AssetsView: View {
                 // Match Kit-Trace: auto-poll an NFC session every time
                 // the Assets tab appears (not just once per launch) so
                 // tapping the tab is the only action needed to scan.
-                if NFCTagReaderSession.readingAvailable, !nfcRaw.isScanning {
+                if NFCReaderSession.readingAvailable, !nfcRaw.isScanning {
                     nfcRaw.beginScanning()
                 }
+                Task { await loadCheckedOutAssets() }
             }
             .onDisappear { camera.stop() }
             .onChange(of: camera.lastScanned) { _, v in handleScanned(v) }
-            .onChange(of: nfcNdef.lastScanned) { _, v in handleScanned(v) }
             .onChange(of: nfcRaw.lastUid) { _, v in handleScanned(v) }
             .onReceive(DeepLinkRouter.shared.$pendingTagId) { id in
                 if let id {
@@ -58,7 +64,6 @@ struct AssetsView: View {
                 }
             }
             .alert("Not a GatherHub tag", isPresented: $showError) {
-                Button("OK", role: .cancel) {}
             } message: {
                 Text("That code doesn't look like a club asset tag.")
             }
@@ -97,11 +102,16 @@ struct AssetsView: View {
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(.gh(.primary))
-            .disabled(nfcRaw.isScanning || !NFCTagReaderSession.readingAvailable)
-            if !NFCTagReaderSession.readingAvailable {
+            .disabled(nfcRaw.isScanning || !NFCReaderSession.readingAvailable)
+            if !NFCReaderSession.readingAvailable {
                 Text("NFC isn't available on this device.")
                     .font(.gh.caption)
                     .foregroundStyle(Color.gh.inkQuiet)
+            }
+            if let error = UserFacingError.message(nfcRaw.lastError) {
+                Text(error)
+                    .font(.gh.caption)
+                    .foregroundStyle(Color.gh.danger)
             }
         }
     }
@@ -134,6 +144,64 @@ struct AssetsView: View {
         }
     }
 
+    private var checkedOutSection: some View {
+        VStack(alignment: .leading, spacing: GHSpacing.sm) {
+            HStack {
+                Text("Checked out now").ghLabelStyle()
+                Spacer()
+                if loadingCheckedOut {
+                    ProgressView()
+                } else {
+                    Text("\(checkedOutAssets.count)")
+                        .font(.gh.caption)
+                        .foregroundStyle(Color.gh.inkQuiet)
+                }
+            }
+
+            GHCard(padding: 0) {
+                if let checkedOutError {
+                    VStack(alignment: .leading, spacing: GHSpacing.sm) {
+                        Text("Couldn't load checked out assets")
+                            .font(.gh.bodyStrong)
+                            .foregroundStyle(Color.gh.inkStrong)
+                        Text(checkedOutError)
+                            .font(.gh.caption)
+                            .foregroundStyle(Color.gh.inkSoft)
+                        Button("Retry") {
+                            Task { await loadCheckedOutAssets() }
+                        }
+                        .buttonStyle(.gh(.outline, size: .sm))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(GHSpacing.lg)
+                } else if checkedOutAssets.isEmpty {
+                    Text("No assets are checked out.")
+                        .font(.gh.body)
+                        .foregroundStyle(Color.gh.inkSoft)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(GHSpacing.lg)
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(checkedOutAssets) { asset in
+                            Button {
+                                if let tagId = asset.qrTagId ?? asset.nfcTagId {
+                                    scannedTagId = tagId
+                                }
+                            } label: {
+                                CheckedOutAssetRow(asset: asset)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(asset.qrTagId == nil && asset.nfcTagId == nil)
+                            if asset.id != checkedOutAssets.last?.id {
+                                Divider()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: Actions
 
     private func handleScanned(_ raw: String?) {
@@ -157,5 +225,71 @@ struct AssetsView: View {
         } else {
             invalid = true
         }
+    }
+
+    private func loadCheckedOutAssets() async {
+        if let cached = try? sync.store?.cachedCheckedOutAssets(), !cached.isEmpty {
+            checkedOutAssets = cached
+        }
+        loadingCheckedOut = checkedOutAssets.isEmpty
+        checkedOutError = nil
+        defer { loadingCheckedOut = false }
+        do {
+            let fresh = try await convex.checkedOutAssets()
+            checkedOutAssets = fresh
+            try? sync.store?.replaceCheckedOutAssets(fresh)
+        } catch {
+            if checkedOutAssets.isEmpty {
+                checkedOutError = UserFacingError.message(
+                    error,
+                    fallback: "Couldn't load checked out assets."
+                )
+            }
+        }
+    }
+}
+
+private struct CheckedOutAssetRow: View {
+    let asset: AssetSummary
+
+    var body: some View {
+        HStack(alignment: .top, spacing: GHSpacing.lg) {
+            Image(systemName: "shippingbox")
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(Color.gh.warning)
+                .frame(width: 40, height: 40)
+                .background(Color.gh.warningWash)
+                .clipShape(RoundedRectangle(cornerRadius: GHSpacing.chipRadius))
+
+            VStack(alignment: .leading, spacing: GHSpacing.xs) {
+                Text(asset.name)
+                    .font(.gh.bodyStrong)
+                    .foregroundStyle(Color.gh.inkStrong)
+                Text(asset.custodianName ?? "Unassigned custodian")
+                    .font(.gh.caption)
+                    .foregroundStyle(Color.gh.inkSoft)
+                if let location = asset.location, !location.isEmpty {
+                    Label(location, systemImage: "mappin.and.ellipse")
+                        .font(.gh.caption)
+                        .foregroundStyle(Color.gh.inkQuiet)
+                }
+                if let due = asset.dueBackDate {
+                    Label(
+                        due.formatted(date: .abbreviated, time: .shortened),
+                        systemImage: "calendar"
+                    )
+                    .font(.gh.caption)
+                    .foregroundStyle(Color.gh.inkQuiet)
+                }
+            }
+
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.gh.inkQuiet)
+                .padding(.top, GHSpacing.md)
+        }
+        .padding(GHSpacing.lg)
+        .contentShape(Rectangle())
     }
 }

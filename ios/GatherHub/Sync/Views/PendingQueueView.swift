@@ -6,8 +6,8 @@ import SwiftUI
 /// the user resolves them.
 struct PendingQueueView: View {
     @EnvironmentObject private var sync: SyncEnvironment
+    @Environment(\.dismiss) private var dismiss
     @State private var operations: [PendingSyncOperation] = []
-    @State private var refreshing = false
 
     var body: some View {
         Group {
@@ -66,7 +66,15 @@ struct PendingQueueView: View {
         }
         .navigationTitle("Sync queue")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { dismiss() }
+            }
+        }
         .task { reload() }
+        .onChange(of: sync.coordinator?.unsettledCount) { _, _ in
+            reload()
+        }
         .refreshable { reload() }
     }
 
@@ -115,7 +123,7 @@ struct PendingQueueView: View {
     }
 
     private func reload() {
-        operations = (try? sync.store?.pendingOperations()) ?? []
+        operations = (try? sync.store?.unsettledOperations()) ?? []
         sync.coordinator?.refreshUnsettledCount()
     }
 }

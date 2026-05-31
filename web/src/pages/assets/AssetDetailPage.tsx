@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { AuditRow } from "@/components/ui/audit-row";
 import { EmptyState as PrimitiveEmpty } from "@/components/ui/empty-state";
+import { LocationInput } from "@/components/location/AddressAutocompleteInput";
 import {
   PageHeader,
   LoadingState,
@@ -44,6 +45,7 @@ import {
 } from "@/components/shared";
 import { QrCode, assetTagUrl } from "@/components/QrCode";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { canManageAssets } from "@/lib/roles";
 import {
   humanise,
@@ -89,12 +91,7 @@ export default function AssetDetailPage() {
           )}
           {(asset.status === "checked_out" || asset.status === "in_use") && (
             <>
-              <SimpleOpButton
-                assetId={id}
-                op="checkIn"
-                label="Check in"
-                icon={LogIn}
-              />
+              <CheckInDialog assetId={id} />
               <TransferDialog assetId={id} />
             </>
           )}
@@ -222,16 +219,22 @@ export default function AssetDetailPage() {
                       <Printer className="h-4 w-4" /> Print
                     </Button>
                     {canManage && (
-                      <ReassignTagDialog
-                        tagId={asset.qrTagId}
-                        tagType="qr"
-                        currentAssetId={id}
-                      />
+                      <div className="flex flex-wrap gap-2">
+                        <ReassignTagDialog
+                          tagId={asset.qrTagId}
+                          tagType="qr"
+                          currentAssetId={id}
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
               ) : (
-                <p className="text-body text-ink-quiet">No QR tag assigned.</p>
+                <div className="space-y-3">
+                  <p className="text-body text-ink-quiet">
+                    No QR tag assigned.
+                  </p>
+                </div>
               )}
 
               <div className="pt-5 border-t border-hairline">
@@ -365,14 +368,20 @@ function useMembers() {
 }
 
 function CheckOutDialog({ assetId }: { assetId: Id<"assets"> }) {
+  const { org } = useGatherHub();
   const checkOut = useMutation(api.assetOps.checkOut);
   const members = useMembers();
   const [open, setOpen] = React.useState(false);
   const [memberId, setMemberId] = React.useState<string>("");
-  const [location, setLocation] = React.useState("");
+  const defaultLocation = org?.defaultAddress ?? "";
+  const [location, setLocation] = React.useState(defaultLocation);
   const [dueBack, setDueBack] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (open) setLocation((current) => current || defaultLocation);
+  }, [open, defaultLocation]);
 
   async function submit() {
     setError(null);
@@ -380,13 +389,14 @@ function CheckOutDialog({ assetId }: { assetId: Id<"assets"> }) {
       await checkOut({
         assetId,
         custodianMemberId: memberId as Id<"members">,
-        location: location || undefined,
+        location: location.trim() || undefined,
         dueBack: dueBack ? Date.parse(dueBack) : undefined,
         notes: notes || undefined,
       });
       setOpen(false);
+      toastSuccess("Asset checked out.");
     } catch (e) {
-      setError(String(e));
+      setError(toastFailure(e, "Could not check out asset."));
     }
   }
 
@@ -419,10 +429,10 @@ function CheckOutDialog({ assetId }: { assetId: Id<"assets"> }) {
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="co-loc">Location</Label>
-            <Input
+            <LocationInput
               id="co-loc"
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={setLocation}
             />
           </div>
           <div className="grid gap-1.5">
@@ -457,13 +467,90 @@ function CheckOutDialog({ assetId }: { assetId: Id<"assets"> }) {
   );
 }
 
+function CheckInDialog({ assetId }: { assetId: Id<"assets"> }) {
+  const { org } = useGatherHub();
+  const checkIn = useMutation(api.assetOps.checkIn);
+  const [open, setOpen] = React.useState(false);
+  const defaultLocation = org?.defaultAddress ?? "";
+  const [location, setLocation] = React.useState(defaultLocation);
+  const [notes, setNotes] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (open) setLocation((current) => current || defaultLocation);
+  }, [open, defaultLocation]);
+
+  async function submit() {
+    setError(null);
+    try {
+      await checkIn({
+        assetId,
+        location: location.trim() || undefined,
+        notes: notes.trim() || undefined,
+      });
+      setOpen(false);
+      setNotes("");
+      toastSuccess("Asset checked in.");
+    } catch (e) {
+      setError(toastFailure(e, "Could not check in asset."));
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <LogIn className="h-4 w-4" /> Check in
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Check in asset</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor="ci-loc">Location</Label>
+            <LocationInput
+              id="ci-loc"
+              value={location}
+              onChange={setLocation}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ci-notes">Notes</Label>
+            <Textarea
+              id="ci-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+          {error && <p className="text-caption text-danger">{error}</p>}
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button onClick={submit}>Check in</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function TransferDialog({ assetId }: { assetId: Id<"assets"> }) {
+  const { org } = useGatherHub();
   const transfer = useMutation(api.assetOps.transfer);
   const members = useMembers();
   const [open, setOpen] = React.useState(false);
   const [memberId, setMemberId] = React.useState("");
+  const defaultLocation = org?.defaultAddress ?? "";
+  const [location, setLocation] = React.useState(defaultLocation);
   const [notes, setNotes] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (open) setLocation((current) => current || defaultLocation);
+  }, [open, defaultLocation]);
 
   async function submit() {
     setError(null);
@@ -471,11 +558,13 @@ function TransferDialog({ assetId }: { assetId: Id<"assets"> }) {
       await transfer({
         assetId,
         toCustodianMemberId: memberId as Id<"members">,
-        notes: notes || undefined,
+        location: location.trim() || undefined,
+        notes: notes.trim() || undefined,
       });
       setOpen(false);
+      toastSuccess("Asset transferred.");
     } catch (e) {
-      setError(String(e));
+      setError(toastFailure(e, "Could not transfer asset."));
     }
   }
 
@@ -505,6 +594,14 @@ function TransferDialog({ assetId }: { assetId: Id<"assets"> }) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="tr-loc">Location</Label>
+            <LocationInput
+              id="tr-loc"
+              value={location}
+              onChange={setLocation}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="tr-notes">Notes</Label>
@@ -563,8 +660,9 @@ function SimpleOpButton({
       else if (op === "setMaintenance") await setMaintenance(args);
       else await retire(args);
       setOpen(false);
+      toastSuccess(`${label} recorded.`);
     } catch (e) {
-      setError(String(e));
+      setError(toastFailure(e, `Could not record ${label.toLowerCase()}.`));
     }
   };
 
@@ -621,8 +719,9 @@ function RegisterNfcDialog({ assetId }: { assetId: Id<"assets"> }) {
       await register({ assetId, nfcTagId: nfc });
       setOpen(false);
       setNfc("");
+      toastSuccess("NFC tag registered.");
     } catch (e) {
-      setError(String(e));
+      setError(toastFailure(e, "Could not register NFC tag."));
     }
   }
 
@@ -677,6 +776,7 @@ interface EditableAsset {
 }
 
 function EditAssetDialog({ asset }: { asset: EditableAsset }) {
+  const { org } = useGatherHub();
   const update = useMutation(api.assets.update);
   const categories = useQuery(api.taxonomies.list, {
     kind: "asset_category",
@@ -698,7 +798,10 @@ function EditAssetDialog({ asset }: { asset: EditableAsset }) {
   const [replacementValue, setReplacementValue] = React.useState(
     asset.replacementValue !== undefined ? String(asset.replacementValue) : "",
   );
-  const [location, setLocation] = React.useState(asset.location ?? "");
+  const defaultLocation = org?.defaultAddress ?? "";
+  const [location, setLocation] = React.useState(
+    asset.location ?? defaultLocation,
+  );
   const [description, setDescription] = React.useState(asset.description ?? "");
   const [notes, setNotes] = React.useState(asset.notes ?? "");
   const [error, setError] = React.useState<string | null>(null);
@@ -716,12 +819,12 @@ function EditAssetDialog({ asset }: { asset: EditableAsset }) {
           ? String(asset.replacementValue)
           : "",
       );
-      setLocation(asset.location ?? "");
+      setLocation(asset.location ?? defaultLocation);
       setDescription(asset.description ?? "");
       setNotes(asset.notes ?? "");
       setError(null);
     }
-  }, [open, asset]);
+  }, [open, asset, defaultLocation]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -731,7 +834,7 @@ function EditAssetDialog({ asset }: { asset: EditableAsset }) {
       const valueNum =
         replacementValue.trim() === "" ? undefined : Number(replacementValue);
       if (valueNum !== undefined && Number.isNaN(valueNum)) {
-        setError("Replacement value must be a number.");
+        setError(toastFailure("Replacement value must be a number."));
         return;
       }
       await update({
@@ -747,8 +850,9 @@ function EditAssetDialog({ asset }: { asset: EditableAsset }) {
         notes: notes.trim() || undefined,
       });
       setOpen(false);
+      toastSuccess("Asset updated.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not update asset."));
     } finally {
       setSaving(false);
     }
@@ -840,10 +944,10 @@ function EditAssetDialog({ asset }: { asset: EditableAsset }) {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="ae-loc">Location</Label>
-              <Input
+              <LocationInput
                 id="ae-loc"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={setLocation}
               />
             </div>
           </div>
@@ -913,8 +1017,9 @@ function ReassignTagDialog({
         toAssetId: toAssetId as Id<"assets">,
       });
       setOpen(false);
+      toastSuccess("Tag reassigned.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not reassign tag."));
     } finally {
       setBusy(false);
     }

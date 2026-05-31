@@ -41,7 +41,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader, LoadingState, RsvpBadge } from "@/components/shared";
+import { LocationInput } from "@/components/location/AddressAutocompleteInput";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatDateTime, humanise, toCsv, downloadCsv } from "@/lib/utils";
 
 type RsvpStatus = "going" | "not_going" | "maybe";
@@ -73,8 +75,9 @@ export default function EventDetailPage() {
     setError(null);
     try {
       await setAttendance({ eventId: event._id, memberId, present });
+      toastSuccess(present ? "Marked present." : "Marked not present.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not update attendance."));
     }
   }
 
@@ -83,9 +86,10 @@ export default function EventDetailPage() {
     setError(null);
     try {
       await remove({ eventId: event._id });
+      toastSuccess("Event deleted.");
       navigate("/events");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not delete event."));
     }
   }
 
@@ -254,8 +258,9 @@ function SetRsvpDialog({ eventId }: { eventId: Id<"events"> }) {
       await setRsvp({ eventId, memberId: memberId as Id<"members">, status });
       reset();
       setOpen(false);
+      toastSuccess("RSVP saved.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not save RSVP."));
     } finally {
       setSaving(false);
     }
@@ -358,6 +363,7 @@ function EditEventDialog({
   event: EditableEvent;
   teamName: string | null;
 }) {
+  const { org } = useGatherHub();
   const update = useMutation(api.events.update);
   const types = useQuery(api.taxonomies.list, { kind: "event_type" });
   const teams = useQuery(api.teams.list, {});
@@ -371,7 +377,10 @@ function EditEventDialog({
   const [endTime, setEndTime] = React.useState(
     event.endTime ? toDatetimeLocal(event.endTime) : "",
   );
-  const [location, setLocation] = React.useState(event.location ?? "");
+  const defaultLocation = org?.defaultAddress ?? "";
+  const [location, setLocation] = React.useState(
+    event.location ?? defaultLocation,
+  );
   const [teamId, setTeamId] = React.useState<string>(event.teamId ?? "none");
   const [opponent, setOpponent] = React.useState(event.opponent ?? "");
   const [description, setDescription] = React.useState(event.description ?? "");
@@ -384,13 +393,13 @@ function EditEventDialog({
       setTitle(event.title);
       setStartTime(toDatetimeLocal(event.startTime));
       setEndTime(event.endTime ? toDatetimeLocal(event.endTime) : "");
-      setLocation(event.location ?? "");
+      setLocation(event.location ?? defaultLocation);
       setTeamId(event.teamId ?? "none");
       setOpponent(event.opponent ?? "");
       setDescription(event.description ?? "");
       setError(null);
     }
-  }, [open, event]);
+  }, [open, event, defaultLocation]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -423,8 +432,9 @@ function EditEventDialog({
         description: description.trim() || undefined,
       });
       setOpen(false);
+      toastSuccess("Event updated.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not update event."));
     } finally {
       setSaving(false);
     }
@@ -493,10 +503,10 @@ function EditEventDialog({
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="ev-loc">Location</Label>
-            <Input
+            <LocationInput
               id="ev-loc"
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={setLocation}
             />
           </div>
           <div className="grid gap-1.5">

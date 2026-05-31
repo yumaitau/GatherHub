@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { Link } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import {
@@ -412,7 +412,13 @@ function ActivityRow({ entry }: { entry: AuditEntry }) {
 }
 
 function PendingInvitesBlock() {
-  const invites = useQuery(api.invitations.list);
+  const list = useAction(api.invitations.list);
+  const [invites, setInvites] = React.useState<
+    Awaited<ReturnType<typeof list>> | undefined
+  >(undefined);
+  React.useEffect(() => {
+    (async () => setInvites(await list({})))();
+  }, [list]);
   if (invites === undefined) return null;
   const pending = invites.filter((i) => i.status === "pending");
   if (pending.length === 0) return null;

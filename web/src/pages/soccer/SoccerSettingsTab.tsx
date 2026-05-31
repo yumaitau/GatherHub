@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { LoadingState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 
 export function SoccerSettingsTab() {
   const { org, can } = useGatherHub();
@@ -30,8 +31,9 @@ export function SoccerSettingsTab() {
     setBusy(true);
     try {
       await setMode({ enabled: next });
+      toastSuccess(next ? "Soccer mode enabled." : "Soccer mode disabled.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not update soccer mode."));
     } finally {
       setBusy(false);
     }
@@ -97,8 +99,9 @@ function GradingExplainer() {
     try {
       const r = await restore({});
       setResult(r);
+      toastSuccess("Default grading setup restored.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not restore grading defaults."));
     } finally {
       setBusy(false);
     }
@@ -180,8 +183,9 @@ function SkillRubricEditor() {
       });
       setNewName("");
       setNewWeight("0.1");
+      toastSuccess("Skill added.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not add skill."));
     }
   }
 
@@ -353,8 +357,9 @@ function DivisionEditor() {
       setName("");
       setMin("");
       setMax("");
+      toastSuccess("Division added.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not add division."));
     }
   }
 

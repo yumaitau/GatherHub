@@ -81,7 +81,11 @@ struct MembersListView: View {
         }
         .task { await load() }
         .refreshable { await load() }
-        .searchable(text: $query, prompt: "Search name, email, phone")
+        .searchable(
+            text: $query,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Search name, email, phone"
+        )
     }
 
     private var list: some View {
@@ -110,8 +114,11 @@ struct MembersListView: View {
             try? sync.store?.replaceMembers(fresh)
             isStale = false
         } catch let err {
-            if members.isEmpty { error = err.localizedDescription }
-            else { isStale = true }
+            if members.isEmpty {
+                error = UserFacingError.message(err, fallback: "Couldn't load members.")
+            } else {
+                isStale = true
+            }
         }
         loading = false
     }

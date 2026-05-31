@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
+import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 
 export const list = query({
   args: { teamId: v.optional(v.id("teams")) },
@@ -100,9 +101,13 @@ export const remove = mutation({
 });
 
 export const markRead = mutation({
-  args: { announcementId: v.id("announcements") },
+  args: {
+    announcementId: v.id("announcements"),
+    clientMutationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const auth = await requireOrgMember(ctx);
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const a = await ctx.db.get(args.announcementId);
     assertSameOrg(auth, a);
     const existing = await ctx.db
@@ -119,5 +124,11 @@ export const markRead = mutation({
         readAt: Date.now(),
       });
     }
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "announcements:markRead",
+    );
   },
 });

@@ -51,6 +51,8 @@ ios/**/.swiftpm/
 ios/**/xcshareddata/IDETemplateMacros.plist
 # Per-developer signing — team id + bundle id are personal, never share.
 ios/Config/Signing.xcconfig
+# Public client keys injected for local/TestFlight builds, never committed.
+ios/Config/AppSecrets.xcconfig
 # CocoaPods + Carthage if ever used
 ios/Pods/
 ios/Carthage/Build/

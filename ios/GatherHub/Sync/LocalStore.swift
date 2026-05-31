@@ -127,6 +127,112 @@ final class LocalStore {
         return try context.fetch(descriptor).compactMap { try? $0.decoded() }
     }
 
+    // MARK: - Generic read-through cache
+
+    func replaceDashboard(_ snapshot: DashboardSnapshot) throws {
+        try cacheValue(snapshot, for: "dashboard.snapshot")
+    }
+
+    func cachedDashboard() throws -> DashboardSnapshot? {
+        try cachedValue(for: "dashboard.snapshot", as: DashboardSnapshot.self)
+    }
+
+    func replaceCheckedOutAssets(_ rows: [AssetSummary]) throws {
+        try cacheValue(rows, for: "assets.checkedOut")
+    }
+
+    func cachedCheckedOutAssets() throws -> [AssetSummary] {
+        try cachedValue(for: "assets.checkedOut", as: [AssetSummary].self) ?? []
+    }
+
+    func replaceAssets(_ rows: [AssetSummary], status: String? = nil) throws {
+        try cacheValue(rows, for: assetListKey(status: status))
+    }
+
+    func cachedAssets(status: String? = nil) throws -> [AssetSummary] {
+        try cachedValue(for: assetListKey(status: status), as: [AssetSummary].self) ?? []
+    }
+
+    func replaceLocationDefaults(_ defaults: LocationDefaults) throws {
+        try cacheValue(defaults, for: "org.locationDefaults")
+    }
+
+    func cachedLocationDefaults() throws -> LocationDefaults? {
+        try cachedValue(for: "org.locationDefaults", as: LocationDefaults.self)
+    }
+
+    func replaceAssetCategories(_ rows: [TaxonomyOption]) throws {
+        try cacheValue(rows, for: "taxonomies.assetCategories")
+    }
+
+    func cachedAssetCategories() throws -> [TaxonomyOption] {
+        try cachedValue(for: "taxonomies.assetCategories", as: [TaxonomyOption].self) ?? []
+    }
+
+    func replaceTagLookup(_ result: TagLookupResult, tagId: String) throws {
+        try cacheValue(result, for: "tags.lookup.\(tagId)")
+    }
+
+    func cachedTagLookup(tagId: String) throws -> TagLookupResult? {
+        try cachedValue(for: "tags.lookup.\(tagId)", as: TagLookupResult.self)
+    }
+
+    func replaceAssetHistory(_ rows: [AssetHistoryEntry], assetId: String) throws {
+        try cacheValue(rows, for: "assets.history.\(assetId)")
+    }
+
+    func cachedAssetHistory(assetId: String) throws -> [AssetHistoryEntry] {
+        try cachedValue(for: "assets.history.\(assetId)", as: [AssetHistoryEntry].self) ?? []
+    }
+
+    func replaceSoccerDivisions(_ rows: [SoccerDivision]) throws {
+        try cacheValue(rows, for: "soccer.divisions")
+    }
+
+    func cachedSoccerDivisions() throws -> [SoccerDivision] {
+        try cachedValue(for: "soccer.divisions", as: [SoccerDivision].self) ?? []
+    }
+
+    func replaceSoccerSkills(_ rows: [SoccerSkill]) throws {
+        try cacheValue(rows, for: "soccer.skills")
+    }
+
+    func cachedSoccerSkills() throws -> [SoccerSkill] {
+        try cachedValue(for: "soccer.skills", as: [SoccerSkill].self) ?? []
+    }
+
+    func replacePlayerGrade(_ grade: PlayerGrade, memberId: String) throws {
+        try cacheValue(grade, for: "soccer.playerGrade.\(memberId)")
+    }
+
+    func cachedPlayerGrade(memberId: String) throws -> PlayerGrade? {
+        try cachedValue(for: "soccer.playerGrade.\(memberId)", as: PlayerGrade.self)
+    }
+
+    func replacePlayerRoster(_ rows: [PlayerRosterRow]) throws {
+        try cacheValue(rows, for: "soccer.playerRoster")
+    }
+
+    func cachedPlayerRoster() throws -> [PlayerRosterRow] {
+        try cachedValue(for: "soccer.playerRoster", as: [PlayerRosterRow].self) ?? []
+    }
+
+    func replaceCoachesManagers(_ rows: [CoachManagerRow]) throws {
+        try cacheValue(rows, for: "soccer.coachesManagers")
+    }
+
+    func cachedCoachesManagers() throws -> [CoachManagerRow] {
+        try cachedValue(for: "soccer.coachesManagers", as: [CoachManagerRow].self) ?? []
+    }
+
+    func replaceOrgMemberships(_ rows: [OrgMembership]) throws {
+        try cacheValue(rows, for: "org.memberships")
+    }
+
+    func cachedOrgMemberships() throws -> [OrgMembership] {
+        try cachedValue(for: "org.memberships", as: [OrgMembership].self) ?? []
+    }
+
     // MARK: - Sync queue
 
     @discardableResult
@@ -161,8 +267,12 @@ final class LocalStore {
         try pendingOperations().filter { $0.status.isSendable }
     }
 
+    func unsettledOperations() throws -> [PendingSyncOperation] {
+        try pendingOperations().filter { $0.status != .applied }
+    }
+
     func unsettledOperationCount() throws -> Int {
-        try pendingOperations().filter { $0.status != .applied }.count
+        try unsettledOperations().count
     }
 
     func save() throws { try context.save() }
@@ -184,7 +294,43 @@ final class LocalStore {
         try context.delete(model: CachedTeam.self, where: #Predicate { $0.scopeKey == key })
         try context.delete(model: CachedAnnouncement.self, where: #Predicate { $0.scopeKey == key })
         try context.delete(model: CachedPlayerListing.self, where: #Predicate { $0.scopeKey == key })
+        try context.delete(model: CachedResource.self, where: #Predicate { $0.scopeKey == key })
         try context.delete(model: PendingSyncOperation.self, where: #Predicate { $0.scopeKey == key })
         try context.save()
+    }
+
+    private func cacheValue<T: Encodable>(_ value: T, for resourceKey: String) throws {
+        let payload = try JSONEncoder().encode(value)
+        let id = CachedResource.cacheId(scopeKey: scopeKey, resourceKey: resourceKey)
+        let descriptor = FetchDescriptor<CachedResource>(
+            predicate: #Predicate { $0.id == id }
+        )
+        if let existing = try context.fetch(descriptor).first {
+            existing.update(payload: payload)
+        } else {
+            context.insert(
+                CachedResource(
+                    scopeKey: scopeKey,
+                    resourceKey: resourceKey,
+                    payload: payload
+                )
+            )
+        }
+        try context.save()
+    }
+
+    private func cachedValue<T: Decodable>(
+        for resourceKey: String,
+        as type: T.Type
+    ) throws -> T? {
+        let id = CachedResource.cacheId(scopeKey: scopeKey, resourceKey: resourceKey)
+        let descriptor = FetchDescriptor<CachedResource>(
+            predicate: #Predicate { $0.id == id }
+        )
+        return try context.fetch(descriptor).first?.decoded(as: type)
+    }
+
+    private func assetListKey(status: String?) -> String {
+        "assets.list.\(status ?? "all")"
     }
 }

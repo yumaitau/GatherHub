@@ -22,6 +22,11 @@ struct GatherHubApp: App {
     /// Convex API wrapper, shared app-wide. Wired to Clerk's JWT provider.
     @StateObject private var convex: ConvexService
 
+    /// SwiftData cache + offline write queue. Single instance, scope
+    /// (clerkUserId#orgId) is bound after sign-in by RootView and
+    /// purged on sign-out.
+    @StateObject private var sync = SyncEnvironment()
+
     init() {
         // YumaSupportKit configures synchronously so the in-app "Contact
         // support" route is wired before anyone navigates to Profile.
@@ -50,6 +55,7 @@ struct GatherHubApp: App {
             RootView()
                 .environmentObject(auth)
                 .environmentObject(convex)
+                .environmentObject(sync)
                 .onOpenURL { url in
                     if let tagId = TagParser.extractTagId(from: url.absoluteString) {
                         DeepLinkRouter.shared.pendingTagId = tagId
@@ -66,7 +72,9 @@ struct GatherHubApp: App {
                     do {
                         try await clerk.load()
                     } catch {
-                        dump(error)
+                        #if DEBUG
+                        debugPrint(UserFacingError.message(error))
+                        #endif
                     }
                 }
         }

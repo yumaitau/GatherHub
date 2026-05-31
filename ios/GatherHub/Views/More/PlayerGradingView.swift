@@ -63,7 +63,7 @@ struct PlayerGradingView: View {
             VStack(alignment: .leading, spacing: GHSpacing.sm) {
                 Text("Overall grade").ghLabelStyle()
                 HStack(alignment: .firstTextBaseline, spacing: GHSpacing.md) {
-                    Text(grade.map { String(format: "%.1f", $0.grade) } ?? "—")
+                    Text(grade.map { formattedGrade($0.grade) } ?? "—")
                         .font(.gh.display)
                         .foregroundStyle(Color.gh.inkStrong)
                         .monospacedDigit()
@@ -122,7 +122,7 @@ struct PlayerGradingView: View {
                         .foregroundStyle(Color.gh.inkSoft)
                 }
                 HStack {
-                    Text("Weight \(String(format: "%.2f", skill.weight))")
+                    Text("Weight \(skill.weight.formatted(.number.precision(.fractionLength(2))))")
                         .font(.gh.caption)
                         .foregroundStyle(Color.gh.inkQuiet)
                     Text("·").foregroundStyle(Color.gh.inkQuiet)
@@ -137,10 +137,7 @@ struct PlayerGradingView: View {
                         .monospacedDigit()
                         .frame(width: 56, alignment: .leading)
                     Slider(
-                        value: Binding(
-                            get: { scores[skill.id] ?? 0 },
-                            set: { scores[skill.id] = $0 }
-                        ),
+                        value: scoreBinding(for: skill),
                         in: 0...skill.maxScore,
                         step: 0.5,
                         onEditingChanged: { editing in
@@ -151,13 +148,7 @@ struct PlayerGradingView: View {
                     )
                     Stepper(
                         "",
-                        value: Binding(
-                            get: { scores[skill.id] ?? 0 },
-                            set: { newValue in
-                                scores[skill.id] = newValue
-                                Task { await save(skill) }
-                            }
-                        ),
+                        value: scoreBinding(for: skill, savesImmediately: true),
                         in: 0...skill.maxScore,
                         step: 0.5
                     )
@@ -169,12 +160,38 @@ struct PlayerGradingView: View {
 
     private func formatted(_ value: Double) -> String {
         value.truncatingRemainder(dividingBy: 1) == 0
-            ? String(format: "%.0f", value)
-            : String(format: "%.1f", value)
+            ? value.formatted(.number.precision(.fractionLength(0)))
+            : value.formatted(.number.precision(.fractionLength(1)))
+    }
+
+    private func formattedGrade(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(1)))
+    }
+
+    private func scoreBinding(
+        for skill: SoccerSkill,
+        savesImmediately: Bool = false
+    ) -> Binding<Double> {
+        Binding(
+            get: { scores[skill.id] ?? 0 },
+            set: { newValue in
+                scores[skill.id] = newValue
+                if savesImmediately {
+                    Task { await save(skill) }
+                }
+            }
+        )
     }
 
     private func load() async {
-        loading = skills.isEmpty
+        if let cachedSkills = try? sync.store?.cachedSoccerSkills(), !cachedSkills.isEmpty {
+            skills = cachedSkills
+        }
+        if let cachedGrade = try? sync.store?.cachedPlayerGrade(memberId: memberId) {
+            grade = cachedGrade
+            scores = scoreMap(from: cachedGrade.evaluations)
+        }
+        loading = skills.isEmpty || grade == nil
         error = nil
         defer { loading = false }
         do {
@@ -183,11 +200,15 @@ struct PlayerGradingView: View {
             let (s, g) = try await (skillsTask, gradeTask)
             skills = s
             grade = g
+            try? sync.store?.replaceSoccerSkills(s)
+            try? sync.store?.replacePlayerGrade(g, memberId: memberId)
             var map: [String: Double] = [:]
             for ev in g.evaluations { map[ev.skillId] = ev.score }
             scores = map
         } catch let err {
-            error = err.localizedDescription
+            if skills.isEmpty || grade == nil {
+                error = UserFacingError.message(err, fallback: "Couldn't load this player's grading.")
+            }
         }
     }
 
@@ -203,19 +224,78 @@ struct PlayerGradingView: View {
             score: value,
             notes: nil
         )
-        if let store = sync.store,
-           let data = try? JSONEncoder().encode(payload) {
-            try? store.enqueue(
+        do {
+            let op = try sync.enqueue(
                 kind: .soccerEvaluation,
                 title: "Score \(skill.name)",
-                payload: data
+                payload: payload
             )
+            applyOptimisticScore(skill: skill, score: value)
             await sync.coordinator?.syncIfOnline()
+            // Best-effort grade refresh only after this queued write
+            // actually landed. If it is still failed/pending, keep the
+            // optimistic cached grade visible until a later drain.
+            if op.status == .applied {
+                if let fresh = try? await convex.playerGrade(memberId: memberId) {
+                    grade = fresh
+                    try? sync.store?.replacePlayerGrade(fresh, memberId: memberId)
+                }
+            }
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue score.")
         }
-        // Best-effort grade refresh — if we're offline the value will
-        // come from the next online drain + reload cycle.
-        if sync.monitor.isOnline {
-            grade = try? await convex.playerGrade(memberId: memberId)
+    }
+
+    private func applyOptimisticScore(skill: SoccerSkill, score: Double) {
+        var evaluations = grade?.evaluations ?? []
+        if let index = evaluations.firstIndex(where: { $0.skillId == skill.id }) {
+            let existing = evaluations[index]
+            evaluations[index] = SoccerEvaluation(
+                id: existing.id,
+                memberId: memberId,
+                skillId: skill.id,
+                score: score,
+                notes: existing.notes,
+                evaluatedAt: Date.now.timeIntervalSince1970 * 1000
+            )
+        } else {
+            evaluations.append(
+                SoccerEvaluation(
+                    id: "local-\(memberId)-\(skill.id)",
+                    memberId: memberId,
+                    skillId: skill.id,
+                    score: score,
+                    notes: nil,
+                    evaluatedAt: Date.now.timeIntervalSince1970 * 1000
+                )
+            )
         }
+        let activeSkills = skills.filter { $0.active }
+        let evalMap = scoreMap(from: evaluations)
+        var weighted = 0.0
+        var totalWeight = 0.0
+        for skill in activeSkills {
+            guard let score = evalMap[skill.id] else { continue }
+            weighted += (score / skill.maxScore) * skill.weight
+            totalWeight += skill.weight
+        }
+        let computed = totalWeight == 0 ? 0 : (weighted / totalWeight) * 100
+        let updated = PlayerGrade(
+            grade: computed,
+            division: grade?.division,
+            scoredCount: evaluations.count,
+            totalSkills: activeSkills.count,
+            evaluations: evaluations
+        )
+        grade = updated
+        try? sync.store?.replacePlayerGrade(updated, memberId: memberId)
+    }
+
+    private func scoreMap(from evaluations: [SoccerEvaluation]) -> [String: Double] {
+        var map: [String: Double] = [:]
+        for evaluation in evaluations {
+            map[evaluation.skillId] = evaluation.score
+        }
+        return map
     }
 }

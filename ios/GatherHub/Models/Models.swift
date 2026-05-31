@@ -32,6 +32,7 @@ struct Org: Codable, Identifiable, Hashable {
     let name: String
     let slug: String?
     let soccerMode: Bool?
+    let defaultAddress: String?
 }
 
 /// GatherHub role. Mirrors `roleValidator` in schema.ts.
@@ -47,6 +48,13 @@ enum Role: String, Codable, Hashable {
         }
     }
 
+    var canManageOrgSettings: Bool {
+        switch self {
+        case .owner, .admin: return true
+        case .committee, .coach, .volunteer, .parent, .player: return false
+        }
+    }
+
     var displayName: String {
         rawValue.prefix(1).uppercased() + rawValue.dropFirst()
     }
@@ -58,6 +66,18 @@ struct CurrentContext: Codable, Hashable {
     let user: AppUser
     let org: Org
     let role: Role
+}
+
+struct LocationDefaults: Codable, Hashable {
+    let defaultAddress: String?
+}
+
+struct TaxonomyOption: Codable, Identifiable, Hashable {
+    let id: String
+    let kind: String
+    let key: String
+    let label: String
+    let isDefault: Bool
 }
 
 // MARK: - Members
@@ -90,10 +110,21 @@ struct AssetSummary: Codable, Identifiable, Hashable {
     let id: String
     let name: String
     let category: String?
+    let status: AssetStatus?
+    let custodianName: String?
+    let location: String?
+    let dueBack: Double?
+    let qrTagId: String?
+    let nfcTagId: String?
+    let serialNumber: String?
+
+    var dueBackDate: Date? {
+        dueBack.map { Date(timeIntervalSince1970: $0 / 1000) }
+    }
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case name, category
+        case name, category, status, custodianName, location, dueBack, qrTagId, nfcTagId, serialNumber
     }
 }
 
@@ -290,44 +321,18 @@ enum AssetStatus: String, Codable, Hashable {
     }
 }
 
-/// Mirrors `assetCategoryValidator` in schema.ts.
-enum AssetCategory: String, Codable, Hashable {
-    case uniform
-    case kitBag = "kit_bag"
-    case ball
-    case trainingEquipment = "training_equipment"
-    case goal
-    case gazebo
-    case firstAid = "first_aid"
-    case key
-    case device
-    case vehicle
-    case other
-
-    var displayName: String {
-        switch self {
-        case .kitBag: return "Kit bag"
-        case .trainingEquipment: return "Training equipment"
-        case .firstAid: return "First aid"
-        default: return rawValue.capitalized
-        }
-    }
-}
-
-/// Mirrors `assetConditionValidator` in schema.ts.
-enum AssetCondition: String, Codable, Hashable {
-    case new, good, fair, poor, damaged
-}
-
 /// A KitTrace asset (row from the `assets` table), as returned in full by
 /// `tags:lookupAuthed`. Unknown/admin-only fields are decoded best-effort.
 struct Asset: Codable, Identifiable, Hashable {
     let id: String
     let name: String
-    let category: AssetCategory
+    /// Asset categories are org-configurable taxonomy keys, so decode them as
+    /// plain strings rather than a fixed enum.
+    let category: String
     let description: String?
     let serialNumber: String?
-    let condition: AssetCondition
+    /// Asset conditions are org-configurable taxonomy keys.
+    let condition: String
     let status: AssetStatus
     let custodianMemberId: String?
     let location: String?
@@ -345,6 +350,16 @@ struct Asset: Codable, Identifiable, Hashable {
         case id = "_id"
         case name, category, description, serialNumber, condition, status
         case custodianMemberId, location, notes, qrTagId, nfcTagId, dueBack
+    }
+}
+
+extension String {
+    var taxonomyDisplayName: String {
+        split(separator: "_")
+            .map { word in
+                word.prefix(1).uppercased() + String(word.dropFirst())
+            }
+            .joined(separator: " ")
     }
 }
 
@@ -370,6 +385,30 @@ struct TagLookupResult: Codable, Hashable {
     let asset: Asset?
     let custodian: Member?
     let tag: AssetTag?
+}
+
+struct AssetHistoryEntry: Codable, Identifiable, Hashable {
+    let id: String
+    let action: String
+    let performedAt: Double
+    let performerName: String
+    let fromStatus: String?
+    let toStatus: String?
+    let fromCustodianName: String?
+    let toCustodianName: String?
+    let fromLocation: String?
+    let toLocation: String?
+    let notes: String?
+
+    var performedDate: Date {
+        Date(timeIntervalSince1970: performedAt / 1000)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case action, performedAt, performerName, fromStatus, toStatus
+        case fromCustodianName, toCustodianName, fromLocation, toLocation, notes
+    }
 }
 
 // MARK: - Events

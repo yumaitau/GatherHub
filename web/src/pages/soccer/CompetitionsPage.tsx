@@ -20,6 +20,7 @@ import {
 import { DataTable } from "@/components/ui/data-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 
 type Row = NonNullable<
   ReturnType<typeof useQuery<typeof api.soccer.listCompetitions>>
@@ -148,8 +149,9 @@ function CompetitionDialog({ existing }: { existing?: Row }) {
         setName("");
         setSeason("");
       }
+      toastSuccess(existing ? "Competition updated." : "Competition added.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not save competition."));
     } finally {
       setSaving(false);
     }

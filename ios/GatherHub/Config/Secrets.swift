@@ -26,6 +26,10 @@ enum Secrets {
     /// Must match `applicationID` in `web/convex/auth.config.ts` ("convex").
     static let convexJWTTemplate = "convex"
 
+    /// Google Maps Platform key used for iOS Places address lookup. Use a
+    /// separate key from the web app, restricted to the iOS bundle identifier.
+    static let googleMapsAPIKey = infoValue("GoogleMapsAPIKey")
+
     /// SnagSpot team token used by YumaSupportKit to deliver in-app support
     /// tickets. Generated in the SnagSpot dashboard. When left blank, the
     /// support form falls back to opening a mailto: link to `supportEmail`.
@@ -38,4 +42,10 @@ enum Secrets {
     /// Always true now that the SaaS endpoints are baked in. Kept so callers
     /// can keep the historical guard pattern without behaviour change.
     static let isConfigured = true
+
+    private static func infoValue(_ key: String) -> String {
+        let raw = Bundle.main.object(forInfoDictionaryKey: key) as? String ?? ""
+        let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.hasPrefix("$(") ? "" : value
+    }
 }

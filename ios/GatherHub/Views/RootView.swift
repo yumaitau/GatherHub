@@ -15,6 +15,7 @@ struct RootView: View {
     @Environment(\.clerk) private var clerk
     @EnvironmentObject private var auth: AuthService
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var syncEnv: SyncEnvironment
 
     @State private var context: CurrentContext?
     @State private var isSyncing = false
@@ -42,6 +43,12 @@ struct RootView: View {
             } else {
                 context = nil
                 loadError = nil
+                syncEnv.unbind()
+            }
+        }
+        .onChange(of: syncEnv.monitor.isOnline) { _, isOnline in
+            if isOnline, clerk.user != nil {
+                Task { await sync() }
             }
         }
     }
@@ -71,15 +78,64 @@ struct RootView: View {
     }
 
     private func sync() async {
+        guard let clerkUserId = clerk.user?.id else {
+            context = nil
+            loadError = nil
+            syncEnv.unbind()
+            return
+        }
+
         isSyncing = true
-        loadError = nil
+        if let cached = syncEnv.cachedContext(clerkUserId: clerkUserId) {
+            context = cached
+            syncEnv.bind(
+                clerkUserId: clerkUserId,
+                orgId: cached.org.id,
+                convex: convex
+            )
+            try? syncEnv.store?.replaceLocationDefaults(
+                LocationDefaults(defaultAddress: cached.org.defaultAddress)
+            )
+            loadError = nil
+        } else {
+            loadError = nil
+        }
         defer { isSyncing = false }
+
+        guard syncEnv.monitor.isOnline else {
+            if context == nil {
+                loadError = "You're offline. Sign in online once so GatherHub can cache your club on this device."
+            }
+            return
+        }
+
         do {
             await convex.refreshAuth()
             try await convex.ensureFromClient()
-            context = try await convex.currentContext()
+            let ctx = try await convex.currentContext()
+            context = ctx
+            // Bind the local SwiftData scope to the active user+org so
+            // every cached read/write lands in the right partition.
+            // Without this the offline cache stays unscoped and queue
+            // ops dropped at sign-in.
+            if let ctx {
+                syncEnv.rememberContext(ctx, clerkUserId: clerkUserId)
+                syncEnv.bind(
+                    clerkUserId: clerkUserId,
+                    orgId: ctx.org.id,
+                    convex: convex
+                )
+                try? syncEnv.store?.replaceLocationDefaults(
+                    LocationDefaults(defaultAddress: ctx.org.defaultAddress)
+                )
+                await syncEnv.coordinator?.syncIfOnline()
+            } else if ctx == nil {
+                syncEnv.unbind()
+            }
         } catch {
-            loadError = error.localizedDescription
+            if context == nil {
+                loadError = UserFacingError.message(error, fallback: "Couldn't load your club. Try again.")
+            }
         }
     }
 

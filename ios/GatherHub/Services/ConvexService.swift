@@ -46,7 +46,9 @@ final class ConvexService: ObservableObject {
     func refreshAuth() async {
         let result = await client.login()
         if case .failure(let error) = result {
-            dump(error)
+            #if DEBUG
+            debugPrint(UserFacingError.message(error))
+            #endif
         }
     }
 
@@ -80,6 +82,26 @@ final class ConvexService: ObservableObject {
         )
     }
 
+    /// `organizations:locationDefaults` (query) — the active org's default
+    /// address, available to all members for location entry defaults.
+    func locationDefaults() async throws -> LocationDefaults {
+        try await once("organizations:locationDefaults")
+    }
+
+    /// `organizations:updateLocationSettings` (mutation) — admin+ only.
+    func updateDefaultAddress(_ defaultAddress: String?, clientMutationId: String? = nil) async throws {
+        var args: [String: ConvexEncodable?] = [:]
+        if let defaultAddress { args["defaultAddress"] = defaultAddress }
+        addClientMutationId(clientMutationId, to: &args)
+        try await client.mutation("organizations:updateLocationSettings", with: args)
+    }
+
+    /// `taxonomies:list` (query) — active KitTrace asset categories for the
+    /// current org. Used by the mobile create-asset-from-NFC flow.
+    func listAssetCategories() async throws -> [TaxonomyOption] {
+        try await once("taxonomies:list", with: ["kind": "asset_category"])
+    }
+
     // MARK: - Tags / assets
 
     /// `tags:lookupAuthed` (query, `{ tagId }`) — full asset for a scanned tag
@@ -88,13 +110,20 @@ final class ConvexService: ObservableObject {
         try await once("tags:lookupAuthed", with: ["tagId": tagId])
     }
 
+    /// `assets:history` (query, `{ assetId }`) — immutable lifecycle trail
+    /// for one asset. Shown on the scanned asset detail screen.
+    func assetHistory(assetId: String) async throws -> [AssetHistoryEntry] {
+        try await once("assets:history", with: ["assetId": assetId])
+    }
+
     /// `assetOps:checkOut` (mutation).
     func checkOut(
         assetId: String,
         custodianMemberId: String,
         location: String? = nil,
         dueBack: Date? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        clientMutationId: String? = nil
     ) async throws {
         var args: [String: ConvexEncodable?] = [
             "assetId": assetId,
@@ -103,6 +132,7 @@ final class ConvexService: ObservableObject {
         if let location { args["location"] = location }
         if let dueBack { args["dueBack"] = dueBack.timeIntervalSince1970 * 1000 }
         if let notes { args["notes"] = notes }
+        addClientMutationId(clientMutationId, to: &args)
         try await client.mutation("assetOps:checkOut", with: args)
     }
 
@@ -110,11 +140,13 @@ final class ConvexService: ObservableObject {
     func checkIn(
         assetId: String,
         location: String? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        clientMutationId: String? = nil
     ) async throws {
         var args: [String: ConvexEncodable?] = ["assetId": assetId]
         if let location { args["location"] = location }
         if let notes { args["notes"] = notes }
+        addClientMutationId(clientMutationId, to: &args)
         try await client.mutation("assetOps:checkIn", with: args)
     }
 
@@ -128,14 +160,21 @@ final class ConvexService: ObservableObject {
     }
 
     /// `events:setRsvp` (mutation, `{ eventId, memberId, status }`).
-    func setRsvp(eventId: String, memberId: String, status: RsvpStatus) async throws {
+    func setRsvp(
+        eventId: String,
+        memberId: String,
+        status: RsvpStatus,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = [
+            "eventId": eventId,
+            "memberId": memberId,
+            "status": status.rawValue,
+        ]
+        addClientMutationId(clientMutationId, to: &args)
         try await client.mutation(
             "events:setRsvp",
-            with: [
-                "eventId": eventId,
-                "memberId": memberId,
-                "status": status.rawValue,
-            ]
+            with: args
         )
     }
 
@@ -159,10 +198,12 @@ final class ConvexService: ObservableObject {
     }
 
     /// `announcements:markRead` (mutation).
-    func markAnnouncementRead(_ id: String) async throws {
+    func markAnnouncementRead(_ id: String, clientMutationId: String? = nil) async throws {
+        var args: [String: ConvexEncodable?] = ["announcementId": id]
+        addClientMutationId(clientMutationId, to: &args)
         try await client.mutation(
             "announcements:markRead",
-            with: ["announcementId": id]
+            with: args
         )
     }
 
@@ -186,7 +227,8 @@ final class ConvexService: ObservableObject {
         divisionId: String?,
         clearTeam: Bool,
         clearDivision: Bool,
-        kitColour: String?
+        kitColour: String?,
+        clientMutationId: String? = nil
     ) async throws {
         var args: [String: ConvexEncodable?] = ["memberId": memberId]
         if let teamId { args["teamId"] = teamId }
@@ -194,6 +236,7 @@ final class ConvexService: ObservableObject {
         if clearTeam { args["clearTeam"] = true }
         if clearDivision { args["clearDivision"] = true }
         if let kitColour { args["kitColour"] = kitColour }
+        addClientMutationId(clientMutationId, to: &args)
         try await client.mutation("soccer:upsertRegistration", with: args)
     }
 
@@ -228,7 +271,8 @@ final class ConvexService: ObservableObject {
         memberId: String,
         skillId: String,
         score: Double,
-        notes: String? = nil
+        notes: String? = nil,
+        clientMutationId: String? = nil
     ) async throws {
         var args: [String: ConvexEncodable?] = [
             "memberId": memberId,
@@ -236,6 +280,7 @@ final class ConvexService: ObservableObject {
             "score": score,
         ]
         if let notes { args["notes"] = notes }
+        addClientMutationId(clientMutationId, to: &args)
         try await client.mutation("soccer:upsertEvaluation", with: args)
     }
 
@@ -247,12 +292,14 @@ final class ConvexService: ObservableObject {
         assetId: String,
         latitude: Double? = nil,
         longitude: Double? = nil,
-        accuracy: Double? = nil
+        accuracy: Double? = nil,
+        clientMutationId: String? = nil
     ) async throws {
         var args: [String: ConvexEncodable?] = ["assetId": assetId]
         if let latitude { args["geoLatitude"] = latitude }
         if let longitude { args["geoLongitude"] = longitude }
         if let accuracy { args["geoAccuracy"] = accuracy }
+        addClientMutationId(clientMutationId, to: &args)
         try await client.mutation("assetOps:recordScan", with: args)
     }
 
@@ -260,18 +307,54 @@ final class ConvexService: ObservableObject {
     /// existing asset within the caller's org. Used after a scan
     /// returns "not found" so the user can attach the physical tag to
     /// a known asset record.
-    func registerNfc(assetId: String, nfcTagId: String) async throws {
+    func registerNfc(assetId: String, nfcTagId: String, clientMutationId: String? = nil) async throws {
+        var args: [String: ConvexEncodable?] = ["assetId": assetId, "nfcTagId": nfcTagId]
+        addClientMutationId(clientMutationId, to: &args)
         try await client.mutation(
             "assets:registerNfc",
-            with: ["assetId": assetId, "nfcTagId": nfcTagId]
+            with: args
         )
+    }
+
+    /// `assets:create` (mutation) — creates a KitTrace asset. The backend
+    /// always mints a QR tag; when `nfcTagId` is provided it also binds the
+    /// scanned physical NFC UID to the new asset.
+    @discardableResult
+    func createAsset(
+        name: String,
+        category: String,
+        serialNumber: String? = nil,
+        location: String? = nil,
+        nfcTagId: String? = nil,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args: [String: ConvexEncodable?] = [
+            "name": name,
+            "category": category,
+        ]
+        if let serialNumber { args["serialNumber"] = serialNumber }
+        if let location { args["location"] = location }
+        if let nfcTagId { args["nfcTagId"] = nfcTagId }
+        addClientMutationId(clientMutationId, to: &args)
+        let assetId: String = try await client.mutation("assets:create", with: args)
+        return assetId
     }
 
     /// `assets:list` (query) — list of assets for the active org, used
     /// by the register-new-tag picker. The exact return shape depends
     /// on the function; this method decodes a minimal subset.
-    func listAssets() async throws -> [AssetSummary] {
-        try await once("assets:list")
+    func listAssets(status: String? = nil) async throws -> [AssetSummary] {
+        var args: [String: ConvexEncodable?] = [:]
+        if let status { args["status"] = status }
+        return try await once("assets:list", with: args)
+    }
+
+    /// Current checked-out/in-use assets for the field home screen.
+    func checkedOutAssets() async throws -> [AssetSummary] {
+        async let checkedOut = listAssets(status: "checked_out")
+        async let inUse = listAssets(status: "in_use")
+        let (checkedOutRows, inUseRows) = try await (checkedOut, inUse)
+        return (checkedOutRows + inUseRows).sorted { $0.name < $1.name }
     }
 
     // MARK: - Dashboard
@@ -320,6 +403,15 @@ final class ConvexService: ObservableObject {
                         continuation.resume(returning: value)
                     }
                 )
+            }
+    }
+
+    private func addClientMutationId(
+        _ clientMutationId: String?,
+        to args: inout [String: ConvexEncodable?]
+    ) {
+        if let clientMutationId {
+            args["clientMutationId"] = clientMutationId
         }
     }
 }

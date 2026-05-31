@@ -1,19 +1,29 @@
 /* eslint-disable react-refresh/only-export-components */
 import { SignIn } from "@clerk/clerk-react";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { AuthShell } from "@/pages/auth/AuthShell";
 
 export default function SignInPage() {
   const [params] = useSearchParams();
+  const ticket = params.get("__clerk_ticket") ?? params.get("ticket");
   const redirect = params.get("redirect_url") ?? "/";
+  const email = params.get("email") ?? "";
+
+  if (ticket) {
+    const signUpParams = new URLSearchParams(params);
+    signUpParams.set("__clerk_ticket", ticket);
+    signUpParams.delete("ticket");
+    return <Navigate to={`/sign-up?${signUpParams}`} replace />;
+  }
+
   return (
     <AuthShell heading="Sign in" caption="Welcome back.">
       <SignIn
         routing="path"
         path="/sign-in"
-        signUpUrl={`/sign-up?redirect_url=${encodeURIComponent(redirect)}`}
-        afterSignInUrl={redirect}
-        afterSignUpUrl={redirect}
+        forceRedirectUrl={redirect}
+        fallbackRedirectUrl={redirect}
+        initialValues={email ? { emailAddress: email } : undefined}
         appearance={CLERK_APPEARANCE}
       />
     </AuthShell>

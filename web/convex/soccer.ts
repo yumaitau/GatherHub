@@ -8,6 +8,7 @@ import {
 } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
+import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 
 /**
  * Soccer-mode features: configurable skill rubric, weighted evaluations,
@@ -578,9 +579,19 @@ export const upsertRegistration = mutation({
     /// "leave unchanged" when undefined, so we need a separate flag.
     clearDivision: v.optional(v.boolean()),
     clearTeam: v.optional(v.boolean()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const registrationId = ctx.db.normalizeId(
+        "soccerRegistrations",
+        replay.resultId,
+      );
+      if (registrationId) return registrationId;
+    }
+    if (replay) return;
     await assertSoccerMode(ctx, auth.org._id);
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
@@ -638,9 +649,16 @@ export const upsertRegistration = mutation({
         }
       }
       await ctx.db.patch(existing._id, patch);
+      await recordClientMutation(
+        ctx,
+        auth,
+        args.clientMutationId,
+        "soccer:upsertRegistration",
+        String(existing._id),
+      );
       return existing._id;
     }
-    return await ctx.db.insert("soccerRegistrations", {
+    const registrationId = await ctx.db.insert("soccerRegistrations", {
       orgId: auth.org._id,
       memberId: args.memberId,
       competitionId: args.competitionId,
@@ -660,6 +678,14 @@ export const upsertRegistration = mutation({
       comments: args.comments,
       kitColour: args.kitColour,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "soccer:upsertRegistration",
+      String(registrationId),
+    );
+    return registrationId;
   },
 });
 
@@ -829,9 +855,19 @@ export const upsertEvaluation = mutation({
     skillId: v.id("soccerSkills"),
     score: v.number(),
     notes: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "coach");
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const evaluationId = ctx.db.normalizeId(
+        "soccerEvaluations",
+        replay.resultId,
+      );
+      if (evaluationId) return evaluationId;
+    }
+    if (replay) return;
     await assertSoccerMode(ctx, auth.org._id);
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
@@ -858,9 +894,16 @@ export const upsertEvaluation = mutation({
         evaluatedBy: auth.user._id,
         evaluatedAt: now,
       });
+      await recordClientMutation(
+        ctx,
+        auth,
+        args.clientMutationId,
+        "soccer:upsertEvaluation",
+        String(existing._id),
+      );
       return existing._id;
     }
-    return await ctx.db.insert("soccerEvaluations", {
+    const evaluationId = await ctx.db.insert("soccerEvaluations", {
       orgId: auth.org._id,
       memberId: args.memberId,
       skillId: args.skillId,
@@ -869,6 +912,14 @@ export const upsertEvaluation = mutation({
       evaluatedBy: auth.user._id,
       evaluatedAt: now,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "soccer:upsertEvaluation",
+      String(evaluationId),
+    );
+    return evaluationId;
   },
 });
 

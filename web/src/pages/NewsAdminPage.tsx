@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatDate } from "@/lib/utils";
 
 type NewsPost = {
@@ -48,8 +49,11 @@ export default function NewsAdminPage() {
     setError(null);
     try {
       await update({ newsId: post._id, published: !post.published });
+      toastSuccess(
+        post.published ? "Article unpublished." : "Article published.",
+      );
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not update article."));
     }
   }
 
@@ -58,8 +62,9 @@ export default function NewsAdminPage() {
     setError(null);
     try {
       await remove({ newsId: post._id });
+      toastSuccess("Article deleted.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not delete article."));
     }
   }
 
@@ -188,8 +193,9 @@ function NewsDialog(
       }
       reset();
       setOpen(false);
+      toastSuccess(isEdit ? "Article updated." : "Article created.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not save article."));
     } finally {
       setSaving(false);
     }

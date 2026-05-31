@@ -108,7 +108,9 @@ struct AnnouncementsListView: View {
             announcements = fresh
             try? sync.store?.replaceAnnouncements(fresh)
         } catch let err {
-            if announcements.isEmpty { error = err.localizedDescription }
+            if announcements.isEmpty {
+                error = UserFacingError.message(err, fallback: "Couldn't load announcements.")
+            }
         }
         loading = false
     }
@@ -129,16 +131,15 @@ struct AnnouncementsListView: View {
             )
             try? sync.store?.replaceAnnouncements(announcements)
         }
-        // Queue the read receipt so it survives offline.
-        guard let store = sync.store else { return }
-        let payload = AnnouncementReadPayload(announcementId: id)
-        if let data = try? JSONEncoder().encode(payload) {
-            try? store.enqueue(
+        do {
+            try sync.enqueue(
                 kind: .announcementRead,
                 title: "Mark announcement read",
-                payload: data
+                payload: AnnouncementReadPayload(announcementId: id)
             )
             await sync.coordinator?.syncIfOnline()
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue read receipt.")
         }
     }
 }

@@ -100,8 +100,12 @@ In the Convex dashboard (or via `npx convex env set`), set:
 
 - `CLERK_JWT_ISSUER_DOMAIN` — your Clerk Frontend API URL
   (e.g. `https://your-app.clerk.accounts.dev`).
-- `CLERK_WEBHOOK_SECRET` — (optional) the signing secret if you wire up the
-  Clerk webhook at `<CONVEX_SITE_URL>/clerk-webhook`.
+- `CLERK_SECRET_KEY` — Clerk secret key used to create invitations and sync
+  accepted-invite metadata.
+- `PUBLIC_APP_URL` — where invited users should land, e.g.
+  `http://localhost:5173` locally or your deployed app URL.
+- `CLERK_WEBHOOK_SECRET` — optional signing secret if you wire up the Clerk
+  webhook at `<CONVEX_SITE_URL>/clerk-webhook`.
 
 ### 4. Environment variables
 
@@ -116,6 +120,11 @@ cp web/.env.example web/.env.local
 | `VITE_CONVEX_URL`              | Convex deployment URL                    |
 | `VITE_CLERK_PUBLISHABLE_KEY`   | Clerk publishable key                    |
 | `VITE_PUBLIC_APP_URL`          | Base URL used in generated QR links      |
+| `VITE_GOOGLE_MAPS_API_KEY`     | Google Places address lookup key         |
+
+Local dev also accepts `VITE_GOOGLE_MAPS_KEY` as a fallback alias, but hosted
+deployments should use `VITE_GOOGLE_MAPS_API_KEY`. The key's Google Cloud
+project must have both Maps JavaScript API and Places API (New) enabled.
 
 ### 5. Run
 

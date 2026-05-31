@@ -4,7 +4,6 @@ import { GatherHubProvider } from "@/lib/gatherhub";
 import { AppLayout } from "@/components/layout/AppLayout";
 import SignInPage from "@/pages/auth/SignInPage";
 import SignUpPage from "@/pages/auth/SignUpPage";
-import AcceptInvitePage from "@/pages/auth/AcceptInvitePage";
 import ProfilePage from "@/pages/auth/ProfilePage";
 
 import DashboardPage from "@/pages/DashboardPage";
@@ -17,7 +16,6 @@ import EventDetailPage from "@/pages/events/EventDetailPage";
 import AnnouncementsPage from "@/pages/AnnouncementsPage";
 import AssetsPage from "@/pages/assets/AssetsPage";
 import AssetDetailPage from "@/pages/assets/AssetDetailPage";
-import AssetHistoryPage from "@/pages/assets/HistoryPage";
 import QrSheetPage from "@/pages/assets/QrSheetPage";
 import VolunteersPage from "@/pages/VolunteersPage";
 import SponsorsPage from "@/pages/sponsors/SponsorsPage";
@@ -51,10 +49,10 @@ export default function App() {
 
       {/* Clerk auth routes — wildcard so Clerk's sub-routes (verify, sso, etc.) work */}
       <Route path="/sign-in/*" element={<SignInPage />} />
+      {/* Sign-up is invitation-only: page redirects to sign-in unless a
+          Clerk ticket is present in the query. Restricted mode in the
+          Clerk dashboard enforces this server-side too. */}
       <Route path="/sign-up/*" element={<SignUpPage />} />
-
-      {/* Org invitation acceptance — works signed in or out */}
-      <Route path="/invite/:code" element={<AcceptInvitePage />} />
 
       {/* Authenticated app */}
       <Route path="/*" element={<AuthedApp />} />
@@ -78,11 +76,14 @@ function AuthedApp() {
               <Route path="/events/:eventId" element={<EventDetailPage />} />
               <Route path="/announcements" element={<AnnouncementsPage />} />
               <Route path="/assets" element={<AssetsPage />} />
-              <Route path="/assets/history" element={<AssetHistoryPage />} />
-              {/* Old scan route redirects to history; web app does not scan. */}
+              <Route
+                path="/assets/history"
+                element={<Navigate to="/assets" replace />}
+              />
+              {/* Old scan route redirects to KitTrace; web app does not scan. */}
               <Route
                 path="/assets/scan"
-                element={<Navigate to="/assets/history" replace />}
+                element={<Navigate to="/assets" replace />}
               />
               <Route path="/assets/qr-sheet" element={<QrSheetPage />} />
               <Route path="/assets/:assetId" element={<AssetDetailPage />} />

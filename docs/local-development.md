@@ -34,6 +34,9 @@ fill in:
 
 - `VITE_CLERK_PUBLISHABLE_KEY` — Clerk dashboard → API keys.
 - `VITE_PUBLIC_APP_URL` — `http://localhost:5173`.
+- `VITE_GOOGLE_MAPS_API_KEY` — optional Google Maps Platform key for Places
+  address lookup. Enable Maps JavaScript API and Places API (New). The app also
+  accepts `VITE_GOOGLE_MAPS_KEY` as a local alias.
 
 See [`docs/environment.md`](./environment.md) for the full variable reference.
 
@@ -56,22 +59,23 @@ Leave it running.
 
 ```bash
 npx convex env set CLERK_JWT_ISSUER_DOMAIN https://<your-app>.clerk.accounts.dev
-npx convex env set CLERK_WEBHOOK_SECRET    whsec_<from-clerk-dashboard>
+npx convex env set CLERK_SECRET_KEY        sk_test_...
+npx convex env set PUBLIC_APP_URL          http://localhost:5173
 ```
 
-`CLERK_JWT_ISSUER_DOMAIN` is the Clerk Frontend API URL. `CLERK_WEBHOOK_SECRET`
-is the signing secret of the Clerk webhook you configure to point at
-`<your-convex-url>/clerk-webhook` (subscribe to `user.*` only — organisations
-live in Convex, so no `organization.*` events).
+`CLERK_JWT_ISSUER_DOMAIN` is the Clerk Frontend API URL. `CLERK_SECRET_KEY` is
+required for Clerk-native invitations and for syncing accepted-invite metadata
+into Convex. `PUBLIC_APP_URL` is the base URL Clerk redirects invited users back
+to after they click the emailed invitation link.
+
+If you configure the optional Clerk webhook, set `CLERK_WEBHOOK_SECRET` to the
+signing secret of the endpoint at `<your-convex-url>/clerk-webhook` (subscribe
+to `user.*` only — organisations live in Convex, so no `organization.*`
+events).
 
 Configure the Clerk JWT template named **`convex`** with default identity
 claims (`aud: "convex"`, plus `sub`, `email`, `name`, `picture`). No org
 claims are required. See `docs/security-model.md`.
-
-Optional: to send invitation emails, also set `RESEND_API_KEY`,
-`INVITE_FROM_EMAIL`, and `PUBLIC_APP_URL`. Without these the invitation
-delivery action logs the email body to the Convex logs (useful for local
-testing — just copy the link).
 
 ## 4. Run the web app
 

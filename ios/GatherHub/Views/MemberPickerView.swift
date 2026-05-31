@@ -7,6 +7,7 @@ struct MemberPickerView: View {
     let onSelect: (Member) -> Void
 
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @Environment(\.dismiss) private var dismiss
 
     @State private var members: [Member] = []
@@ -82,12 +83,23 @@ struct MemberPickerView: View {
     }
 
     private func load() async {
-        phase = .loading
+        if let cached = try? sync.store?.cachedMembers(), !cached.isEmpty {
+            members = cached
+            phase = .loaded
+        } else {
+            phase = .loading
+        }
         do {
-            members = try await convex.listMembers()
+            let fresh = try await convex.listMembers()
+            members = fresh
+            try? sync.store?.replaceMembers(fresh)
             phase = .loaded
         } catch {
-            phase = .failed(error.localizedDescription)
+            if members.isEmpty {
+                phase = .failed(UserFacingError.message(error, fallback: "Couldn't load members."))
+            } else {
+                phase = .loaded
+            }
         }
     }
 }

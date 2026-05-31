@@ -103,7 +103,14 @@ struct SoccerRegistrationsView: View {
         }
         .task { await load() }
         .refreshable { await load() }
-        .searchable(text: $query, prompt: "Search player, FFA, team")
+        // .navigationBarDrawer(displayMode: .always) keeps the bar
+        // pinned even after the Group swaps from loading → content —
+        // which is when SwiftUI was dropping it on the player list.
+        .searchable(
+            text: $query,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Search player, FFA, team"
+        )
     }
 
     private var content: some View {
@@ -135,8 +142,13 @@ struct SoccerRegistrationsView: View {
             .listStyle(.plain)
         }
         .sheet(item: $editingRow) { row in
-            PlayerAssignmentSheet(row: row) {
-                Task { await load() }
+            PlayerAssignmentSheet(row: row) { updated, shouldReload in
+                if let index = rows.firstIndex(where: { $0.memberId == updated.memberId }) {
+                    rows[index] = updated
+                }
+                if shouldReload {
+                    Task { await load() }
+                }
             }
         }
     }
@@ -154,7 +166,9 @@ struct SoccerRegistrationsView: View {
             rows = fresh
             try? sync.store?.replacePlayerListings(fresh)
         } catch let err {
-            if rows.isEmpty { error = err.localizedDescription }
+            if rows.isEmpty {
+                error = UserFacingError.message(err, fallback: "Couldn't load registrations.")
+            }
         }
         loading = false
     }

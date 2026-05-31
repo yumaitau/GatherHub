@@ -1,0 +1,10 @@
+// Shared iOS build settings.
+//
+// AppSecrets.xcconfig and Signing.xcconfig are intentionally gitignored.
+// Xcode's optional include keeps open-source checkouts buildable while letting
+// local, CI, and TestFlight builds inject client keys and signing settings.
+
+GOOGLE_MAPS_API_KEY =
+
+#include? "AppSecrets.xcconfig"
+#include? "Signing.xcconfig"

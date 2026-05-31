@@ -6,26 +6,44 @@ struct MainTabView: View {
     let context: CurrentContext
     var onSwitchOrg: () -> Void = {}
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
+    @State private var showingSyncQueue = false
 
     var body: some View {
-        TabView {
-            NavigationStack {
-                DashboardView(context: context, convex: convex)
+        VStack(spacing: 0) {
+            OfflineBanner {
+                showingSyncQueue = true
             }
-            .tabItem { Label("Home", systemImage: "house") }
 
-            AssetsView()
-                .tabItem { Label("Assets", systemImage: "qrcode.viewfinder") }
+            TabView {
+                NavigationStack {
+                    DashboardView(context: context, convex: convex)
+                }
+                .tabItem { Label("Home", systemImage: "house") }
 
-            EventCalendarView(context: context)
-                .tabItem { Label("Events", systemImage: "calendar") }
+                AssetsView()
+                    .tabItem { Label("Assets", systemImage: "qrcode.viewfinder") }
 
-            MoreView(context: context)
-                .tabItem { Label("More", systemImage: "ellipsis.circle") }
+                EventCalendarView(context: context)
+                    .tabItem { Label("Events", systemImage: "calendar") }
 
-            ProfileView(context: context, onSwitchOrg: onSwitchOrg)
-                .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+                MoreView(context: context)
+                    .tabItem { Label("More", systemImage: "ellipsis.circle") }
+
+                ProfileView(context: context, onSwitchOrg: onSwitchOrg)
+                    .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+            }
+            .tint(Color.gh.accent)
         }
-        .tint(Color.gh.accent)
+        .sheet(isPresented: $showingSyncQueue) {
+            NavigationStack {
+                PendingQueueView()
+            }
+        }
+        .onChange(of: sync.monitor.isOnline) { _, isOnline in
+            if isOnline {
+                Task { await sync.coordinator?.syncIfOnline() }
+            }
+        }
     }
 }

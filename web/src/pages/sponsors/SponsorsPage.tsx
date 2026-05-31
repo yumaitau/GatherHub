@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatCurrency } from "@/lib/utils";
 
 export default function SponsorsPage() {
@@ -154,8 +155,9 @@ function NewSponsorDialog() {
       });
       reset();
       setOpen(false);
+      toastSuccess("Sponsor created.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not create sponsor."));
     } finally {
       setSaving(false);
     }

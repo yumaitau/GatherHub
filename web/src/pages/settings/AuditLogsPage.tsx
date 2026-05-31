@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { Link } from "react-router-dom";
-import { ScrollText, ShieldOff, History } from "lucide-react";
+import { Package, ScrollText, ShieldOff } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -115,8 +115,8 @@ export default function AuditLogsPage() {
         description="Every mutating action across the workspace. Currently covers KitTrace asset operations; member, registration, and event audits land here as they're wired."
         actions={
           <Button variant="outline" asChild>
-            <Link to="/assets/history">
-              <History className="h-4 w-4" /> Full KitTrace history
+            <Link to="/assets">
+              <Package className="h-4 w-4" /> Open KitTrace
             </Link>
           </Button>
         }

@@ -9,6 +9,7 @@ struct OrgSwitcherSheet: View {
     let onSwitched: () -> Void
 
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @Environment(\.dismiss) private var dismiss
 
     @State private var memberships: [OrgMembership] = []
@@ -85,13 +86,20 @@ struct OrgSwitcherSheet: View {
     }
 
     private func load() async {
+        if let cached = try? sync.store?.cachedOrgMemberships(), !cached.isEmpty {
+            memberships = cached
+        }
         isLoading = true
         error = nil
         defer { isLoading = false }
         do {
-            memberships = try await convex.myMemberships()
+            let fresh = try await convex.myMemberships()
+            memberships = fresh
+            try? sync.store?.replaceOrgMemberships(fresh)
         } catch let err {
-            error = err.localizedDescription
+            if memberships.isEmpty {
+                error = UserFacingError.message(err, fallback: "Couldn't load your clubs.")
+            }
         }
     }
 
@@ -107,7 +115,7 @@ struct OrgSwitcherSheet: View {
             onSwitched()
             dismiss()
         } catch let err {
-            error = err.localizedDescription
+            error = UserFacingError.message(err, fallback: "Couldn't switch clubs.")
         }
     }
 }

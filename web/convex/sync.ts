@@ -7,6 +7,14 @@ type IdentityClaims = {
   given_name?: string;
   family_name?: string;
   picture?: string;
+  // Optional fallback for installs that propagate Clerk publicMetadata through
+  // the Convex JWT template. The web app's primary invitation sync path reads
+  // the same metadata server-side in `syncClerk.ensureFromClerk`.
+  publicMetadata?: {
+    pendingOrgId?: string;
+    pendingRole?: string;
+    invitedBy?: string;
+  };
 };
 
 /**
@@ -46,6 +54,57 @@ export const ensureFromClient = mutation({
       userId = await ctx.db.insert("users", fields);
     }
 
+    // Clerk-native invitation fallback: if the JWT template forwards
+    // public_metadata into the identity object, claim the membership here.
+    // Web clients normally use `syncClerk.ensureFromClerk`, which reads the
+    // same Clerk user metadata server-side and does not require custom JWT
+    // claims. Subsequent syncs are a no-op because the row already exists.
+    //
+    // Without publicMetadata (i.e. a user who signed up outside the
+    // invitation flow) we leave them in the "no organisation" empty
+    // state — that's how closed beta stays closed.
+    const meta = claims.publicMetadata;
+    const pendingOrgIdStr = meta?.pendingOrgId;
+    const pendingRole = meta?.pendingRole;
+    // Mirrors `roleValidator` in schema.ts.
+    const ALLOWED_ROLES = [
+      "owner",
+      "admin",
+      "committee",
+      "coach",
+      "volunteer",
+      "parent",
+      "player",
+    ] as const;
+    type AllowedRole = (typeof ALLOWED_ROLES)[number];
+    if (
+      pendingOrgIdStr &&
+      pendingRole &&
+      (ALLOWED_ROLES as readonly string[]).includes(pendingRole)
+    ) {
+      const pendingOrgId = pendingOrgIdStr as Id<"organizations">;
+      const org = await ctx.db.get(pendingOrgId);
+      if (org) {
+        const existingMembership = await ctx.db
+          .query("memberships")
+          .withIndex("by_user_and_org", (q) =>
+            q.eq("userId", userId).eq("orgId", pendingOrgId),
+          )
+          .unique();
+        if (!existingMembership) {
+          await ctx.db.insert("memberships", {
+            userId,
+            orgId: pendingOrgId,
+            role: pendingRole as AllowedRole,
+          });
+        }
+        const userRow = await ctx.db.get(userId);
+        if (userRow && !userRow.activeOrgId) {
+          await ctx.db.patch(userId, { activeOrgId: pendingOrgId });
+        }
+      }
+    }
+
     return { userId };
   },
 });
@@ -73,6 +132,7 @@ export const currentContext = query({
         name: auth.org.name,
         slug: auth.org.slug,
         soccerMode: Boolean(auth.org.soccerMode),
+        defaultAddress: auth.org.defaultAddress,
       },
       role: auth.role,
     };

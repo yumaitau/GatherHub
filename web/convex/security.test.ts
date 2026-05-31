@@ -198,6 +198,57 @@ describe("organisation lifecycle (Convex-native)", () => {
 });
 
 describe("asset operations & audit log", () => {
+  test("admin location defaults are used by asset and event writes", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_defaults",
+      clerkUser: "user_location_admin",
+      role: "admin",
+    });
+    const defaultAddress = "1 Clubhouse Lane, Sydney NSW";
+
+    await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", {
+        clerkUserId: "user_location_player",
+        email: "player@example.test",
+        activeOrgId: club.orgId,
+      });
+      await ctx.db.insert("memberships", {
+        orgId: club.orgId,
+        userId,
+        role: "player",
+      });
+    });
+    const player = t.withIdentity({ subject: "user_location_player" });
+
+    await club.as.mutation(api.organizations.updateLocationSettings, {
+      defaultAddress: `  ${defaultAddress}  `,
+    });
+    await expect(
+      player.mutation(api.organizations.updateLocationSettings, {
+        defaultAddress: "Player House",
+      }),
+    ).rejects.toThrow(/permission/i);
+    await expect(
+      player.query(api.organizations.locationDefaults, {}),
+    ).resolves.toEqual({ defaultAddress });
+
+    const assetId = await club.as.mutation(api.assets.create, {
+      name: "Defaulted Asset",
+      category: "equipment",
+    });
+    const assetDetail = await club.as.query(api.assets.get, { assetId });
+    expect(assetDetail.asset.location).toBe(defaultAddress);
+
+    const eventId = await club.as.mutation(api.events.create, {
+      type: "training",
+      title: "Defaulted Training",
+      startTime: Date.now(),
+    });
+    const eventDetail = await club.as.query(api.events.get, { eventId });
+    expect(eventDetail.event.location).toBe(defaultAddress);
+  });
+
   test("create → check out → check in writes an immutable audit trail", async () => {
     const t = convexTest(schema, modules);
     const club = await seedOrg(t, {
@@ -245,6 +296,289 @@ describe("asset operations & audit log", () => {
     expect(actions).toContain("checked_out");
     expect(actions).toContain("checked_in");
     expect(history.length).toBeGreaterThanOrEqual(3);
+  });
+
+  test("asset creation can bind a scanned NFC tag while minting QR", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_nfc_create",
+      clerkUser: "user_nfc_admin",
+      role: "admin",
+    });
+
+    const nfcTagId = "04AABBCCDDEE";
+    const assetId = await club.as.mutation(api.assets.create, {
+      name: "Scanned Training Bibs",
+      category: "equipment",
+      nfcTagId,
+    });
+
+    const detail = await club.as.query(api.assets.get, { assetId });
+    expect(detail.asset.qrTagId).toBeTruthy();
+    expect(detail.asset.nfcTagId).toBe(nfcTagId);
+    expect(detail.tags.map((t) => t.type).sort()).toEqual(["nfc", "qr"]);
+
+    const lookup = await club.as.query(api.tags.lookupAuthed, {
+      tagId: nfcTagId,
+    });
+    expect(lookup.found).toBe(true);
+    expect(lookup.asset?.name).toBe("Scanned Training Bibs");
+
+    await expect(
+      club.as.mutation(api.assets.create, {
+        name: "Duplicate NFC",
+        category: "equipment",
+        nfcTagId,
+      }),
+    ).rejects.toThrow(/not available/i);
+  });
+
+  test("mobile client mutation ids make queued retries idempotent", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_mobile_retry",
+      clerkUser: "user_mobile_retry_admin",
+      role: "admin",
+    });
+
+    const memberId = await club.as.mutation(api.members.create, {
+      firstName: "Retry",
+      lastName: "Coach",
+    });
+    const nfcTagId = "04RETRY0001";
+    const firstAssetId = await club.as.mutation(api.assets.create, {
+      name: "Retry Bibs",
+      category: "equipment",
+      nfcTagId,
+      clientMutationId: "mobile-create-1",
+    });
+    const secondAssetId = await club.as.mutation(api.assets.create, {
+      name: "Retry Bibs",
+      category: "equipment",
+      nfcTagId,
+      clientMutationId: "mobile-create-1",
+    });
+    expect(secondAssetId).toBe(firstAssetId);
+
+    await club.as.mutation(api.assetOps.checkOut, {
+      assetId: firstAssetId,
+      custodianMemberId: memberId,
+      clientMutationId: "mobile-checkout-1",
+    });
+    await club.as.mutation(api.assetOps.checkOut, {
+      assetId: firstAssetId,
+      custodianMemberId: memberId,
+      clientMutationId: "mobile-checkout-1",
+    });
+
+    await club.as.mutation(api.assetOps.recordScan, {
+      assetId: firstAssetId,
+      clientMutationId: "mobile-scan-1",
+    });
+    await club.as.mutation(api.assetOps.recordScan, {
+      assetId: firstAssetId,
+      clientMutationId: "mobile-scan-1",
+    });
+
+    const history = await club.as.query(api.assets.history, {
+      assetId: firstAssetId,
+    });
+    expect(history.filter((h) => h.action === "created")).toHaveLength(1);
+    expect(history.filter((h) => h.action === "checked_out")).toHaveLength(1);
+    expect(history.filter((h) => h.action === "scanned")).toHaveLength(1);
+  });
+
+  test("every native queued mutation is idempotent on retry", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_mobile_all_retry",
+      clerkUser: "user_mobile_all_retry_admin",
+      role: "admin",
+    });
+
+    await club.as.mutation(api.soccer.setSoccerMode, { enabled: true });
+    const memberId = await club.as.mutation(api.members.create, {
+      firstName: "All",
+      lastName: "Retry",
+      email: "all-retry@example.test",
+    });
+    const eventId = await club.as.mutation(api.events.create, {
+      type: "training",
+      title: "Retry Training",
+      startTime: Date.now(),
+    });
+    const announcementId = await club.as.mutation(api.announcements.create, {
+      title: "Retry Notice",
+      body: "Read once.",
+    });
+    const assetId = await club.as.mutation(api.assets.create, {
+      name: "Retry Cones",
+      category: "equipment",
+      clientMutationId: "mobile-all-create-1",
+    });
+    const duplicateAssetId = await club.as.mutation(api.assets.create, {
+      name: "Retry Cones Duplicate",
+      category: "equipment",
+      clientMutationId: "mobile-all-create-1",
+    });
+    expect(duplicateAssetId).toBe(assetId);
+
+    await club.as.mutation(api.events.setRsvp, {
+      eventId,
+      memberId,
+      status: "going",
+      clientMutationId: "mobile-rsvp-1",
+    });
+    await club.as.mutation(api.events.setRsvp, {
+      eventId,
+      memberId,
+      status: "not_going",
+      clientMutationId: "mobile-rsvp-1",
+    });
+
+    await club.as.mutation(api.announcements.markRead, {
+      announcementId,
+      clientMutationId: "mobile-announcement-1",
+    });
+    await club.as.mutation(api.announcements.markRead, {
+      announcementId,
+      clientMutationId: "mobile-announcement-1",
+    });
+
+    await club.as.mutation(api.assetOps.checkOut, {
+      assetId,
+      custodianMemberId: memberId,
+      clientMutationId: "mobile-all-checkout-1",
+    });
+    await club.as.mutation(api.assetOps.checkOut, {
+      assetId,
+      custodianMemberId: memberId,
+      clientMutationId: "mobile-all-checkout-1",
+    });
+    await club.as.mutation(api.assetOps.checkIn, {
+      assetId,
+      clientMutationId: "mobile-checkin-1",
+    });
+    await club.as.mutation(api.assetOps.checkIn, {
+      assetId,
+      clientMutationId: "mobile-checkin-1",
+    });
+    await club.as.mutation(api.assets.registerNfc, {
+      assetId,
+      nfcTagId: "04ALLRETRY01",
+      clientMutationId: "mobile-register-nfc-1",
+    });
+    await club.as.mutation(api.assetOps.recordScan, {
+      assetId,
+      clientMutationId: "mobile-all-scan-1",
+    });
+    await club.as.mutation(api.assetOps.recordScan, {
+      assetId,
+      clientMutationId: "mobile-all-scan-1",
+    });
+    await club.as.mutation(api.assets.registerNfc, {
+      assetId,
+      nfcTagId: "04ALLRETRY01",
+      clientMutationId: "mobile-register-nfc-1",
+    });
+
+    await club.as.mutation(api.organizations.updateLocationSettings, {
+      defaultAddress: "First Clubhouse",
+      clientMutationId: "mobile-org-address-1",
+    });
+    await club.as.mutation(api.organizations.updateLocationSettings, {
+      defaultAddress: "Second Clubhouse",
+      clientMutationId: "mobile-org-address-1",
+    });
+
+    const teamId = await club.as.mutation(api.teams.create, {
+      name: "Retry U10",
+    });
+    const [division] = await club.as.query(api.soccer.listDivisions, {});
+    if (!division) throw new Error("Expected soccer mode to seed divisions.");
+    await club.as.mutation(api.soccer.upsertRegistration, {
+      memberId,
+      teamId,
+      divisionId: division._id,
+      kitColour: "Home",
+      clientMutationId: "mobile-assignment-1",
+    });
+    await club.as.mutation(api.soccer.upsertRegistration, {
+      memberId,
+      clearTeam: true,
+      clearDivision: true,
+      kitColour: "Away",
+      clientMutationId: "mobile-assignment-1",
+    });
+
+    const [skill] = await club.as.query(api.soccer.listSkills, {});
+    if (!skill) throw new Error("Expected soccer mode to seed skills.");
+    await club.as.mutation(api.soccer.upsertEvaluation, {
+      memberId,
+      skillId: skill._id,
+      score: 4,
+      clientMutationId: "mobile-evaluation-1",
+    });
+    await club.as.mutation(api.soccer.upsertEvaluation, {
+      memberId,
+      skillId: skill._id,
+      score: 8,
+      clientMutationId: "mobile-evaluation-1",
+    });
+
+    const counts = await t.run(async (ctx) => {
+      const rsvps = await ctx.db
+        .query("rsvps")
+        .withIndex("by_event_and_member", (q) =>
+          q.eq("eventId", eventId).eq("memberId", memberId),
+        )
+        .collect();
+      const reads = await ctx.db
+        .query("announcementReads")
+        .withIndex("by_announcement_and_user", (q) =>
+          q.eq("announcementId", announcementId).eq("userId", club.userId),
+        )
+        .collect();
+      const clientMutations = await ctx.db
+        .query("clientMutations")
+        .withIndex("by_org", (q) => q.eq("orgId", club.orgId))
+        .collect();
+      return { rsvps, reads, clientMutations };
+    });
+    expect(counts.rsvps).toHaveLength(1);
+    const [rsvp] = counts.rsvps;
+    if (!rsvp) throw new Error("Expected exactly one RSVP.");
+    expect(rsvp.status).toBe("going");
+    expect(counts.reads).toHaveLength(1);
+    expect(counts.clientMutations).toHaveLength(10);
+
+    const history = await club.as.query(api.assets.history, { assetId });
+    expect(history.filter((h) => h.action === "created")).toHaveLength(1);
+    expect(history.filter((h) => h.action === "checked_out")).toHaveLength(1);
+    expect(history.filter((h) => h.action === "checked_in")).toHaveLength(1);
+    expect(history.filter((h) => h.action === "scanned")).toHaveLength(1);
+    expect(history.filter((h) => h.action === "tag_registered")).toHaveLength(
+      1,
+    );
+
+    const defaults = await club.as.query(
+      api.organizations.locationDefaults,
+      {},
+    );
+    expect(defaults.defaultAddress).toBe("First Clubhouse");
+
+    const registration = await club.as.query(api.soccer.getRegistration, {
+      memberId,
+    });
+    expect(registration?.teamId).toBe(teamId);
+    expect(registration?.divisionId).toBe(division._id);
+    expect(registration?.kitColour).toBe("Home");
+
+    const grade = await club.as.query(api.soccer.playerGrade, { memberId });
+    expect(grade.evaluations).toHaveLength(1);
+    const [evaluation] = grade.evaluations;
+    if (!evaluation) throw new Error("Expected exactly one evaluation.");
+    expect(evaluation.score).toBe(4);
   });
 
   test("public tag lookup never leaks private data", async () => {

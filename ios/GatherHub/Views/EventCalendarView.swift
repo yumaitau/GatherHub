@@ -10,6 +10,7 @@ struct EventCalendarView: View {
     let context: CurrentContext
 
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @StateObject private var model = EventListViewModel()
 
     @State private var selected: DateComponents = {
@@ -31,7 +32,7 @@ struct EventCalendarView: View {
                     OfflineStateView(
                         title: "Couldn't load events",
                         message: message,
-                        retry: { await model.load(context: context, convex: convex) }
+                        retry: { await model.load(context: context, convex: convex, sync: sync) }
                     )
                 case .loaded:
                     content
@@ -39,8 +40,8 @@ struct EventCalendarView: View {
             }
             .navigationTitle("Events")
             .overlay(alignment: .top) { ErrorBanner(message: $model.actionError) }
-            .task { await model.load(context: context, convex: convex) }
-            .refreshable { await model.load(context: context, convex: convex) }
+            .task { await model.load(context: context, convex: convex, sync: sync) }
+            .refreshable { await model.load(context: context, convex: convex, sync: sync) }
             .sheet(item: $presentedEvent) { event in
                 EventDetailSheet(
                     event: event,
@@ -52,7 +53,7 @@ struct EventCalendarView: View {
                         await model.setRsvp(
                             event: event,
                             status: status,
-                            convex: convex
+                            sync: sync
                         )
                     }
                 }
@@ -105,7 +106,7 @@ struct EventCalendarView: View {
                                 await model.setRsvp(
                                     event: event,
                                     status: status,
-                                    convex: convex
+                                    sync: sync
                                 )
                             }
                         }

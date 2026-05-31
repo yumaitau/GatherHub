@@ -153,6 +153,7 @@ export default defineSchema({
     createdBy: v.id("users"),
     inviteCode: v.optional(v.string()),
     soccerMode: v.optional(v.boolean()),
+    defaultAddress: v.optional(v.string()),
   })
     .index("by_slug", ["slug"])
     .index("by_invite_code", ["inviteCode"]),
@@ -193,6 +194,21 @@ export default defineSchema({
     attemptedAt: v.number(),
     success: v.boolean(),
   }).index("by_user_and_time", ["userId", "attemptedAt"]),
+
+  // Durable idempotency ledger for native offline sync queue submissions.
+  // A mobile client sends one stable clientMutationId per queued operation; if
+  // the network drops after Convex commits, a retry returns without repeating
+  // side effects such as audit-log inserts or asset creation.
+  clientMutations: defineTable({
+    orgId: v.id("organizations"),
+    userId: v.id("users"),
+    clientMutationId: v.string(),
+    operation: v.string(),
+    resultId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_org_user_client", ["orgId", "userId", "clientMutationId"])
+    .index("by_org", ["orgId"]),
 
   // People in a club. A member may or may not be a Clerk user (e.g. a child).
   members: defineTable({
@@ -594,4 +610,31 @@ export default defineSchema({
   })
     .index("by_org", ["orgId"])
     .index("by_member", ["memberId"]),
+
+  // Per-org QR code render settings. One row per organisation.
+  // Drives the customisable QR codes printed for KitTrace assets
+  // (style ported from new-indigi-link).
+  qrSettings: defineTable({
+    orgId: v.id("organizations"),
+    // Foreground / background colours. Hex with leading "#".
+    fgColor: v.string(),
+    bgColor: v.string(),
+    // Data-module style.
+    dotStyle: v.string(), // square | rounded | dots | classy | classy-rounded
+    // Finder-pattern style.
+    cornerSquareStyle: v.string(), // square | rounded | dots
+    // Quiet zone in modules.
+    margin: v.number(),
+    // Logo overlay size.
+    logoSize: v.string(), // small | medium | large
+    // Optional uploaded logo storage id.
+    logoStorageId: v.optional(v.id("_storage")),
+    // Optional rectangular border outside the QR.
+    borderEnabled: v.boolean(),
+    borderColor: v.string(),
+    borderWidth: v.number(),
+    borderRadius: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+  }).index("by_org", ["orgId"]),
 });

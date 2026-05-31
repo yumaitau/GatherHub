@@ -24,6 +24,8 @@
 	<string>????</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
+	<key>GoogleMapsAPIKey</key>
+	<string>$(GOOGLE_MAPS_API_KEY)</string>
 
 	<!--
 	  Export-compliance shortcut. The app uses only Apple-provided
@@ -39,6 +41,17 @@
 	<key>UILaunchScreen</key>
 	<dict/>
 
+	<!--
+	  Declare only capabilities required for the whole app to launch.
+	  NFC is an optional scan path guarded by NFCReaderSession.readingAvailable;
+	  listing "nfc" here makes App Store Connect warn for Mac and Vision Pro,
+	  where NFC hardware is unavailable.
+	-->
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+
 	<!-- Required so iOS lets us open the camera for QR scanning (ScanView). -->
 	<key>NSCameraUsageDescription</key>
 	<string>GatherHub uses the camera to scan QR codes on club equipment so you can check kit in and out.</string>
@@ -46,6 +59,20 @@
 	<!-- Required so iOS lets us start a Core NFC reader session (ScanView). -->
 	<key>NFCReaderUsageDescription</key>
 	<string>GatherHub reads NFC tags on club equipment so you can check kit in and out by tapping the item.</string>
+
+	<!--
+	  AID whitelist for ISO 7816 / NFC Type 4 tags. iOS will NOT present
+	  the system NFC sheet for an NFCTagReaderSession unless at least one
+	  AID is listed here OR the tags are pure ISO 14443 (MIFARE). Most
+	  modern NDEF-capable tags negotiate the standard NDEF Tag
+	  Application AID D2760000850101 — listing it covers the same range
+	  Kit-Trace's flutter_nfc_kit lists. Without this key, .iso14443
+	  polling silently fails on some tag types.
+	-->
+	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
+	<array>
+		<string>D2760000850101</string>
+	</array>
 
 	<!-- Required so the scan flow can attach the device's location to a
 	     "sighting" audit log when staff scan kit in the field. -->

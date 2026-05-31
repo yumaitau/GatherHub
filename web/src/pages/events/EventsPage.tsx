@@ -37,7 +37,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
+import { LocationInput } from "@/components/location/AddressAutocompleteInput";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatDateTime, humanise } from "@/lib/utils";
 
 type ChipVariant = "accent" | "muted" | "warning" | "success" | "info";
@@ -255,12 +257,14 @@ function ViewToggle({
 }
 
 function NewEventDialog() {
+  const { org } = useGatherHub();
   const create = useMutation(api.events.create);
   const teams = useQuery(api.teams.list, {});
   const types = useQuery(api.taxonomies.list, { kind: "event_type" });
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [type, setType] = React.useState<string>("");
+  const defaultLocation = org?.defaultAddress ?? "";
 
   React.useEffect(() => {
     if (!type && types && types.length > 0) {
@@ -270,19 +274,23 @@ function NewEventDialog() {
   }, [types, type]);
   const [title, setTitle] = React.useState("");
   const [startTime, setStartTime] = React.useState("");
-  const [location, setLocation] = React.useState("");
+  const [location, setLocation] = React.useState(defaultLocation);
   const [teamId, setTeamId] = React.useState<string>("none");
   const [opponent, setOpponent] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
+  React.useEffect(() => {
+    if (open) setLocation((current) => current || defaultLocation);
+  }, [open, defaultLocation]);
+
   function reset() {
     const def = types?.find((t) => t.isDefault) ?? types?.[0];
     setType(def?.key ?? "");
     setTitle("");
     setStartTime("");
-    setLocation("");
+    setLocation(defaultLocation);
     setTeamId("none");
     setOpponent("");
     setDescription("");
@@ -310,8 +318,9 @@ function NewEventDialog() {
       });
       reset();
       setOpen(false);
+      toastSuccess("Event created.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not create event."));
     } finally {
       setSaving(false);
     }
@@ -375,10 +384,10 @@ function NewEventDialog() {
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="event-location">Location</Label>
-            <Input
+            <LocationInput
               id="event-location"
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={setLocation}
             />
           </div>
           <div className="grid gap-1.5">

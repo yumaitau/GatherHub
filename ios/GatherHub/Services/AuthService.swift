@@ -58,7 +58,7 @@ final class AuthService: ObservableObject {
             await refreshFromClerk()
             startObservingClerk()
         } catch {
-            lastError = error.localizedDescription
+            lastError = UserFacingError.message(error)
             state = .signedOut
         }
     }
@@ -118,7 +118,7 @@ final class AuthService: ObservableObject {
         do {
             try await clerk.signOut()
         } catch {
-            lastError = error.localizedDescription
+            lastError = UserFacingError.message(error)
         }
         await refreshFromClerk()
     }

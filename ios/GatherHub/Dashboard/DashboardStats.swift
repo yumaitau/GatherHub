@@ -38,3 +38,8 @@ struct SoccerDashboardStats: Codable, Hashable, Equatable {
     let evaluatedFully: Int
     let activeSkillCount: Int
 }
+
+struct DashboardSnapshot: Codable, Hashable, Equatable {
+    let stats: DashboardStats
+    let soccer: SoccerDashboardStats?
+}

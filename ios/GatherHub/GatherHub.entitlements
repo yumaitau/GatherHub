@@ -3,21 +3,13 @@
 <plist version="1.0">
 <dict>
 	<!--
-	  Core NFC reader formats. "NDEF" is required to start an
-	  NFCNDEFReaderSession (used in ScanView). "TAG" enables raw tag sessions
-	  if you later switch to NFCTagReaderSession.
+	  Core NFC reader formats. Current Apple validation accepts "TAG" for
+	  NFCTagReaderSession. Do not add "NDEF"; App Store validation rejects
+	  it for modern SDK/minimum OS combinations.
 
-	  This entitlement only takes effect once "Near Field Communication Tag
-	  Reading" is enabled for the App ID in the Apple Developer portal /
-	  Signing & Capabilities. See README.md.
-	-->
-	<!--
-	  iOS 17 SDK 26.5 disallows the "NDEF" value here. Keep only "TAG"
-	  so the entitlement validates. We use NFCTagReaderSession (raw UID
-	  read) in NFCRawReader, so NDEF isn't required. NFCNDEFReaderSession
-	  in the legacy NFCScanner class still compiles but won't run a
-	  session without the entitlement — call sites have already moved
-	  to NFCRawReader.
+	  Requires "Near Field Communication Tag Reading" enabled for the
+	  App ID in the Apple Developer portal. After toggling, re-download
+	  the provisioning profile.
 	-->
 	<key>com.apple.developer.nfc.readersession.formats</key>
 	<array>

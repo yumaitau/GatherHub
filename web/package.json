@@ -17,6 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@clerk/backend": "^3.4.14",
     "@clerk/clerk-react": "^5.13.0",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",

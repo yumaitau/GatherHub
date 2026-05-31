@@ -19,6 +19,7 @@
 		371C85A42F08371E7E0D5F34 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EDF57A9EEF0F1FBA292366C /* MainTabView.swift */; };
 		375B0ECB1BA6B59E46FB789B /* AssetDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1A4FE83E0C58D340B764FA6 /* AssetDetailView.swift */; };
 		378CAF6A72B53915B9DF568F /* CachedAnnouncement.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B376EE1D24C5C31B7D9802 /* CachedAnnouncement.swift */; };
+		3B7F25B7F1D3454EB4A96C10 /* CachedResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B7F25B6F1D3454EB4A96C10 /* CachedResource.swift */; };
 		3BEA2B68E187C34978ADE67D /* SoccerRegistrationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C60DFE29B79A3F424862A7B /* SoccerRegistrationsView.swift */; };
 		3F3A63CEC51A0D1538F01053 /* GHBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16C5023C6C8391B8A0EB214B /* GHBadge.swift */; };
 		3F63A4AE56763FC80F4317C4 /* PlayerGradingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 452F91E63233484EC79069A5 /* PlayerGradingView.swift */; };
@@ -51,16 +52,20 @@
 		96DC937C5E349FCE7EA4008C /* YumaSupportKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4BA40309E708ADCD3B8C6EE1 /* YumaSupportKit */; };
 		97306B54633D1F0DBB977E59 /* AssetLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F870B9222413EDFE6A22FC /* AssetLookupView.swift */; };
 		9C674C16B21C5D487EC23C57 /* EventCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B218E034FBFC4FD192134B1C /* EventCalendarView.swift */; };
+		A010F7329CAF648FAAD7B337 /* UserFacingError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C58A5919E788AEC3D6FAD22 /* UserFacingError.swift */; };
 		A1EE33250E0A05CC50EF3537 /* EventDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE2F0462C519B6C9EBB2B9E /* EventDetailSheet.swift */; };
 		A76C8D80453ECB96CD70AC87 /* GHButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 444AD0E693A3E83C60BC0E22 /* GHButton.swift */; };
 		B0915C0A3E728A8C0161C18A /* SyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 014F3D2D52A44A7CB78A1BB7 /* SyncCoordinator.swift */; };
 		B9994D47974E9F9F828B08BE /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D108A31F223253376F9024C /* SignInView.swift */; };
+		B9D347C70D75BED46FB0F6B8 /* AssetLocationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2926FF84AFE999164DE969AD /* AssetLocationSheet.swift */; };
 		BD9768EB0B9DC92C292D987A /* SyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59F2EBECED36C7DC697A706E /* SyncState.swift */; };
 		C0D1407D1DC1718C472CDB49 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE32626001E1CA40ADD0CE47 /* Typography.swift */; };
 		C35B6F51F8D7DFDF7DBD1567 /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5825B98D8E3119ECC985D9E0 /* Motion.swift */; };
 		C62F8D3B7AE4CD10E93FEB06 /* DashboardStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F36A24C844B95312ACA3E4 /* DashboardStats.swift */; };
+		C893CFF2134C22392B87B4EC /* AddressLookupField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4721820ED4DCF29BEFB1C7F6 /* AddressLookupField.swift */; };
 		CAE31ABC63680BE3CDC2EAF4 /* OrgPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44883B902DAF6E6E46403155 /* OrgPickerView.swift */; };
 		CB4EEA9C14FDAE4B978701DD /* DataContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5AA4E26FA0559F022C4338 /* DataContainer.swift */; };
+		CBAFFF9D061A176435A483D5 /* GoogleAddressLookupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38FDEB6FB0E430B061B7741B /* GoogleAddressLookupService.swift */; };
 		D2325B06F25DBF19F409A690 /* AssetStatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 197FE6D524083509A84E6B4A /* AssetStatusBadge.swift */; };
 		D27B8FDDEEC64D7920B51AAF /* Color+GatherHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14566E0E86787CDF079AC46A /* Color+GatherHub.swift */; };
 		D6B00860A280D1058BB1022C /* AssetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 065C5CB52CA5C492F85CBE3B /* AssetsView.swift */; };
@@ -72,6 +77,7 @@
 		ED7D660DA632D80FA92097EF /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59D1F07B499B393E79148D6E /* EmptyStateView.swift */; };
 		EDDDBF93D4C815784EBFEDFA /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA8B04ED405A9E59CD7E2CF2 /* Secrets.swift */; };
 		EF1F856D245E81E8FF593F88 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599092655B6A2C8CA5475E6F /* RootView.swift */; };
+		FA44CCF14EC52A23DC8F18B4 /* OrganizationAddressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A74E09E4987A11F3CC5B8BAF /* OrganizationAddressView.swift */; };
 		FA468B16C5B1276844581F83 /* AnnouncementsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60C48A0926F5EEC03B8C6A93 /* AnnouncementsListView.swift */; };
 		FE6270D95C7F98B444A2179D /* Spacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7CF0F476BC4FA9A122CE751 /* Spacing.swift */; };
 /* End PBXBuildFile section */
@@ -87,17 +93,22 @@
 		16C5023C6C8391B8A0EB214B /* GHBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GHBadge.swift; sourceTree = "<group>"; };
 		197FE6D524083509A84E6B4A /* AssetStatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetStatusBadge.swift; sourceTree = "<group>"; };
 		25E5EB3C02E2EF1898D0EB9E /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		2926FF84AFE999164DE969AD /* AssetLocationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetLocationSheet.swift; sourceTree = "<group>"; };
 		2A13FA2653ACBDE78614FEC0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2EDF57A9EEF0F1FBA292366C /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		3195C2B7B050C5A1B7CAEDFB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3214A09CB829360A273289C7 /* ErrorBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorBanner.swift; sourceTree = "<group>"; };
 		3864B90BABDB2967516103CF /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		38FDEB6FB0E430B061B7741B /* GoogleAddressLookupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAddressLookupService.swift; sourceTree = "<group>"; };
+		3B7F25B6F1D3454EB4A96C10 /* CachedResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedResource.swift; sourceTree = "<group>"; };
+		3C58A5919E788AEC3D6FAD22 /* UserFacingError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserFacingError.swift; sourceTree = "<group>"; };
 		3EC61BD6CBB95D9157834A95 /* OrgSwitcherSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrgSwitcherSheet.swift; sourceTree = "<group>"; };
 		412B1C186E4D39418696B8F7 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		418689B6312BBD468F4B4921 /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
 		444AD0E693A3E83C60BC0E22 /* GHButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GHButton.swift; sourceTree = "<group>"; };
 		44883B902DAF6E6E46403155 /* OrgPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrgPickerView.swift; sourceTree = "<group>"; };
 		452F91E63233484EC79069A5 /* PlayerGradingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerGradingView.swift; sourceTree = "<group>"; };
+		4721820ED4DCF29BEFB1C7F6 /* AddressLookupField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressLookupField.swift; sourceTree = "<group>"; };
 		49B8C8B1929BB800E35239A3 /* TeamsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamsListView.swift; sourceTree = "<group>"; };
 		4D108A31F223253376F9024C /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		4D8F39AB5F89D41595ED32AF /* MembersListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MembersListView.swift; sourceTree = "<group>"; };
@@ -123,6 +134,7 @@
 		A154278F0138333E43EBDAEF /* CoachesManagersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachesManagersView.swift; sourceTree = "<group>"; };
 		A1A4FE83E0C58D340B764FA6 /* AssetDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetDetailView.swift; sourceTree = "<group>"; };
 		A235D7FA320EE37A72CF0BD5 /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
+		A74E09E4987A11F3CC5B8BAF /* OrganizationAddressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizationAddressView.swift; sourceTree = "<group>"; };
 		A8077DCC127A2A187BA87DAA /* CachedTeam.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedTeam.swift; sourceTree = "<group>"; };
 		AC0D7992BA19734D531A028B /* AssetPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetPickerSheet.swift; sourceTree = "<group>"; };
 		B218E034FBFC4FD192134B1C /* EventCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventCalendarView.swift; sourceTree = "<group>"; };
@@ -136,6 +148,7 @@
 		D838F2B9AF76381AF73B99AE /* TagParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagParser.swift; sourceTree = "<group>"; };
 		D8F870B9222413EDFE6A22FC /* AssetLookupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetLookupView.swift; sourceTree = "<group>"; };
 		DE32626001E1CA40ADD0CE47 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
+		E22A29F7D200080F4B7FE97C /* BuildSettings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = BuildSettings.xcconfig; sourceTree = "<group>"; };
 		EA8B04ED405A9E59CD7E2CF2 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
 		ECC16AFBD77823C76C5E77E5 /* GHCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GHCard.swift; sourceTree = "<group>"; };
 		EE26217E9DFE35619041376B /* GatherHubApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatherHubApp.swift; sourceTree = "<group>"; };
@@ -222,6 +235,7 @@
 			isa = PBXGroup;
 			children = (
 				D838F2B9AF76381AF73B99AE /* TagParser.swift */,
+				3C58A5919E788AEC3D6FAD22 /* UserFacingError.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -237,6 +251,7 @@
 		6BD905B432164DF140E17963 = {
 			isa = PBXGroup;
 			children = (
+				C0C4FAAD7177FD2DE95FDEC7 /* Config */,
 				3FC9D905E07F29ADA6FC6916 /* GatherHub */,
 				B992169ECAE133B11C5CBF4B /* Products */,
 			);
@@ -264,6 +279,7 @@
 			children = (
 				85608C3EBF9D120C6CFC82CA /* AuthService.swift */,
 				C62A97B23D4CA6EA3010800F /* ConvexService.swift */,
+				38FDEB6FB0E430B061B7741B /* GoogleAddressLookupService.swift */,
 				25E5EB3C02E2EF1898D0EB9E /* LocationService.swift */,
 				FBEFDF80CDE0C30E6BD7BB35 /* NFCRawReader.swift */,
 			);
@@ -276,6 +292,14 @@
 				D1843FB4EDF7921F1C43B179 /* GatherHub.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C0C4FAAD7177FD2DE95FDEC7 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				E22A29F7D200080F4B7FE97C /* BuildSettings.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		D5F0078916E8E538961F5A49 /* Dashboard */ = {
@@ -295,6 +319,7 @@
 				558C66086A5ADB38382319FD /* CachedEvent.swift */,
 				F0D63BCDDEB2E3F9BB0A7385 /* CachedMember.swift */,
 				9D29CF163D7BB5CEA4BD8234 /* CachedPlayerListing.swift */,
+				3B7F25B6F1D3454EB4A96C10 /* CachedResource.swift */,
 				A8077DCC127A2A187BA87DAA /* CachedTeam.swift */,
 				78BAFBE4D8DAB09876D642BC /* PendingSyncOperation.swift */,
 			);
@@ -319,6 +344,7 @@
 		F4FC0A5366E2D6D95017746A /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				4721820ED4DCF29BEFB1C7F6 /* AddressLookupField.swift */,
 				197FE6D524083509A84E6B4A /* AssetStatusBadge.swift */,
 				59D1F07B499B393E79148D6E /* EmptyStateView.swift */,
 				3214A09CB829360A273289C7 /* ErrorBanner.swift */,
@@ -331,6 +357,7 @@
 			isa = PBXGroup;
 			children = (
 				A1A4FE83E0C58D340B764FA6 /* AssetDetailView.swift */,
+				2926FF84AFE999164DE969AD /* AssetLocationSheet.swift */,
 				D8F870B9222413EDFE6A22FC /* AssetLookupView.swift */,
 				AC0D7992BA19734D531A028B /* AssetPickerSheet.swift */,
 				065C5CB52CA5C492F85CBE3B /* AssetsView.swift */,
@@ -340,6 +367,7 @@
 				2EDF57A9EEF0F1FBA292366C /* MainTabView.swift */,
 				F72BC294214B5C7500FDC0D0 /* MemberPickerView.swift */,
 				7D947C9BBDAD1E7B7F4A2853 /* MoreView.swift */,
+				A74E09E4987A11F3CC5B8BAF /* OrganizationAddressView.swift */,
 				44883B902DAF6E6E46403155 /* OrgPickerView.swift */,
 				3EC61BD6CBB95D9157834A95 /* OrgSwitcherSheet.swift */,
 				3864B90BABDB2967516103CF /* ProfileView.swift */,
@@ -432,8 +460,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C893CFF2134C22392B87B4EC /* AddressLookupField.swift in Sources */,
 				FA468B16C5B1276844581F83 /* AnnouncementsListView.swift in Sources */,
 				375B0ECB1BA6B59E46FB789B /* AssetDetailView.swift in Sources */,
+				B9D347C70D75BED46FB0F6B8 /* AssetLocationSheet.swift in Sources */,
 				97306B54633D1F0DBB977E59 /* AssetLookupView.swift in Sources */,
 				644088AC81A81D02DB0E6ED8 /* AssetPickerSheet.swift in Sources */,
 				D2325B06F25DBF19F409A690 /* AssetStatusBadge.swift in Sources */,
@@ -443,6 +473,7 @@
 				5B7B7E4650F6C040E97085A7 /* CachedEvent.swift in Sources */,
 				0A24E8BB557CC5A36B1ED408 /* CachedMember.swift in Sources */,
 				16F4182D42AF16C9F30E1026 /* CachedPlayerListing.swift in Sources */,
+				3B7F25B7F1D3454EB4A96C10 /* CachedResource.swift in Sources */,
 				17A7F2664D7C625135036618 /* CachedTeam.swift in Sources */,
 				8F0530218C59A24EBCE165AA /* CoachesManagersView.swift in Sources */,
 				D27B8FDDEEC64D7920B51AAF /* Color+GatherHub.swift in Sources */,
@@ -462,6 +493,7 @@
 				60C9FAC8A9F9749577D355EA /* GHEmptyState.swift in Sources */,
 				7358688D667F0B7C216412F2 /* GHPageHeader.swift in Sources */,
 				0E0428946F9B70F9E5248A90 /* GatherHubApp.swift in Sources */,
+				CBAFFF9D061A176435A483D5 /* GoogleAddressLookupService.swift in Sources */,
 				64C9F8D1FAF018A3294F32CE /* GradingListView.swift in Sources */,
 				36595595B59C81EAD27AA4B1 /* LocalStore.swift in Sources */,
 				29B1DE4F2D32C364922A405F /* LocationService.swift in Sources */,
@@ -477,6 +509,7 @@
 				96A2CF8631EA66D5A5F05C22 /* OfflineStateView.swift in Sources */,
 				CAE31ABC63680BE3CDC2EAF4 /* OrgPickerView.swift in Sources */,
 				2BA1F96D4AD068E2CB48FB56 /* OrgSwitcherSheet.swift in Sources */,
+				FA44CCF14EC52A23DC8F18B4 /* OrganizationAddressView.swift in Sources */,
 				DE8A5C7CF1EDFA326266A920 /* PendingQueueView.swift in Sources */,
 				DFD1694C7282AFAD70023CFE /* PendingSyncOperation.swift in Sources */,
 				EC06C24F8936CC9867F3116E /* PlayerAssignmentSheet.swift in Sources */,
@@ -494,6 +527,7 @@
 				1D2BBCF4B3325C6EC311AD3D /* TagParser.swift in Sources */,
 				5B4578C7D9439886E40303C0 /* TeamsListView.swift in Sources */,
 				C0D1407D1DC1718C472CDB49 /* Typography.swift in Sources */,
+				A010F7329CAF648FAAD7B337 /* UserFacingError.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -558,13 +592,14 @@
 		};
 		4950BABC6DB31EC87EF2A2D3 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = E22A29F7D200080F4B7FE97C /* BuildSettings.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = GatherHub/GatherHub.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 2L7828W29X;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GatherHub/Info.plist;
@@ -576,6 +611,8 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = au.com.gatherhub;
 				SDKROOT = iphoneos;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -583,13 +620,14 @@
 		};
 		61CD8BA575E31B9C1906A288 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = E22A29F7D200080F4B7FE97C /* BuildSettings.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = GatherHub/GatherHub.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 2L7828W29X;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GatherHub/Info.plist;
@@ -601,6 +639,8 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = au.com.gatherhub;
 				SDKROOT = iphoneos;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

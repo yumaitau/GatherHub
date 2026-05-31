@@ -5,6 +5,7 @@ import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/shared";
 import { QrCode, assetTagUrl } from "@/components/QrCode";
+import { api as apiModule } from "../../../convex/_generated/api";
 
 /**
  * Printable sheet of QR codes for KitTrace assets. Reads the same filter
@@ -17,6 +18,7 @@ export default function QrSheetPage() {
   const category = params.get("category") ?? undefined;
   const search = params.get("search") ?? undefined;
 
+  const qrSettings = useQuery(apiModule.qrSettings.get, {});
   const assets = useQuery(api.assets.list, {
     status:
       status === "all" || !status
@@ -77,7 +79,35 @@ export default function QrSheetPage() {
               key={a._id}
               className="qr-sheet__cell flex items-center gap-3 rounded-md border border-hairline bg-paper p-3"
             >
-              <QrCode value={assetTagUrl(a.qrTagId!)} size={88} />
+              <QrCode
+                value={assetTagUrl(a.qrTagId!)}
+                size={88}
+                settings={
+                  qrSettings
+                    ? {
+                        ...qrSettings,
+                        dotStyle:
+                          (qrSettings.dotStyle as
+                            | "square"
+                            | "rounded"
+                            | "dots"
+                            | "classy"
+                            | "classy-rounded") ?? "square",
+                        cornerSquareStyle:
+                          (qrSettings.cornerSquareStyle as
+                            | "square"
+                            | "rounded"
+                            | "dots") ?? "square",
+                        logoSize:
+                          (qrSettings.logoSize as
+                            | "small"
+                            | "medium"
+                            | "large") ?? "medium",
+                      }
+                    : undefined
+                }
+                logoUrl={qrSettings?.logoUrl ?? null}
+              />
               <div className="min-w-0 flex-1">
                 <p className="text-body-strong text-ink-strong truncate">
                   {a.name}

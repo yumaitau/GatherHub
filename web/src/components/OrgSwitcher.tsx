@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { cn, humanise } from "@/lib/utils";
 
 /**
@@ -34,8 +35,13 @@ export function OrgSwitcher({ compact = false }: { compact?: boolean }) {
   const others = memberships?.filter((m) => !m.isActive) ?? [];
 
   async function switchTo(orgId: Id<"organizations">) {
-    await setActive({ orgId });
-    setOpen(false);
+    try {
+      await setActive({ orgId });
+      setOpen(false);
+      toastSuccess("Organisation switched.");
+    } catch (err) {
+      toastFailure(err, "Could not switch organisation.");
+    }
   }
 
   return (
@@ -162,10 +168,9 @@ function CreateClubAction({ onDone }: { onDone: () => void }) {
       setName("");
       setOpen(false);
       onDone();
+      toastSuccess("Organisation created.");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not create organisation.",
-      );
+      setError(toastFailure(err, "Could not create organisation."));
     } finally {
       setBusy(false);
     }
@@ -235,8 +240,9 @@ function JoinClubAction({ onDone }: { onDone: () => void }) {
       setCode("");
       setOpen(false);
       onDone();
+      toastSuccess("Organisation joined.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid invite code.");
+      setError(toastFailure(err, "Invalid invite code."));
     } finally {
       setBusy(false);
     }

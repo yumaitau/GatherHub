@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader, LoadingState, RoleBadge } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 
 type TeamRole = "player" | "coach" | "manager";
 
@@ -59,8 +60,9 @@ export default function TeamDetailPage() {
     setError(null);
     try {
       await update({ teamId: team._id, isActive: !team.isActive });
+      toastSuccess(team.isActive ? "Team deactivated." : "Team reactivated.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not update team."));
     }
   }
 
@@ -69,9 +71,10 @@ export default function TeamDetailPage() {
     setError(null);
     try {
       await remove({ teamId: team._id });
+      toastSuccess("Team deleted.");
       navigate("/teams");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not delete team."));
     }
   }
 
@@ -79,8 +82,9 @@ export default function TeamDetailPage() {
     setError(null);
     try {
       await unassign({ linkId });
+      toastSuccess("Member removed from team.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not remove member from team."));
     }
   }
 
@@ -252,8 +256,9 @@ function EditTeamDialog({
         description: description.trim() || undefined,
       });
       setOpen(false);
+      toastSuccess("Team updated.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not update team."));
     } finally {
       setSaving(false);
     }
@@ -346,8 +351,9 @@ function AssignMemberDialog({ teamId }: { teamId: Id<"teams"> }) {
       await assign({ teamId, memberId: memberId as Id<"members">, role });
       reset();
       setOpen(false);
+      toastSuccess("Member assigned to team.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not assign member."));
     } finally {
       setSaving(false);
     }

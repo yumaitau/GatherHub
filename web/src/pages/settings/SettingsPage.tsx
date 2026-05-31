@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import {
   Mail,
   RefreshCw,
@@ -10,6 +10,7 @@ import {
   RotateCw,
   Trash2,
   Plus,
+  MapPin,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SoccerSettingsTab } from "@/pages/soccer/SoccerSettingsTab";
+import { QrSettingsTab } from "@/pages/settings/QrSettingsTab";
 import {
   Table,
   TableHeader,
@@ -36,7 +38,12 @@ import {
 } from "@/components/ui/table";
 import { PageHeader, LoadingState } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
+import {
+  AddressAutocompleteInput,
+  LocationInput,
+} from "@/components/location/AddressAutocompleteInput";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { ALL_ROLES, type Role } from "@/lib/roles";
 import { humanise, formatDateTime } from "@/lib/utils";
 
@@ -56,6 +63,7 @@ export default function SettingsPage() {
           {isAdmin && (
             <TabsTrigger value="invitations">Invitations</TabsTrigger>
           )}
+          {isAdmin && <TabsTrigger value="locations">Locations</TabsTrigger>}
           {can("committee") && (
             <TabsTrigger value="taxonomies">Lists & types</TabsTrigger>
           )}
@@ -64,6 +72,7 @@ export default function SettingsPage() {
               Soccer{soccerMode ? "" : " (off)"}
             </TabsTrigger>
           )}
+          {can("committee") && <TabsTrigger value="qr">QR codes</TabsTrigger>}
           <TabsTrigger value="public">Public website</TabsTrigger>
         </TabsList>
         <TabsContent value="roles">
@@ -72,6 +81,11 @@ export default function SettingsPage() {
         {isAdmin && (
           <TabsContent value="invitations">
             <InvitationsTab />
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="locations">
+            <LocationSettingsTab />
           </TabsContent>
         )}
         {can("committee") && (
@@ -84,6 +98,11 @@ export default function SettingsPage() {
             <SoccerSettingsTab />
           </TabsContent>
         )}
+        {can("committee") && (
+          <TabsContent value="qr">
+            <QrSettingsTab />
+          </TabsContent>
+        )}
         <TabsContent value="public">
           <PublicSiteTab />
         </TabsContent>
@@ -92,10 +111,80 @@ export default function SettingsPage() {
   );
 }
 
+function LocationSettingsTab() {
+  const { org } = useGatherHub();
+  const update = useMutation(api.organizations.updateLocationSettings);
+  const [defaultAddress, setDefaultAddress] = React.useState(
+    org?.defaultAddress ?? "",
+  );
+  const [saving, setSaving] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setDefaultAddress(org?.defaultAddress ?? "");
+  }, [org?.id, org?.defaultAddress]);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    try {
+      await update({
+        defaultAddress: defaultAddress.trim() || undefined,
+      });
+      setSaved(true);
+      toastSuccess("Default address saved.");
+    } catch (err) {
+      setError(toastFailure(err, "Could not save default address."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MapPin className="h-4 w-4" />
+          Location defaults
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={save} className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="org-default-address">
+              Default organisation address
+            </Label>
+            <AddressAutocompleteInput
+              id="org-default-address"
+              value={defaultAddress}
+              onChange={setDefaultAddress}
+              showDefaultAction={false}
+              showLookupHint
+            />
+            <p className="text-caption text-ink-quiet">
+              Used as the starting location for new assets, events, and asset
+              movements when a specific location is not entered.
+            </p>
+          </div>
+          {error && <p className="text-caption text-danger">{error}</p>}
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : "Save default address"}
+            </Button>
+            {saved && <span className="text-sm text-success">Saved</span>}
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
 /**
- * Convex-native invitations: send by email + shareable invite code. Admin+
- * only (gated by the tab trigger and enforced server-side in
- * `convex/invitations.ts` / `convex/organizations.ts`).
+ * Clerk-native email invitations plus a Convex-native shareable invite code.
+ * Admin+ only; server functions enforce the same gates.
  */
 function InvitationsTab() {
   return (
@@ -108,7 +197,7 @@ function InvitationsTab() {
 }
 
 function SendInviteCard() {
-  const send = useMutation(api.invitations.send);
+  const send = useAction(api.invitations.send);
   const [email, setEmail] = React.useState("");
   const [role, setRole] = React.useState<Role>("player");
   const [busy, setBusy] = React.useState(false);
@@ -123,10 +212,11 @@ function SendInviteCard() {
     try {
       await send({ email: email.trim(), role });
       setMessage(`Invitation sent to ${email.trim()}.`);
+      toastSuccess(`Invitation sent to ${email.trim()}.`);
       setEmail("");
       setRole("player");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send invite.");
+      setError(toastFailure(err, "Could not send invite."));
     } finally {
       setBusy(false);
     }
@@ -190,6 +280,9 @@ function InviteCodeCard() {
     setBusy(true);
     try {
       await rotate({});
+      toastSuccess("Invite code rotated.");
+    } catch (err) {
+      toastFailure(err, "Could not rotate invite code.");
     } finally {
       setBusy(false);
     }
@@ -220,8 +313,22 @@ function InviteCodeCard() {
 }
 
 function InvitationListCard() {
-  const invites = useQuery(api.invitations.list);
-  const revoke = useMutation(api.invitations.revoke);
+  // Clerk-native invitations live on Clerk's side; the list action
+  // fetches them on demand and isn't a reactive query.
+  const list = useAction(api.invitations.list);
+  const revoke = useAction(api.invitations.revoke);
+  const remove = useAction(api.invitations.remove);
+  const [invites, setInvites] = React.useState<
+    Awaited<ReturnType<typeof list>> | undefined
+  >(undefined);
+
+  const refresh = React.useCallback(async () => {
+    setInvites(await list({}));
+  }, [list]);
+
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   if (invites === undefined) return <LoadingState />;
   if (invites.length === 0) {
@@ -279,15 +386,50 @@ function InvitationListCard() {
                   {formatDateTime(i.sentAt)}
                 </TableCell>
                 <TableCell>
-                  {i.status === "pending" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => revoke({ invitationId: i.id })}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <div className="flex items-center justify-end gap-1">
+                    {i.status === "pending" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await revoke({ invitationId: i.id });
+                            await refresh();
+                            toastSuccess(`Invitation revoked for ${i.email}.`);
+                          } catch (err) {
+                            toastFailure(err, "Could not revoke invitation.");
+                          }
+                        }}
+                        title="Revoke this Clerk invitation"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {i.status !== "accepted" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          if (
+                            confirm(`Revoke the invitation for ${i.email}?`)
+                          ) {
+                            try {
+                              await remove({ invitationId: i.id });
+                              await refresh();
+                              toastSuccess(
+                                `Invitation removed for ${i.email}.`,
+                              );
+                            } catch (err) {
+                              toastFailure(err, "Could not remove invitation.");
+                            }
+                          }
+                        }}
+                        title="Revoke"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -307,8 +449,9 @@ function RolesTab() {
     setError(null);
     try {
       await updateRole({ membershipId, role });
+      toastSuccess("Role updated.");
     } catch (e) {
-      setError(String(e));
+      setError(toastFailure(e, "Could not update role."));
     }
   }
 
@@ -436,8 +579,9 @@ function TaxonomyEditor({ kind }: { kind: TaxonomyKind }) {
     try {
       await create({ kind, label: newLabel.trim() });
       setNewLabel("");
+      toastSuccess("List item added.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not add list item."));
     } finally {
       setAdding(false);
     }
@@ -455,10 +599,30 @@ function TaxonomyEditor({ kind }: { kind: TaxonomyKind }) {
     if (!moved) return;
     reorderedActive.splice(nextIdx, 0, moved);
     const inactive = rows.filter((r) => !r.active);
-    await reorder({
-      kind,
-      orderedIds: [...reorderedActive, ...inactive].map((r) => r.id),
-    });
+    setError(null);
+    try {
+      await reorder({
+        kind,
+        orderedIds: [...reorderedActive, ...inactive].map((r) => r.id),
+      });
+      toastSuccess("List order updated.");
+    } catch (err) {
+      setError(toastFailure(err, "Could not reorder list."));
+    }
+  }
+
+  async function runTaxonomyAction(
+    action: () => Promise<unknown>,
+    success: string,
+    fallback: string,
+  ) {
+    setError(null);
+    try {
+      await action();
+      toastSuccess(success);
+    } catch (err) {
+      setError(toastFailure(err, fallback));
+    }
   }
 
   if (rows === undefined) return <LoadingState />;
@@ -527,7 +691,13 @@ function TaxonomyEditor({ kind }: { kind: TaxonomyKind }) {
                     variant="ghost"
                     size="icon"
                     title={row.isDefault ? "Default item" : "Set as default"}
-                    onClick={() => setDefault({ id: row.id })}
+                    onClick={() =>
+                      runTaxonomyAction(
+                        () => setDefault({ id: row.id }),
+                        "Default list item updated.",
+                        "Could not update default list item.",
+                      )
+                    }
                     disabled={row.isDefault}
                   >
                     <Star
@@ -538,7 +708,13 @@ function TaxonomyEditor({ kind }: { kind: TaxonomyKind }) {
                     variant="ghost"
                     size="icon"
                     title="Deactivate"
-                    onClick={() => setActive({ id: row.id, active: false })}
+                    onClick={() =>
+                      runTaxonomyAction(
+                        () => setActive({ id: row.id, active: false }),
+                        "List item hidden.",
+                        "Could not hide list item.",
+                      )
+                    }
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -587,7 +763,13 @@ function TaxonomyEditor({ kind }: { kind: TaxonomyKind }) {
                   variant="ghost"
                   size="sm"
                   className="ml-auto"
-                  onClick={() => setActive({ id: row.id, active: true })}
+                  onClick={() =>
+                    runTaxonomyAction(
+                      () => setActive({ id: row.id, active: true }),
+                      "List item restored.",
+                      "Could not restore list item.",
+                    )
+                  }
                 >
                   <RotateCw className="h-4 w-4" />
                   Restore
@@ -629,6 +811,9 @@ function InlineLabelEditor({
     setSaving(true);
     try {
       await onSave(value.trim());
+      toastSuccess("List item renamed.");
+    } catch (err) {
+      toastFailure(err, "Could not rename list item.");
     } finally {
       setSaving(false);
       setEditing(false);
@@ -715,8 +900,9 @@ function PublicSiteTab() {
         websiteUrl: form.websiteUrl || undefined,
       });
       setSaved(true);
+      toastSuccess("Public website settings saved.");
     } catch (e) {
-      setError(String(e));
+      setError(toastFailure(e, "Could not save public website settings."));
     }
   }
 
@@ -788,10 +974,10 @@ function PublicSiteTab() {
           </div>
           <div>
             <Label htmlFor="addr">Address</Label>
-            <Input
+            <LocationInput
               id="addr"
               value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              onChange={(address) => setForm({ ...form, address })}
             />
           </div>
           <div>

@@ -28,6 +28,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader, LoadingState, RoleBadge } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatDate, humanise } from "@/lib/utils";
 
 type MemberData = NonNullable<ReturnType<typeof useMemberData>>;
@@ -59,8 +60,13 @@ export default function MemberDetailPage() {
         memberId: member._id,
         status: member.status === "active" ? "inactive" : "active",
       });
+      toastSuccess(
+        member.status === "active"
+          ? "Member set inactive."
+          : "Member set active.",
+      );
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not update member status."));
     }
   }
 
@@ -74,9 +80,10 @@ export default function MemberDetailPage() {
     setError(null);
     try {
       await remove({ memberId: member._id });
+      toastSuccess("Member deleted.");
       navigate("/members");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not delete member."));
     }
   }
 
@@ -241,8 +248,9 @@ function ProfileTab({
         lifetimeMemberAddedBy: lifetimeMemberAddedBy.trim() || undefined,
       });
       setSaved(true);
+      toastSuccess("Member profile saved.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not save member profile."));
     } finally {
       setSaving(false);
     }
@@ -443,16 +451,18 @@ function ContactsTab({
     setError(null);
     try {
       await removeGuardian({ linkId });
+      toastSuccess("Guardian removed.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not remove guardian."));
     }
   }
   async function rmContact(contactId: Id<"emergencyContacts">) {
     setError(null);
     try {
       await removeContact({ contactId });
+      toastSuccess("Emergency contact removed.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not remove emergency contact."));
     }
   }
 
@@ -624,8 +634,9 @@ function MedicalTab({
     try {
       await setMedicalNotes({ memberId, notes: value });
       setSaved(true);
+      toastSuccess("Medical notes saved.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not save medical notes."));
     } finally {
       setSaving(false);
     }
@@ -674,8 +685,9 @@ function CertificationsTab({
     setError(null);
     try {
       await remove({ certId });
+      toastSuccess("Certification removed.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not remove certification."));
     }
   }
 
@@ -759,8 +771,9 @@ function AddGuardianDialog({ memberId }: { memberId: Id<"members"> }) {
       });
       reset();
       setOpen(false);
+      toastSuccess("Guardian added.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not add guardian."));
     } finally {
       setSaving(false);
     }
@@ -869,8 +882,9 @@ function AddEmergencyContactDialog({ memberId }: { memberId: Id<"members"> }) {
       });
       reset();
       setOpen(false);
+      toastSuccess("Emergency contact added.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not add emergency contact."));
     } finally {
       setSaving(false);
     }
@@ -979,8 +993,9 @@ function AddCertDialog({ memberId }: { memberId: Id<"members"> }) {
       });
       reset();
       setOpen(false);
+      toastSuccess("Certification added.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not add certification."));
     } finally {
       setSaving(false);
     }

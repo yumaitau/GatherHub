@@ -9,6 +9,14 @@ import {
 import { ConvexError } from "convex/values";
 import { rsvpStatusValidator } from "./schema";
 import { assertTaxonomyKey } from "./taxonomies";
+import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+
+function defaultedLocation(
+  explicit: string | undefined,
+  fallback: string | undefined,
+): string | undefined {
+  return explicit?.trim() || fallback?.trim() || undefined;
+}
 
 export const list = query({
   args: {
@@ -119,7 +127,7 @@ export const create = mutation({
       type: args.type,
       title: args.title.trim(),
       description: args.description,
-      location: args.location,
+      location: defaultedLocation(args.location, auth.org.defaultAddress),
       startTime: args.startTime,
       endTime: args.endTime,
       teamId: args.teamId,
@@ -149,9 +157,12 @@ export const update = mutation({
       await assertTaxonomyKey(ctx, auth.org._id, "event_type", args.type);
     }
     const { eventId, ...rest } = args;
-    const patch = Object.fromEntries(
+    const patch: Record<string, unknown> = Object.fromEntries(
       Object.entries(rest).filter(([, v]) => v !== undefined),
     );
+    if (args.location !== undefined) {
+      patch.location = args.location.trim() || undefined;
+    }
     await ctx.db.patch(eventId, patch);
   },
 });
@@ -185,9 +196,11 @@ export const setRsvp = mutation({
     eventId: v.id("events"),
     memberId: v.id("members"),
     status: rsvpStatusValidator,
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireOrgMember(ctx);
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const event = await ctx.db.get(args.eventId);
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, event);
@@ -237,9 +250,16 @@ export const setRsvp = mutation({
         respondedBy: auth.user._id,
         respondedAt: Date.now(),
       });
+      await recordClientMutation(
+        ctx,
+        auth,
+        args.clientMutationId,
+        "events:setRsvp",
+        String(existing._id),
+      );
       return existing._id;
     }
-    return await ctx.db.insert("rsvps", {
+    const rsvpId = await ctx.db.insert("rsvps", {
       orgId: auth.org._id,
       eventId: args.eventId,
       memberId: args.memberId,
@@ -247,6 +267,14 @@ export const setRsvp = mutation({
       respondedBy: auth.user._id,
       respondedAt: Date.now(),
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "events:setRsvp",
+      String(rsvpId),
+    );
+    return rsvpId;
   },
 });
 

@@ -48,6 +48,9 @@ targets:
         product: YumaBrandKit
       - package: YumaKit
         product: YumaSupportKit
+    configFiles:
+      Debug: Config/BuildSettings.xcconfig
+      Release: Config/BuildSettings.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.com.gatherhub
@@ -55,6 +58,8 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1,2" # iPhone + iPad
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: GatherHub/Info.plist
         CODE_SIGN_ENTITLEMENTS: GatherHub/GatherHub.entitlements

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 
 export default function AgeGroupsPage() {
   const { org, can } = useGatherHub();
@@ -192,8 +193,9 @@ function AgeGroupDialog({ existing }: { existing?: ExistingTaxonomy }) {
       }
       setOpen(false);
       if (!existing) setLabel("");
+      toastSuccess(existing ? "Age group updated." : "Age group added.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not save age group."));
     } finally {
       setSaving(false);
     }

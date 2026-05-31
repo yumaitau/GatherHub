@@ -4,6 +4,7 @@ import { Id } from "./_generated/dataModel";
 import { requireRole, requireUser } from "./lib/auth";
 import { generateSlug, generateTagId } from "./lib/ids";
 import { seedAllDefaultsForOrg } from "./taxonomies";
+import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 
 /**
  * Convex-native organisation (club) lifecycle: create, join by invite code,
@@ -188,6 +189,15 @@ export const getInviteCode = query({
   },
 });
 
+/** Read location defaults for the active org. Available to all org members. */
+export const locationDefaults = query({
+  args: {},
+  handler: async (ctx) => {
+    const auth = await requireRole(ctx, "player");
+    return { defaultAddress: auth.org.defaultAddress ?? null };
+  },
+});
+
 /** Rotate (or set, if missing) the active org's invite code. Admin+ only. */
 export const rotateInviteCode = mutation({
   args: {},
@@ -196,6 +206,28 @@ export const rotateInviteCode = mutation({
     const code = newInviteCode();
     await ctx.db.patch(auth.org._id, { inviteCode: code });
     return { code };
+  },
+});
+
+/** Edit location defaults. Admin+ only. */
+export const updateLocationSettings = mutation({
+  args: {
+    defaultAddress: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireRole(ctx, "admin");
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
+    const defaultAddress = args.defaultAddress?.trim();
+    await ctx.db.patch(auth.org._id, {
+      defaultAddress: defaultAddress || undefined,
+    });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "organizations:updateLocationSettings",
+    );
   },
 });
 

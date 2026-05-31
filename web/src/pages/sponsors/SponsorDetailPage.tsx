@@ -24,6 +24,7 @@ import {
   AssetStatusBadge,
 } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 type Sponsor = {
@@ -64,8 +65,13 @@ export default function SponsorDetailPage() {
         sponsorId: sponsor._id,
         visibleOnPublicSite: !sponsor.visibleOnPublicSite,
       });
+      toastSuccess(
+        sponsor.visibleOnPublicSite
+          ? "Sponsor hidden from public site."
+          : "Sponsor shown on public site.",
+      );
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not update sponsor visibility."));
     }
   }
 
@@ -74,9 +80,10 @@ export default function SponsorDetailPage() {
     setError(null);
     try {
       await remove({ sponsorId: sponsor._id });
+      toastSuccess("Sponsor deleted.");
       navigate("/sponsors");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not delete sponsor."));
     }
   }
 
@@ -246,8 +253,9 @@ function EditSponsorDialog({ sponsor }: { sponsor: Sponsor }) {
         notes: notes.trim() || undefined,
       });
       setOpen(false);
+      toastSuccess("Sponsor updated.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not update sponsor."));
     } finally {
       setSaving(false);
     }

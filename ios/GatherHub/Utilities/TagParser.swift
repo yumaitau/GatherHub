@@ -2,15 +2,15 @@ import Foundation
 
 /// Parsing helpers for GatherHub asset tag identifiers.
 ///
-/// A tag id is an opaque token of the form `tag_` followed by lowercase hex
+/// A tag id is an opaque token of the form `tag_` followed by lowercase base32
 /// characters, e.g. `tag_ab12cd34ef56`. QR codes and NFC tags can encode the id
 /// in several ways; `TagParser.extractTagId(from:)` normalises all of them down
 /// to the bare id.
 enum TagParser {
 
-    /// Regex matching a bare tag id anywhere in a string: `tag_` + hex.
-    /// Kept liberal (any length of hex) to tolerate id-length changes.
-    private static let tagPattern = #/tag_[0-9a-fA-F]+/#
+    /// Regex matching a bare tag id anywhere in a string: `tag_` + alphanumerics.
+    /// Kept liberal to tolerate generated-id alphabet or length changes.
+    private static let tagPattern = #/tag_[0-9a-zA-Z]+/#
 
     /// Extract a `tag_...` id from any of the supported encodings:
     ///
@@ -22,7 +22,7 @@ enum TagParser {
     /// trailing path components, because it scans for the first `tag_...` token
     /// rather than requiring an exact format.
     ///
-    /// - Parameter raw: the scanned QR string or NFC NDEF payload text.
+    /// - Parameter raw: the scanned QR string or NFC tag payload text.
     /// - Returns: the normalised tag id (e.g. `tag_ab12cd34ef56`), or `nil` if
     ///   the input does not contain a recognisable tag id.
     static func extractTagId(from raw: String) -> String? {
@@ -31,7 +31,7 @@ enum TagParser {
 
         // Find the first `tag_...` token regardless of URL / deep-link wrapping.
         guard let match = trimmed.firstMatch(of: tagPattern) else { return nil }
-        return String(match.output)
+        return String(match.output).lowercased()
     }
 
     /// Whether a string is exactly a bare tag id with no surrounding content.

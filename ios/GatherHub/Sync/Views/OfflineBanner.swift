@@ -5,6 +5,7 @@ import SwiftUI
 /// writes waiting to drain. Tap to open the pending-queue inspector.
 struct OfflineBanner: View {
     @EnvironmentObject private var sync: SyncEnvironment
+    var onOpenQueue: () -> Void = {}
 
     var body: some View {
         let isOffline = !sync.monitor.isOnline
@@ -19,6 +20,7 @@ struct OfflineBanner: View {
                 Text(label(isOffline: isOffline, pending: pending))
                     .font(.gh.caption)
                     .foregroundStyle(Color.gh.inkStrong)
+                    .multilineTextAlignment(.leading)
                 Spacer()
                 if pending > 0 {
                     Button {
@@ -29,10 +31,15 @@ struct OfflineBanner: View {
                     }
                     .disabled(isOffline || sync.coordinator?.isSyncing == true)
                 }
+                Image(systemName: "chevron.right")
+                    .font(.gh.caption.weight(.semibold))
+                    .foregroundStyle(Color.gh.inkQuiet)
             }
             .padding(.horizontal, GHSpacing.lg)
             .padding(.vertical, GHSpacing.sm)
             .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onOpenQueue)
             .background(isOffline ? Color.gh.warningWash : Color.gh.infoWash)
             .overlay(
                 Rectangle()

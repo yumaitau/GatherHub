@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import * as React from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { type Role, hasAtLeastRole } from "./roles";
 
@@ -20,6 +20,7 @@ export interface GatherHubContextValue {
     name: string;
     slug?: string;
     soccerMode: boolean;
+    defaultAddress?: string;
   } | null;
   /** UI-only gate: does the caller hold at least `min`? (server re-checks). */
   can: (min: Role) => boolean;
@@ -29,19 +30,22 @@ const Ctx = React.createContext<GatherHubContextValue | null>(null);
 
 /**
  * Provides the current GatherHub context (synced user/org/role). On mount it
- * calls `sync.ensureFromClient` so the Convex mirror exists even without
- * webhooks configured, then reads `sync.currentContext`.
+ * calls Clerk-backed sync so the Convex mirror and invitation membership exist
+ * even without webhooks configured, then reads `sync.currentContext`.
  */
 export function GatherHubProvider({ children }: { children: React.ReactNode }) {
-  const ensure = useMutation(api.sync.ensureFromClient);
+  const ensureFromClerk = useAction(api.syncClerk.ensureFromClerk);
+  const ensureFromClient = useMutation(api.sync.ensureFromClient);
   const context = useQuery(api.sync.currentContext);
 
   React.useEffect(() => {
-    // Fire-and-forget; safe to re-run, it's idempotent.
-    ensure().catch(() => {
-      /* not signed in / no active org yet */
+    // Fire-and-forget; both paths are idempotent.
+    ensureFromClerk({}).catch(() => {
+      ensureFromClient({}).catch(() => {
+        /* not signed in / no active org yet */
+      });
     });
-  }, [ensure]);
+  }, [ensureFromClerk, ensureFromClient]);
 
   const value = React.useMemo<GatherHubContextValue>(() => {
     const role = (context?.role ?? null) as Role | null;
@@ -64,6 +68,7 @@ export function GatherHubProvider({ children }: { children: React.ReactNode }) {
             name: context.org.name,
             slug: context.org.slug ?? undefined,
             soccerMode: Boolean(context.org.soccerMode),
+            defaultAddress: context.org.defaultAddress ?? undefined,
           }
         : null,
       can: (min: Role) => (role ? hasAtLeastRole(role, min) : false),

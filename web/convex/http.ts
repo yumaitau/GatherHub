@@ -38,12 +38,15 @@ const clerkWebhook = httpAction(async (ctx, request) => {
     case "user.created":
     case "user.updated": {
       const d = event.data;
+      const pending = pendingMembershipFromMetadata(d.public_metadata);
       await ctx.runMutation(internal.clerk.upsertUser, {
         clerkUserId: d.id,
         email: d.email_addresses?.[0]?.email_address,
         firstName: d.first_name ?? undefined,
         lastName: d.last_name ?? undefined,
         imageUrl: d.image_url ?? undefined,
+        pendingOrgId: pending?.pendingOrgId,
+        pendingRole: pending?.pendingRole,
       });
       break;
     }
@@ -70,6 +73,33 @@ http.route({
 
 export default http;
 
+const ROLES = [
+  "owner",
+  "admin",
+  "committee",
+  "coach",
+  "volunteer",
+  "parent",
+  "player",
+] as const;
+
+type Role = (typeof ROLES)[number];
+
+function pendingMembershipFromMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): { pendingOrgId: string; pendingRole: Role } | undefined {
+  const pendingOrgId = metadata?.pendingOrgId;
+  const pendingRole = metadata?.pendingRole;
+  if (
+    typeof pendingOrgId !== "string" ||
+    typeof pendingRole !== "string" ||
+    !(ROLES as readonly string[]).includes(pendingRole)
+  ) {
+    return undefined;
+  }
+  return { pendingOrgId, pendingRole: pendingRole as Role };
+}
+
 // --- Minimal typing for the Clerk webhook payloads we consume ----------------
 type ClerkEvent =
   | {
@@ -80,6 +110,7 @@ type ClerkEvent =
         first_name?: string | null;
         last_name?: string | null;
         image_url?: string | null;
+        public_metadata?: Record<string, unknown> | null;
       };
     }
   | { type: "user.deleted"; data: { id?: string } };

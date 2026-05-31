@@ -28,6 +28,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { type ColumnDef } from "@tanstack/react-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 
 export default function TeamsPage() {
   const { can } = useGatherHub();
@@ -225,8 +226,9 @@ function NewTeamDialog() {
       });
       reset();
       setOpen(false);
+      toastSuccess("Team created.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not create team."));
     } finally {
       setSaving(false);
     }

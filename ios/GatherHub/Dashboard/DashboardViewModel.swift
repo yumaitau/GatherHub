@@ -37,16 +37,31 @@ final class DashboardViewModel {
         }
     }
 
-    func load() async {
-        state = .loading
+    func load(sync: SyncEnvironment) async {
+        if let cached = try? sync.store?.cachedDashboard() {
+            stats = cached.stats
+            soccer = cached.soccer
+            state = .loaded
+        } else {
+            state = .loading
+        }
         do {
             async let primary = convex.dashboardStats()
             async let secondary = try? convex.soccerDashboardStats()
             self.stats = try await primary
             self.soccer = await secondary ?? nil
+            if let stats {
+                try? sync.store?.replaceDashboard(
+                    DashboardSnapshot(stats: stats, soccer: soccer)
+                )
+            }
             self.state = .loaded
         } catch {
-            self.state = .failed(error.localizedDescription)
+            if stats == nil {
+                self.state = .failed(UserFacingError.message(error, fallback: "Couldn't load the dashboard."))
+            } else {
+                self.state = .loaded
+            }
         }
     }
 }

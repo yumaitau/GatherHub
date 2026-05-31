@@ -1,5 +1,5 @@
 import { mutation, query, QueryCtx } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import {
   requireOrgMember,
@@ -12,6 +12,75 @@ import { writeAudit } from "./lib/audit";
 import { generateTagId } from "./lib/ids";
 import { assetStatusValidator } from "./schema";
 import { assertTaxonomyKey } from "./taxonomies";
+import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+
+function defaultedLocation(
+  explicit: string | undefined,
+  fallback: string | undefined,
+): string | undefined {
+  return explicit?.trim() || fallback?.trim() || undefined;
+}
+
+async function enrichAsset(ctx: QueryCtx, asset: Doc<"assets">) {
+  return {
+    ...asset,
+    custodianName: asset.custodianMemberId
+      ? await memberName(ctx, asset.custodianMemberId)
+      : null,
+  };
+}
+
+async function enrichHistoryEntry(ctx: QueryCtx, entry: Doc<"assetAuditLog">) {
+  const [performer, asset] = await Promise.all([
+    ctx.db.get(entry.performedBy),
+    ctx.db.get(entry.assetId),
+  ]);
+  return {
+    ...entry,
+    assetName: asset?.name ?? "(deleted asset)",
+    assetCategory: asset?.category ?? null,
+    performerName: performer
+      ? `${performer.firstName ?? ""} ${performer.lastName ?? ""}`.trim()
+      : "Unknown",
+    fromCustodianName: entry.fromCustodianMemberId
+      ? await memberName(ctx, entry.fromCustodianMemberId)
+      : null,
+    toCustodianName: entry.toCustodianMemberId
+      ? await memberName(ctx, entry.toCustodianMemberId)
+      : null,
+  };
+}
+
+/**
+ * Single KitTrace screen payload: inventory plus org-wide audit history.
+ * Used by /assets so users do not need a separate Asset History route.
+ */
+export const kitTrace = query({
+  args: {},
+  handler: async (ctx) => {
+    const auth = await requireOrgMember(ctx);
+    const [assets, history] = await Promise.all([
+      ctx.db
+        .query("assets")
+        .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
+        .collect(),
+      ctx.db
+        .query("assetAuditLog")
+        .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
+        .collect(),
+    ]);
+
+    assets.sort((a, b) => a.name.localeCompare(b.name));
+    history.sort((a, b) => b.performedAt - a.performedAt);
+
+    return {
+      assets: await Promise.all(assets.map((asset) => enrichAsset(ctx, asset))),
+      history: await Promise.all(
+        history.map((entry) => enrichHistoryEntry(ctx, entry)),
+      ),
+    };
+  },
+});
 
 export const list = query({
   args: {
@@ -56,12 +125,7 @@ export const list = query({
     return await Promise.all(
       assets
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(async (a) => ({
-          ...a,
-          custodianName: a.custodianMemberId
-            ? await memberName(ctx, a.custodianMemberId)
-            : null,
-        })),
+        .map((asset) => enrichAsset(ctx, asset)),
     );
   },
 });
@@ -88,9 +152,8 @@ export const get = query({
 });
 
 /**
- * Org-wide audit history across every asset, newest first. Used by the
- * /assets/history page so members can track asset lifecycle without
- * digging into each asset record.
+ * Org-wide audit history across every asset, newest first. Kept for audit
+ * log views and direct integrations; the main KitTrace screen uses kitTrace.
  */
 export const allHistory = query({
   args: {},
@@ -102,26 +165,7 @@ export const allHistory = query({
       .collect();
     entries.sort((a, b) => b.performedAt - a.performedAt);
     return await Promise.all(
-      entries.map(async (e) => {
-        const [performer, asset] = await Promise.all([
-          ctx.db.get(e.performedBy),
-          ctx.db.get(e.assetId),
-        ]);
-        return {
-          ...e,
-          assetName: asset?.name ?? "(deleted asset)",
-          assetCategory: asset?.category ?? null,
-          performerName: performer
-            ? `${performer.firstName ?? ""} ${performer.lastName ?? ""}`.trim()
-            : "Unknown",
-          fromCustodianName: e.fromCustodianMemberId
-            ? await memberName(ctx, e.fromCustodianMemberId)
-            : null,
-          toCustodianName: e.toCustodianMemberId
-            ? await memberName(ctx, e.toCustodianMemberId)
-            : null,
-        };
-      }),
+      entries.map((entry) => enrichHistoryEntry(ctx, entry)),
     );
   },
 });
@@ -172,9 +216,17 @@ export const create = mutation({
     location: v.optional(v.string()),
     notes: v.optional(v.string()),
     sponsorId: v.optional(v.id("sponsors")),
+    nfcTagId: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const replay = await getClientMutation(ctx, auth, args.clientMutationId);
+    if (replay?.resultId) {
+      const assetId = ctx.db.normalizeId("assets", replay.resultId);
+      if (assetId) return assetId;
+    }
+    if (replay) throw new Error("Asset creation already completed.");
     await assertTaxonomyKey(ctx, auth.org._id, "asset_category", args.category);
     if (args.condition !== undefined) {
       await assertTaxonomyKey(
@@ -189,8 +241,23 @@ export const create = mutation({
       assertSameOrg(auth, sponsor);
     }
 
+    const nfcTagId = args.nfcTagId?.trim();
+    if (args.nfcTagId !== undefined && !nfcTagId) {
+      throw new Error("NFC tag id required.");
+    }
+    if (nfcTagId) {
+      const clash = await ctx.db
+        .query("assetTags")
+        .withIndex("by_tag", (q) => q.eq("tagId", nfcTagId))
+        .unique();
+      if (clash) {
+        throw new Error("That NFC tag is not available.");
+      }
+    }
+
     // Mint a QR tag id at creation so every asset is immediately scannable.
     const qrTagId = generateTagId();
+    const location = defaultedLocation(args.location, auth.org.defaultAddress);
     const assetId = await ctx.db.insert("assets", {
       orgId: auth.org._id,
       name: args.name.trim(),
@@ -201,10 +268,11 @@ export const create = mutation({
       replacementValue: args.replacementValue,
       condition: args.condition ?? "good",
       status: "available",
-      location: args.location,
+      location,
       notes: args.notes,
       sponsorId: args.sponsorId,
       qrTagId,
+      ...(nfcTagId ? { nfcTagId } : {}),
     });
 
     await ctx.db.insert("assetTags", {
@@ -215,13 +283,32 @@ export const create = mutation({
       active: true,
     });
 
+    if (nfcTagId) {
+      await ctx.db.insert("assetTags", {
+        orgId: auth.org._id,
+        tagId: nfcTagId,
+        assetId,
+        type: "nfc",
+        active: true,
+      });
+    }
+
     await writeAudit(ctx, {
       orgId: auth.org._id,
       assetId,
       action: "created",
       performedBy: auth.user._id,
       toStatus: "available",
+      toLocation: location,
     });
+
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "assets:create",
+      String(assetId),
+    );
 
     return assetId;
   },
@@ -266,6 +353,9 @@ export const update = mutation({
     const patch: Record<string, unknown> = Object.fromEntries(
       Object.entries(rest).filter(([, v]) => v !== undefined),
     );
+    if (args.location !== undefined) {
+      patch.location = args.location.trim() || undefined;
+    }
     if (sponsorId !== undefined) {
       if (sponsorId !== null) {
         const sponsor = await ctx.db.get(sponsorId);
@@ -350,9 +440,14 @@ export const reassignTag = mutation({
 
 /** Register an NFC tag id for an asset. */
 export const registerNfc = mutation({
-  args: { assetId: v.id("assets"), nfcTagId: v.string() },
+  args: {
+    assetId: v.id("assets"),
+    nfcTagId: v.string(),
+    clientMutationId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await ctx.db.get(args.assetId);
     assertSameOrg(auth, asset);
 
@@ -391,6 +486,12 @@ export const registerNfc = mutation({
       performedBy: auth.user._id,
       notes: `NFC tag registered (${tagId}).`,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "assets:registerNfc",
+    );
   },
 });
 

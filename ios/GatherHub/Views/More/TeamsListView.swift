@@ -79,7 +79,11 @@ struct TeamsListView: View {
         }
         .task { await load() }
         .refreshable { await load() }
-        .searchable(text: $query, prompt: "Search team or age group")
+        .searchable(
+            text: $query,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Search team or age group"
+        )
     }
 
     private func load() async {
@@ -95,7 +99,9 @@ struct TeamsListView: View {
             teams = fresh
             try? sync.store?.replaceTeams(fresh)
         } catch let err {
-            if teams.isEmpty { error = err.localizedDescription }
+            if teams.isEmpty {
+                error = UserFacingError.message(err, fallback: "Couldn't load teams.")
+            }
         }
         loading = false
     }

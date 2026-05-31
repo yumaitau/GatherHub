@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 
 type RosterRow = NonNullable<
   ReturnType<typeof useQuery<typeof api.soccer.playerRoster>>
@@ -287,8 +288,9 @@ function SkillCard({
         score: n,
         notes: notes.trim() || undefined,
       });
+      toastSuccess("Score saved.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not save score."));
     } finally {
       setSaving(false);
     }

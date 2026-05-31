@@ -12,6 +12,7 @@ struct EventListView: View {
     let context: CurrentContext
 
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @StateObject private var model = EventListViewModel()
 
     var body: some View {
@@ -24,7 +25,7 @@ struct EventListView: View {
                     OfflineStateView(
                         title: "Couldn't load events",
                         message: message,
-                        retry: { await model.load(context: context, convex: convex) }
+                        retry: { await model.load(context: context, convex: convex, sync: sync) }
                     )
                 case .loaded where model.events.isEmpty:
                     EmptyStateView(
@@ -38,8 +39,8 @@ struct EventListView: View {
             }
             .navigationTitle("Events")
             .overlay(alignment: .top) { ErrorBanner(message: $model.actionError) }
-            .task { await model.load(context: context, convex: convex) }
-            .refreshable { await model.load(context: context, convex: convex) }
+            .task { await model.load(context: context, convex: convex, sync: sync) }
+            .refreshable { await model.load(context: context, convex: convex, sync: sync) }
         }
     }
 
@@ -91,7 +92,7 @@ struct EventListView: View {
         HStack(spacing: 8) {
             ForEach(RsvpStatus.allCases, id: \.self) { status in
                 Button {
-                    Task { await model.setRsvp(event: event, status: status, convex: convex) }
+                    Task { await model.setRsvp(event: event, status: status, sync: sync) }
                 } label: {
                     Text(status.displayName)
                         .font(.caption.weight(.medium))
@@ -133,8 +134,16 @@ final class EventListViewModel: ObservableObject {
     /// Whether RSVP is possible (we found the caller's member record).
     var canRsvp: Bool { myMemberId != nil }
 
-    func load(context: CurrentContext, convex: ConvexService) async {
-        phase = .loading
+    func load(context: CurrentContext, convex: ConvexService, sync: SyncEnvironment) async {
+        if let cachedEvents = try? sync.store?.cachedEvents(), !cachedEvents.isEmpty {
+            events = cachedEvents
+            if let cachedMembers = try? sync.store?.cachedMembers() {
+                resolveMyMemberId(context: context, members: cachedMembers)
+            }
+            phase = .loaded
+        } else {
+            phase = .loading
+        }
         do {
             // Calendar surface needs past events too so users can scroll
             // back through previous months. The view filters per day.
@@ -142,19 +151,20 @@ final class EventListViewModel: ObservableObject {
             async let membersTask = convex.listMembers()
             let (events, members) = try await (eventsTask, membersTask)
             self.events = events
-            // Resolve the caller's member record by email (best-effort). The
-            // member↔user link isn't exposed on currentContext, so we match on
-            // the verified email from the user record.
-            if let email = context.user.email?.lowercased() {
-                myMemberId = members.first { $0.email?.lowercased() == email }?.id
-            }
+            resolveMyMemberId(context: context, members: members)
+            try? sync.store?.replaceEvents(events)
+            try? sync.store?.replaceMembers(members)
             phase = .loaded
         } catch {
-            phase = .failed(error.localizedDescription)
+            if events.isEmpty {
+                phase = .failed(UserFacingError.message(error, fallback: "Couldn't load events. Try again."))
+            } else {
+                phase = .loaded
+            }
         }
     }
 
-    func setRsvp(event: Event, status: RsvpStatus, convex: ConvexService) async {
+    func setRsvp(event: Event, status: RsvpStatus, sync: SyncEnvironment) async {
         guard let memberId = myMemberId else {
             actionError = "We couldn't find your member record to RSVP. Ask a committee member to link your account."
             return
@@ -165,10 +175,21 @@ final class EventListViewModel: ObservableObject {
         let previous = selection[event.id]
         selection[event.id] = status // optimistic
         do {
-            try await convex.setRsvp(eventId: event.id, memberId: memberId, status: status)
+            try sync.enqueue(
+                kind: .rsvp,
+                title: "RSVP \(status.displayName) for \(event.title)",
+                payload: RsvpPayload(eventId: event.id, memberId: memberId, status: status)
+            )
+            await sync.coordinator?.syncIfOnline()
         } catch {
             selection[event.id] = previous // rollback
-            actionError = error.localizedDescription
+            actionError = UserFacingError.message(error, fallback: "Couldn't queue RSVP. Try again.")
+        }
+    }
+
+    private func resolveMyMemberId(context: CurrentContext, members: [Member]) {
+        if let email = context.user.email?.lowercased() {
+            myMemberId = members.first { $0.email?.lowercased() == email }?.id
         }
     }
 }

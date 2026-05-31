@@ -27,6 +27,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { type ColumnDef } from "@tanstack/react-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { downloadCsv, toCsv } from "@/lib/utils";
 
 export default function RegistrationsPage() {
@@ -382,8 +383,9 @@ function RegistrationDialog({
         comments: comments || undefined,
       });
       setOpen(false);
+      toastSuccess("Registration saved.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toastFailure(err, "Could not save registration."));
     } finally {
       setSaving(false);
     }

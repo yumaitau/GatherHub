@@ -9,7 +9,7 @@ interface AuthShellProps {
 /**
  * Two-column auth shell. Quiet paper field on the left (form), tinted
  * institutional plate on the right (brand reminder), single column on mobile.
- * Used by SignIn, SignUp, and AcceptInvite.
+ * Used by SignIn and invitation-only SignUp.
  */
 export function AuthShell({ heading, caption, children }: AuthShellProps) {
   return (

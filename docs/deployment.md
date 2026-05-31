@@ -19,6 +19,8 @@ Set the production environment variables in the Convex dashboard:
 | Variable                   | Required | Purpose                                            |
 | -------------------------- | -------- | -------------------------------------------------- |
 | `CLERK_JWT_ISSUER_DOMAIN`  | Yes      | Validates Clerk JWTs (auth.config.ts).             |
+| `CLERK_SECRET_KEY`         | Yes      | Creates Clerk invites and reads invite metadata.   |
+| `PUBLIC_APP_URL`           | Yes      | Redirect target for Clerk invitation emails.       |
 | `CLERK_WEBHOOK_SECRET`     | Optional | Verifies the Clerk webhook for server-side sync.   |
 
 The production Convex deployment exposes an HTTP site URL
@@ -36,6 +38,7 @@ cd web
 VITE_CONVEX_URL=https://<name>.convex.cloud \
 VITE_CLERK_PUBLISHABLE_KEY=pk_live_... \
 VITE_PUBLIC_APP_URL=https://app.gatherhub.au \
+VITE_GOOGLE_MAPS_API_KEY=<google_maps_browser_key> \
 npm run build
 ```
 
@@ -83,8 +86,8 @@ For a hosted deployment, the simplest path is:
 1. Convex production deployment via `npx convex deploy`.
 2. Web app on Vercel/Netlify with the three `VITE_` env vars set in the host's
    dashboard and an SPA rewrite configured.
-3. Clerk production instance with the `convex` JWT template and the webhook
-   pointed at Convex.
+3. Clerk production instance with the `convex` JWT template, application
+   invitations enabled, and optionally the webhook pointed at Convex.
 
 ## 5. Backups & data
 

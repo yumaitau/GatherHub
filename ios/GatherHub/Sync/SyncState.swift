@@ -21,6 +21,10 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     case soccerEvaluation
     /// `soccer:upsertRegistration` — assignment quick-edit payload.
     case soccerAssignment
+    /// `assets:create` — create a new asset and optionally bind NFC.
+    case assetCreate
+    /// `organizations:updateLocationSettings` — update default address.
+    case orgDefaultAddress
 
     var label: String {
         switch self {
@@ -32,6 +36,8 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
         case .announcementRead: return "Read receipt"
         case .soccerEvaluation: return "Skill score"
         case .soccerAssignment: return "Player assignment"
+        case .assetCreate: return "Asset creation"
+        case .orgDefaultAddress: return "Organisation address"
         }
     }
 }
@@ -51,7 +57,7 @@ enum SyncOperationStatus: String, Codable, Sendable, CaseIterable {
     /// Transient failure (network or 5xx). Eligible for automatic retry.
     case failed
 
-    var isSendable: Bool { self == .pending || self == .failed }
+    var isSendable: Bool { self == .pending || self == .failed || self == .submitted }
     var isTerminal: Bool { self == .applied || self == .rejected }
 
     var label: String {

@@ -49,7 +49,7 @@ struct SignInView: View {
                 }
                 .buttonStyle(.gh(.primary))
 
-                if let error = auth.lastError {
+                if let error = UserFacingError.message(auth.lastError) {
                     Text(error)
                         .font(.gh.caption)
                         .foregroundStyle(Color.gh.danger)

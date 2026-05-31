@@ -4,6 +4,7 @@ import SwiftUI
 /// Designed for a one-glance "is this person cleared?" check.
 struct CoachesManagersView: View {
     @EnvironmentObject private var convex: ConvexService
+    @EnvironmentObject private var sync: SyncEnvironment
     @State private var rows: [CoachManagerRow] = []
     @State private var loading = true
     @State private var error: String?
@@ -102,17 +103,28 @@ struct CoachesManagersView: View {
         }
         .task { await load() }
         .refreshable { await load() }
-        .searchable(text: $query, prompt: "Search name or email")
+        .searchable(
+            text: $query,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Search name or email"
+        )
     }
 
     private func load() async {
+        if let cached = try? sync.store?.cachedCoachesManagers(), !cached.isEmpty {
+            rows = cached
+        }
         loading = rows.isEmpty
         error = nil
         defer { loading = false }
         do {
-            rows = try await convex.listCoachesManagers()
+            let fresh = try await convex.listCoachesManagers()
+            rows = fresh
+            try? sync.store?.replaceCoachesManagers(fresh)
         } catch let err {
-            error = err.localizedDescription
+            if rows.isEmpty {
+                error = UserFacingError.message(err, fallback: "Couldn't load coaches and managers.")
+            }
         }
     }
 }

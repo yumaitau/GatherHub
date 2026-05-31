@@ -15,10 +15,10 @@ import type {
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "convex/react";
 import type { EventDropArg } from "@fullcalendar/core";
-import { toast } from "sonner";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -192,12 +192,10 @@ export function EventsCalendar({
         startTime: newStart,
         endTime: newEnd,
       });
-      toast.success(`Rescheduled "${arg.event.title}" to ${when}`);
+      toastSuccess(`Rescheduled "${arg.event.title}" to ${when}`);
     } catch (err) {
       arg.revert();
-      toast.error(
-        err instanceof Error ? err.message : "Could not reschedule event",
-      );
+      toastFailure(err, "Could not reschedule event.");
     }
   }
 

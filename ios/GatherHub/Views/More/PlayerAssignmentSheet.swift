@@ -12,7 +12,7 @@ import SwiftUI
 /// matches the player into whichever division their score lands in.
 struct PlayerAssignmentSheet: View {
     let row: PlayerListingRow
-    let onSaved: () -> Void
+    let onSaved: (_ updated: PlayerListingRow, _ shouldReload: Bool) -> Void
 
     @EnvironmentObject private var convex: ConvexService
     @EnvironmentObject private var sync: SyncEnvironment
@@ -88,7 +88,7 @@ struct PlayerAssignmentSheet: View {
                 }
             } footer: {
                 let currentGrade = row.grade
-                    .map { String(format: "%.1f", $0) } ?? "—"
+                    .map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—"
                 Text("Auto matches by grade. Current grade \(currentGrade).")
                     .font(.gh.caption)
             }
@@ -107,7 +107,16 @@ struct PlayerAssignmentSheet: View {
     }
 
     private func load() async {
-        loading = teams.isEmpty
+        if let cachedTeams = try? sync.store?.cachedTeams(), !cachedTeams.isEmpty {
+            teams = cachedTeams.filter { $0.isActive }
+        }
+        if let cachedDivisions = try? sync.store?.cachedSoccerDivisions(), !cachedDivisions.isEmpty {
+            divisions = cachedDivisions.filter { $0.active }
+        }
+        teamId = row.teamId ?? ""
+        divisionId = row.divisionId ?? ""
+        kitColour = row.kitColour ?? ""
+        loading = teams.isEmpty || divisions.isEmpty
         error = nil
         defer { loading = false }
         do {
@@ -116,11 +125,15 @@ struct PlayerAssignmentSheet: View {
             let (t, d) = try await (teamsTask, divisionsTask)
             teams = t
             divisions = d.filter { $0.active }
+            try? sync.store?.replaceTeams(t)
+            try? sync.store?.replaceSoccerDivisions(d)
             teamId = row.teamId ?? ""
             divisionId = row.divisionId ?? ""
             kitColour = row.kitColour ?? ""
         } catch let err {
-            error = err.localizedDescription
+            if teams.isEmpty || divisions.isEmpty {
+                error = UserFacingError.message(err, fallback: "Couldn't load assignment options.")
+            }
         }
     }
 
@@ -140,22 +153,50 @@ struct PlayerAssignmentSheet: View {
         // Queue first so the write survives offline. The coordinator
         // attempts a drain right away — if we're online it lands now,
         // otherwise it sticks in the queue.
-        if let store = sync.store,
-           let data = try? JSONEncoder().encode(payload) {
-            do {
-                try store.enqueue(
-                    kind: .soccerAssignment,
-                    title: "Assign \(row.name)",
-                    payload: data
-                )
-                await sync.coordinator?.syncIfOnline()
-                onSaved()
-                dismiss()
-            } catch let err {
-                error = err.localizedDescription
-            }
-        } else {
-            error = "Couldn't queue change. Please try again."
+        do {
+            let op = try sync.enqueue(
+                kind: .soccerAssignment,
+                title: "Assign \(row.name)",
+                payload: payload
+            )
+            let updated = updatedListing()
+            updateCachedListing(updated)
+            await sync.coordinator?.syncIfOnline()
+            onSaved(updated, op.status == .applied)
+            dismiss()
+        } catch let err {
+            error = UserFacingError.message(err, fallback: "Couldn't queue assignment.")
         }
+    }
+
+    private func updatedListing() -> PlayerListingRow {
+        let selectedTeam = teams.first { $0.id == teamId }
+        let selectedDivision = divisions.first { $0.id == divisionId }
+        return PlayerListingRow(
+            memberId: row.memberId,
+            name: row.name,
+            email: row.email,
+            hasRegistration: true,
+            registered: row.registered,
+            paid: row.paid,
+            paymentPlan: row.paymentPlan,
+            ffaNumber: row.ffaNumber,
+            teamId: teamId.isEmpty ? nil : teamId,
+            teamName: selectedTeam?.name,
+            divisionId: divisionId.isEmpty ? nil : divisionId,
+            divisionName: selectedDivision?.name,
+            divisionColor: selectedDivision?.color,
+            kitColour: kitColour.trimmingCharacters(in: .whitespaces).isEmpty ? nil : kitColour,
+            grade: row.grade
+        )
+    }
+
+    private func updateCachedListing(_ updated: PlayerListingRow) {
+        guard var rows = try? sync.store?.cachedPlayerListings(),
+              let index = rows.firstIndex(where: { $0.memberId == row.memberId }) else {
+            return
+        }
+        rows[index] = updated
+        try? sync.store?.replacePlayerListings(rows)
     }
 }

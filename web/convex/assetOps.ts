@@ -8,6 +8,7 @@ import {
 } from "./lib/auth";
 import { writeAudit } from "./lib/audit";
 import { Doc } from "./_generated/dataModel";
+import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 
 async function loadAsset(
   ctx: Parameters<typeof writeAudit>[0],
@@ -23,6 +24,16 @@ async function loadAsset(
   return asset;
 }
 
+function resolvedLocation(
+  explicit: string | undefined,
+  current: string | undefined,
+  defaultAddress: string | undefined,
+): string | undefined {
+  return (
+    explicit?.trim() || current?.trim() || defaultAddress?.trim() || undefined
+  );
+}
+
 /** Check an asset out to a custodian. */
 export const checkOut = mutation({
   args: {
@@ -31,20 +42,27 @@ export const checkOut = mutation({
     location: v.optional(v.string()),
     dueBack: v.optional(v.number()),
     notes: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
     if (asset.status === "checked_out" || asset.status === "in_use") {
       throw new Error("Asset is already checked out.");
     }
     const custodian = await ctx.db.get(args.custodianMemberId);
     assertSameOrg(auth, custodian);
+    const location = resolvedLocation(
+      args.location,
+      asset.location,
+      auth.org.defaultAddress,
+    );
 
     await ctx.db.patch(args.assetId, {
       status: "checked_out",
       custodianMemberId: args.custodianMemberId,
-      location: args.location ?? asset.location,
+      location,
       dueBack: args.dueBack,
     });
     await writeAudit(ctx, {
@@ -57,9 +75,15 @@ export const checkOut = mutation({
       fromCustodianMemberId: asset.custodianMemberId,
       toCustodianMemberId: args.custodianMemberId,
       fromLocation: asset.location,
-      toLocation: args.location ?? asset.location,
+      toLocation: location,
       notes: args.notes,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "assetOps:checkOut",
+    );
   },
 });
 
@@ -69,15 +93,22 @@ export const checkIn = mutation({
     assetId: v.id("assets"),
     location: v.optional(v.string()),
     notes: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
+    const location = resolvedLocation(
+      args.location,
+      asset.location,
+      auth.org.defaultAddress,
+    );
 
     await ctx.db.patch(args.assetId, {
       status: "available",
       custodianMemberId: undefined,
-      location: args.location ?? asset.location,
+      location,
       dueBack: undefined,
     });
     await writeAudit(ctx, {
@@ -89,9 +120,15 @@ export const checkIn = mutation({
       toStatus: "available",
       fromCustodianMemberId: asset.custodianMemberId,
       fromLocation: asset.location,
-      toLocation: args.location ?? asset.location,
+      toLocation: location,
       notes: args.notes,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "assetOps:checkIn",
+    );
   },
 });
 
@@ -108,11 +145,16 @@ export const transfer = mutation({
     const asset = await loadAsset(ctx, auth, args.assetId);
     const newCustodian = await ctx.db.get(args.toCustodianMemberId);
     assertSameOrg(auth, newCustodian);
+    const location = resolvedLocation(
+      args.location,
+      asset.location,
+      auth.org.defaultAddress,
+    );
 
     await ctx.db.patch(args.assetId, {
       status: "checked_out",
       custodianMemberId: args.toCustodianMemberId,
-      location: args.location ?? asset.location,
+      location,
     });
     await writeAudit(ctx, {
       orgId: auth.org._id,
@@ -124,7 +166,7 @@ export const transfer = mutation({
       fromCustodianMemberId: asset.custodianMemberId,
       toCustodianMemberId: args.toCustodianMemberId,
       fromLocation: asset.location,
-      toLocation: args.location ?? asset.location,
+      toLocation: location,
       notes: args.notes,
     });
   },
@@ -233,9 +275,11 @@ export const recordScan = mutation({
     geoLongitude: v.optional(v.number()),
     geoAccuracy: v.optional(v.number()),
     notes: v.optional(v.string()),
+    clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
     await writeAudit(ctx, {
       orgId: auth.org._id,
@@ -247,5 +291,11 @@ export const recordScan = mutation({
       geoAccuracy: args.geoAccuracy,
       notes: args.notes,
     });
+    await recordClientMutation(
+      ctx,
+      auth,
+      args.clientMutationId,
+      "assetOps:recordScan",
+    );
   },
 });

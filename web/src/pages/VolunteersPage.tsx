@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatDate, toCsv, downloadCsv } from "@/lib/utils";
 
 function isExpired(expiryDate: string | undefined): boolean {
@@ -248,8 +249,9 @@ function AddCertificationDialog() {
       });
       reset();
       setOpen(false);
+      toastSuccess("Certification added.");
     } catch (err) {
-      setError(String(err));
+      setError(toastFailure(err, "Could not add certification."));
     } finally {
       setSaving(false);
     }
