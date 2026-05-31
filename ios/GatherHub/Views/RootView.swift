@@ -129,6 +129,7 @@ struct RootView: View {
                     LocationDefaults(defaultAddress: ctx.org.defaultAddress)
                 )
                 await syncEnv.coordinator?.syncIfOnline()
+                syncEnv.startPreload(context: ctx, convex: convex)
             } else if ctx == nil {
                 syncEnv.unbind()
             }

@@ -42,7 +42,10 @@ struct MainTabView: View {
         }
         .onChange(of: sync.monitor.isOnline) { _, isOnline in
             if isOnline {
-                Task { await sync.coordinator?.syncIfOnline() }
+                Task {
+                    await sync.coordinator?.syncIfOnline()
+                    sync.startPreload(context: context, convex: convex, force: true)
+                }
             }
         }
     }

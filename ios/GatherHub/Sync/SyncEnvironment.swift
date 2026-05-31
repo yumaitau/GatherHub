@@ -13,11 +13,16 @@ final class SyncEnvironment: ObservableObject {
 
     @Published private(set) var store: LocalStore?
     @Published private(set) var coordinator: SyncCoordinator?
+    @Published private(set) var preloadStatus: AppDataPreloader.Status = .idle
     private var currentScopeKey: String?
     private var currentClerkUserId: String?
+    private var preloadTask: Task<Void, Never>?
+    private var lastPreloadScopeKey: String?
+    private var lastPreloadCompletedAt: Date?
 
     private let defaults: UserDefaults
     private let cachedContextPrefix = "au.gatherhub.cachedContext."
+    private let preloadFreshnessInterval: TimeInterval = 15 * 60
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -46,6 +51,7 @@ final class SyncEnvironment: ObservableObject {
         if currentScopeKey == scopeKey, store != nil, coordinator != nil {
             return
         }
+        cancelPreload()
         let context = modelContainer.mainContext
         let store = LocalStore(context: context, scopeKey: scopeKey)
         self.currentScopeKey = scopeKey
@@ -60,6 +66,52 @@ final class SyncEnvironment: ObservableObject {
             self?.objectWillChange.send()
         }
         self.coordinator = coordinator
+        lastPreloadScopeKey = nil
+        lastPreloadCompletedAt = nil
+    }
+
+    func startPreload(
+        context: CurrentContext,
+        convex: ConvexService,
+        force: Bool = false
+    ) {
+        guard monitor.isOnline, let store, let scopeKey = currentScopeKey else { return }
+        if case .running = preloadStatus { return }
+        if !force,
+           lastPreloadScopeKey == scopeKey,
+           let lastPreloadCompletedAt,
+           Date.now.timeIntervalSince(lastPreloadCompletedAt) < preloadFreshnessInterval {
+            return
+        }
+
+        preloadTask?.cancel()
+        preloadStatus = .running(startedAt: .now)
+        let preloader = AppDataPreloader()
+        preloadTask = Task { @MainActor [weak self, weak store] in
+            guard let self, let store else { return }
+            let result = await preloader.preload(
+                context: context,
+                convex: convex,
+                store: store,
+                shouldContinue: { [weak self, weak store] in
+                    guard let self, let store else { return false }
+                    return self.currentScopeKey == scopeKey && self.store === store
+                }
+            )
+            guard !Task.isCancelled, self.currentScopeKey == scopeKey, self.store === store else {
+                return
+            }
+            self.lastPreloadScopeKey = scopeKey
+            self.lastPreloadCompletedAt = result.completedAt
+            self.preloadStatus = .finished(result)
+            self.preloadTask = nil
+        }
+    }
+
+    func cancelPreload() {
+        preloadTask?.cancel()
+        preloadTask = nil
+        preloadStatus = .idle
     }
 
     @discardableResult
@@ -96,6 +148,7 @@ final class SyncEnvironment: ObservableObject {
     /// Sign-out / org switch lifecycle. Purges the current scope's
     /// cache + queue and drops the helpers.
     func unbind(purge: Bool = true) {
+        cancelPreload()
         if purge {
             try? store?.purgeScope()
             if let currentClerkUserId {
@@ -106,6 +159,8 @@ final class SyncEnvironment: ObservableObject {
         currentClerkUserId = nil
         store = nil
         coordinator = nil
+        lastPreloadScopeKey = nil
+        lastPreloadCompletedAt = nil
     }
 
     private func cachedContextKey(clerkUserId: String) -> String {

@@ -10,14 +10,26 @@ struct OfflineBanner: View {
     var body: some View {
         let isOffline = !sync.monitor.isOnline
         let pending = sync.coordinator?.unsettledCount ?? 0
-        let showingSomething = isOffline || pending > 0
+        let isPreparingOfflineData = sync.preloadStatus.isRunning
+        let showingSomething = isOffline || pending > 0 || isPreparingOfflineData
 
         if showingSomething {
             HStack(spacing: GHSpacing.sm) {
-                Image(systemName: isOffline ? "wifi.slash" : "arrow.triangle.2.circlepath")
-                    .font(.gh.caption.weight(.semibold))
-                    .foregroundStyle(isOffline ? Color.gh.warning : Color.gh.info)
-                Text(label(isOffline: isOffline, pending: pending))
+                if isPreparingOfflineData && !isOffline {
+                    ProgressView()
+                        .scaleEffect(0.75)
+                } else {
+                    Image(systemName: isOffline ? "wifi.slash" : "arrow.triangle.2.circlepath")
+                        .font(.gh.caption.weight(.semibold))
+                        .foregroundStyle(isOffline ? Color.gh.warning : Color.gh.info)
+                }
+                Text(
+                    label(
+                        isOffline: isOffline,
+                        pending: pending,
+                        isPreparingOfflineData: isPreparingOfflineData
+                    )
+                )
                     .font(.gh.caption)
                     .foregroundStyle(Color.gh.inkStrong)
                     .multilineTextAlignment(.leading)
@@ -31,15 +43,19 @@ struct OfflineBanner: View {
                     }
                     .disabled(isOffline || sync.coordinator?.isSyncing == true)
                 }
-                Image(systemName: "chevron.right")
-                    .font(.gh.caption.weight(.semibold))
-                    .foregroundStyle(Color.gh.inkQuiet)
+                if pending > 0 {
+                    Image(systemName: "chevron.right")
+                        .font(.gh.caption.weight(.semibold))
+                        .foregroundStyle(Color.gh.inkQuiet)
+                }
             }
             .padding(.horizontal, GHSpacing.lg)
             .padding(.vertical, GHSpacing.sm)
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
-            .onTapGesture(perform: onOpenQueue)
+            .onTapGesture {
+                if pending > 0 { onOpenQueue() }
+            }
             .background(isOffline ? Color.gh.warningWash : Color.gh.infoWash)
             .overlay(
                 Rectangle()
@@ -50,11 +66,17 @@ struct OfflineBanner: View {
         }
     }
 
-    private func label(isOffline: Bool, pending: Int) -> String {
+    private func label(isOffline: Bool, pending: Int, isPreparingOfflineData: Bool) -> String {
         if isOffline && pending > 0 {
             return "Offline · \(pending) change\(pending == 1 ? "" : "s") will sync when connected"
         }
         if isOffline { return "Offline — showing last-known data" }
+        if isPreparingOfflineData && pending > 0 {
+            return "Preparing offline data · \(pending) change\(pending == 1 ? "" : "s") waiting to sync"
+        }
+        if isPreparingOfflineData {
+            return "Preparing offline data for this organisation"
+        }
         return "\(pending) change\(pending == 1 ? "" : "s") waiting to sync"
     }
 }
