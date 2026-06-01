@@ -158,6 +158,29 @@ export const fixtureTeamSideValidator = v.union(
   v.literal("neutral"),
 );
 
+export const matchParticipationStatusValidator = v.union(
+  v.literal("selected"),
+  v.literal("arrived"),
+  v.literal("unavailable"),
+  v.literal("injured"),
+  v.literal("active"),
+  v.literal("bench"),
+  v.literal("substituted"),
+  v.literal("interchanged"),
+);
+
+export const matchParticipationEventTypeValidator = v.union(
+  v.literal("status_update"),
+  v.literal("arrived"),
+  v.literal("unavailable"),
+  v.literal("injured"),
+  v.literal("substitution"),
+  v.literal("interchange"),
+  v.literal("position_change"),
+  v.literal("captaincy_change"),
+  v.literal("note"),
+);
+
 export const organizationKindValidator = v.union(
   v.literal("sports_club"),
   v.literal("community_org"),
@@ -883,6 +906,67 @@ export default defineSchema({
   })
     .index("by_org", ["orgId"])
     .index("by_fixture", ["fixtureId"]),
+
+  matchSquads: defineTable({
+    orgId: v.id("organizations"),
+    fixtureId: v.id("fixtures"),
+    teamId: v.id("teams"),
+    sportKey: v.optional(sportKeyValidator),
+    templateKey: v.string(),
+    name: v.string(),
+    notes: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_fixture", ["fixtureId"])
+    .index("by_team", ["teamId"])
+    .index("by_fixture_team", ["fixtureId", "teamId"]),
+
+  matchSquadMembers: defineTable({
+    orgId: v.id("organizations"),
+    fixtureId: v.id("fixtures"),
+    teamId: v.id("teams"),
+    squadId: v.id("matchSquads"),
+    memberId: v.id("members"),
+    teamMemberId: v.optional(v.id("teamMembers")),
+    planned: v.boolean(),
+    participationStatus: matchParticipationStatusValidator,
+    positionKey: v.optional(v.string()),
+    positionLabel: v.optional(v.string()),
+    jerseyNumber: v.optional(v.string()),
+    bibNumber: v.optional(v.string()),
+    isCaptain: v.optional(v.boolean()),
+    isViceCaptain: v.optional(v.boolean()),
+    sortOrder: v.number(),
+    notes: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_squad", ["squadId"])
+    .index("by_squad_member", ["squadId", "memberId"])
+    .index("by_fixture", ["fixtureId"])
+    .index("by_team", ["teamId"])
+    .index("by_member", ["memberId"]),
+
+  matchParticipationEvents: defineTable({
+    orgId: v.id("organizations"),
+    fixtureId: v.id("fixtures"),
+    teamId: v.id("teams"),
+    squadId: v.id("matchSquads"),
+    squadMemberId: v.optional(v.id("matchSquadMembers")),
+    memberId: v.optional(v.id("members")),
+    eventType: matchParticipationEventTypeValidator,
+    period: v.optional(v.string()),
+    atMinute: v.optional(v.number()),
+    positionKey: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    recordedBy: v.id("users"),
+    occurredAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_fixture", ["fixtureId"])
+    .index("by_squad", ["squadId"])
+    .index("by_member", ["memberId"]),
 
   // ---------- Soccer-mode tables --------------------------------------
   // Only used when `organizations.soccerMode === true`. Designed as

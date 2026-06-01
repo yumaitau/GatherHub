@@ -91,6 +91,8 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     case teamAgeGroupUpdate
     /// `taxonomies:setActive` — activate/deactivate a team age-group.
     case teamAgeGroupSetActive
+    /// `matchRosters:updateParticipation` — match-day attendance/participation.
+    case matchParticipationUpdate
 
     var label: String {
         switch self {
@@ -137,6 +139,7 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
         case .teamAgeGroupCreate: return "Age group creation"
         case .teamAgeGroupUpdate: return "Age group edit"
         case .teamAgeGroupSetActive: return "Age group status"
+        case .matchParticipationUpdate: return "Match-day participation"
         }
     }
 
@@ -176,6 +179,8 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
             return "soccer.manage"
         case .teamAgeGroupCreate, .teamAgeGroupUpdate, .teamAgeGroupSetActive:
             return "settings.admin"
+        case .matchParticipationUpdate:
+            return "events.write"
         }
     }
 }

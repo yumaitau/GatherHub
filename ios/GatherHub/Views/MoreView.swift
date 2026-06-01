@@ -101,6 +101,11 @@ struct MoreView: View {
                 row("Fixtures", system: "calendar") {
                     SportFixturesListView()
                 }
+                row("Match day", system: "list.clipboard") {
+                    SportMatchDayListView(
+                        canEdit: context.hasCapability("events.write")
+                    )
+                }
             }
             if context.hasCapability("soccer.manage") {
                 row(context.org.term(\.registrationPlural, fallback: "player registrations").capitalized, system: "list.clipboard") {

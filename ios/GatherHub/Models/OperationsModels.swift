@@ -247,6 +247,152 @@ struct SportFixture: Codable, Identifiable, Hashable {
     }
 }
 
+// MARK: - Match-day rosters
+
+enum MatchParticipationStatus: String, Codable, CaseIterable, Identifiable, Hashable {
+    case selected
+    case arrived
+    case unavailable
+    case injured
+    case active
+    case bench
+    case substituted
+    case interchanged
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .selected: return "Selected"
+        case .arrived: return "Arrived"
+        case .unavailable: return "Unavailable"
+        case .injured: return "Injured"
+        case .active: return "Active"
+        case .bench: return "Bench"
+        case .substituted: return "Substituted"
+        case .interchanged: return "Interchanged"
+        }
+    }
+}
+
+struct SportRosterPosition: Codable, Identifiable, Hashable {
+    let key: String
+    let label: String
+    let group: String
+    let maxSelected: Int?
+
+    var id: String { key }
+}
+
+struct SportRosterTemplate: Codable, Hashable {
+    let sportKey: String
+    let label: String
+    let onFieldPlayers: Int
+    let squadMin: Int
+    let squadMax: Int
+    let benchMin: Int?
+    let benchMax: Int?
+    let substitutionMode: String
+    let jerseyLabel: String
+    let captainRoles: [String]
+    let positions: [SportRosterPosition]
+}
+
+struct MatchSquadMember: Codable, Identifiable, Hashable {
+    let id: String
+    let fixtureId: String
+    let teamId: String
+    let squadId: String
+    let memberId: String
+    var planned: Bool
+    var participationStatus: MatchParticipationStatus
+    var positionKey: String?
+    var positionLabel: String?
+    var jerseyNumber: String?
+    var bibNumber: String?
+    var isCaptain: Bool?
+    var isViceCaptain: Bool?
+    var notes: String?
+    let memberName: String
+    let firstName: String?
+    let lastName: String?
+    let email: String?
+    let phone: String?
+
+    var displayNumber: String? {
+        (jerseyNumber ?? bibNumber)?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case fixtureId, teamId, squadId, memberId, planned, participationStatus
+        case positionKey, positionLabel, jerseyNumber, bibNumber
+        case isCaptain, isViceCaptain, notes
+        case memberName, firstName, lastName, email, phone
+    }
+}
+
+struct MatchParticipationEvent: Codable, Identifiable, Hashable {
+    let id: String
+    let fixtureId: String
+    let teamId: String
+    let squadId: String
+    let squadMemberId: String?
+    let memberId: String?
+    let eventType: String
+    let period: String?
+    let atMinute: Double?
+    let positionKey: String?
+    let notes: String?
+    let occurredAt: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case fixtureId, teamId, squadId, squadMemberId, memberId, eventType
+        case period, atMinute, positionKey, notes, occurredAt
+    }
+}
+
+struct MatchSquad: Codable, Identifiable, Hashable {
+    let id: String
+    let fixtureId: String
+    let teamId: String
+    let sportKey: String?
+    let templateKey: String
+    let name: String
+    let notes: String?
+    let fixtureTitle: String
+    let fixtureStartTime: Double?
+    let fixtureStatus: SportFixtureStatus?
+    let teamName: String
+    let template: SportRosterTemplate
+    var members: [MatchSquadMember]
+    let events: [MatchParticipationEvent]
+
+    var fixtureDate: Date? {
+        guard let fixtureStartTime else { return nil }
+        return Date(timeIntervalSince1970: fixtureStartTime / 1000)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case fixtureId, teamId, sportKey, templateKey, name, notes
+        case fixtureTitle, fixtureStartTime, fixtureStatus, teamName
+        case template, members, events
+    }
+}
+
+struct MatchParticipationPayload: Codable {
+    let squadMemberId: String
+    let participationStatus: MatchParticipationStatus?
+    let positionKey: String?
+    let jerseyNumber: String?
+    let bibNumber: String?
+    let isCaptain: Bool?
+    let isViceCaptain: Bool?
+    let notes: String?
+}
+
 private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
 }

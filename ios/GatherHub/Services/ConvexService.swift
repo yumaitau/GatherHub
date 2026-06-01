@@ -229,6 +229,39 @@ final class ConvexService: ObservableObject {
         return try await once("fixtures:listFixtures", with: args)
     }
 
+    /// `matchRosters:listMatchDay` (query) — cached match-day team sheets.
+    func listMatchDaySquads(upcomingOnly: Bool = false) async throws -> [MatchSquad] {
+        var args: [String: ConvexEncodable?] = [:]
+        if upcomingOnly {
+            args["startFrom"] = Date().timeIntervalSince1970 * 1000
+        }
+        return try await once("matchRosters:listMatchDay", with: args)
+    }
+
+    /// `matchRosters:updateParticipation` (mutation) — offline-safe field updates.
+    func updateMatchParticipation(
+        _ payload: MatchParticipationPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = [
+            "squadMemberId": payload.squadMemberId
+        ]
+        if let participationStatus = payload.participationStatus {
+            args["participationStatus"] = participationStatus.rawValue
+        }
+        putOptionalString("positionKey", payload.positionKey, into: &args)
+        putOptionalString("jerseyNumber", payload.jerseyNumber, into: &args)
+        putOptionalString("bibNumber", payload.bibNumber, into: &args)
+        if let isCaptain = payload.isCaptain { args["isCaptain"] = isCaptain }
+        if let isViceCaptain = payload.isViceCaptain { args["isViceCaptain"] = isViceCaptain }
+        putOptionalString("notes", payload.notes, into: &args)
+        try await performMutation(
+            "matchRosters:updateParticipation",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
     /// `events:setRsvp` (mutation, `{ eventId, memberId, status }`).
     func setRsvp(
         eventId: String,

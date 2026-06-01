@@ -196,6 +196,13 @@ function buildSportNav(org: VerticalOrgConfig | null): NavGroup {
         capability: "events.read",
       },
       {
+        to: "/sport/match-day",
+        label: "Match day",
+        icon: ClipboardCheck,
+        module: "sport",
+        capability: "events.read",
+      },
+      {
         to: "/sport/registrations",
         label: titleCase(term(org, "registrationPlural")),
         icon: ClipboardList,

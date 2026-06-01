@@ -25,6 +25,7 @@ import SponsorDetailPage from "@/pages/sponsors/SponsorDetailPage";
 import NewsAdminPage from "@/pages/NewsAdminPage";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import FixturesPage from "@/pages/sport/FixturesPage";
+import MatchDayPage from "@/pages/sport/MatchDayPage";
 import RegistrationsPage from "@/pages/soccer/RegistrationsPage";
 import GradingPage, { PlayerEvaluationPage } from "@/pages/soccer/GradingPage";
 import SoccerDivisionsPage from "@/pages/soccer/DivisionsPage";
@@ -104,6 +105,7 @@ function AuthedApp() {
               <Route path="/news" element={<NewsAdminPage />} />
               {/* Sport module routes. Legacy /soccer paths remain usable. */}
               <Route path="/sport/fixtures" element={<FixturesPage />} />
+              <Route path="/sport/match-day" element={<MatchDayPage />} />
               <Route
                 path="/sport/players"
                 element={<Navigate to="/sport/registrations" replace />}
@@ -133,6 +135,10 @@ function AuthedApp() {
               <Route
                 path="/soccer/fixtures"
                 element={<Navigate to="/sport/fixtures" replace />}
+              />
+              <Route
+                path="/soccer/match-day"
+                element={<Navigate to="/sport/match-day" replace />}
               />
               {/* /soccer/players merged into Player Registrations */}
               <Route

@@ -356,6 +356,10 @@ final class SyncCoordinator {
                     clientMutationId: op.clientId
                 )
                 await refreshAgeGroupCaches()
+            case .matchParticipationUpdate:
+                let args = try JSONDecoder().decode(MatchParticipationPayload.self, from: op.payload)
+                try await convex.updateMatchParticipation(args, clientMutationId: op.clientId)
+                await refreshMatchDayCaches()
             }
             op.transition(to: .applied)
             try? store.save()
@@ -494,6 +498,12 @@ final class SyncCoordinator {
             try? store.replaceTeamAgeGroups(rows)
         }
         await refreshPlayerListingCache()
+    }
+
+    private func refreshMatchDayCaches() async {
+        if let rows = try? await convex.listMatchDaySquads(upcomingOnly: false) {
+            try? store.replaceMatchDaySquads(rows)
+        }
     }
 
     private func refreshLocationDefaultsCache() async {

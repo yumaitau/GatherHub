@@ -153,6 +153,17 @@ final class AppDataPreloader {
                 loaded: &loaded,
                 failures: &failures
             )
+
+            record(
+                await run("Match day") {
+                    try guardActive(shouldContinue)
+                    let rows = try await convex.listMatchDaySquads(upcomingOnly: false)
+                    try guardActive(shouldContinue)
+                    try store.replaceMatchDaySquads(rows)
+                },
+                loaded: &loaded,
+                failures: &failures
+            )
         }
 
         record(

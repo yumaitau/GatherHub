@@ -724,7 +724,7 @@ export const removeFixture = mutation({
   handler: async (ctx, args) => {
     const auth = await requireFixtureDelete(ctx);
     const fixture = await assertFixture(ctx, auth, args.fixtureId);
-    const [teams, officials] = await Promise.all([
+    const [teams, officials, squads] = await Promise.all([
       ctx.db
         .query("fixtureTeams")
         .withIndex("by_fixture", (q) => q.eq("fixtureId", args.fixtureId))
@@ -733,9 +733,36 @@ export const removeFixture = mutation({
         .query("officialAssignments")
         .withIndex("by_fixture", (q) => q.eq("fixtureId", args.fixtureId))
         .collect(),
+      ctx.db
+        .query("matchSquads")
+        .withIndex("by_fixture", (q) => q.eq("fixtureId", args.fixtureId))
+        .collect(),
     ]);
+    const squadMembers = (
+      await Promise.all(
+        squads.map((squad) =>
+          ctx.db
+            .query("matchSquadMembers")
+            .withIndex("by_squad", (q) => q.eq("squadId", squad._id))
+            .collect(),
+        ),
+      )
+    ).flat();
+    const participationEvents = (
+      await Promise.all(
+        squads.map((squad) =>
+          ctx.db
+            .query("matchParticipationEvents")
+            .withIndex("by_squad", (q) => q.eq("squadId", squad._id))
+            .collect(),
+        ),
+      )
+    ).flat();
     for (const row of teams) await ctx.db.delete(row._id);
     for (const row of officials) await ctx.db.delete(row._id);
+    for (const row of participationEvents) await ctx.db.delete(row._id);
+    for (const row of squadMembers) await ctx.db.delete(row._id);
+    for (const row of squads) await ctx.db.delete(row._id);
     await ctx.db.delete(args.fixtureId);
     await recordFixtureAudit(ctx, {
       orgId: auth.org._id,

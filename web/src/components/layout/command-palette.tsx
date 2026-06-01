@@ -98,6 +98,16 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       keywords: ["matches", "draw", "schedule", "ladder", "competition"],
     },
     {
+      id: "sport-match-day",
+      label: "Match day",
+      icon: ClipboardCheck,
+      group: "Operations",
+      to: "/sport/match-day",
+      module: "sport",
+      capability: "events.read",
+      keywords: ["roster", "lineup", "bench", "interchange", "positions"],
+    },
+    {
       id: "announcements",
       label: "Announcements",
       icon: Megaphone,

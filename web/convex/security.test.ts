@@ -709,6 +709,161 @@ describe("role-based permissions", () => {
     expect(afterDelete.map((row) => row._id)).not.toContain(fixtureId);
   });
 
+  test("match squads validate sport positions and isolate participation", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", {
+        clerkUserId: "user_roster_owner",
+        email: "roster-owner@example.test",
+      });
+      await ctx.db.insert("users", {
+        clerkUserId: "user_roster_other",
+        email: "roster-other@example.test",
+      });
+      await ctx.db.insert("users", {
+        clerkUserId: "user_roster_parent",
+        email: "roster-parent@example.test",
+      });
+    });
+    const owner = t.withIdentity({ subject: "user_roster_owner" });
+    const other = t.withIdentity({ subject: "user_roster_other" });
+
+    const { orgId } = await owner.mutation(api.organizations.create, {
+      name: "Roster Rugby",
+      kind: "sports_club",
+      templateKey: "rugby_union_club",
+      sportKey: "rugby_union",
+    });
+    await other.mutation(api.organizations.create, {
+      name: "Roster Cricket",
+      kind: "sports_club",
+      templateKey: "cricket_club",
+      sportKey: "cricket",
+    });
+    await t.run(async (ctx) => {
+      const parent = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) =>
+          q.eq("clerkUserId", "user_roster_parent"),
+        )
+        .unique();
+      await ctx.db.patch(parent!._id, { activeOrgId: orgId });
+      await ctx.db.insert("memberships", {
+        orgId,
+        userId: parent!._id,
+        role: "parent",
+      });
+    });
+    const parent = t.withIdentity({ subject: "user_roster_parent" });
+
+    const templates = await owner.query(api.matchRosters.templates, {});
+    expect(Object.keys(templates)).toEqual(
+      expect.arrayContaining([
+        "soccer",
+        "rugby_league",
+        "rugby_union",
+        "cricket",
+        "hockey",
+        "netball",
+        "basketball",
+      ]),
+    );
+    expect(templates.rugby_union.onFieldPlayers).toBe(15);
+    expect(templates.netball.positions.map((row) => row.key)).toContain("gs");
+
+    const teamId = await owner.mutation(api.teams.create, {
+      name: "First XV",
+    });
+    const playerA = await owner.mutation(api.members.create, {
+      firstName: "Alex",
+      lastName: "Prop",
+    });
+    const playerB = await owner.mutation(api.members.create, {
+      firstName: "Blair",
+      lastName: "Lock",
+    });
+    await owner.mutation(api.teams.assignMember, {
+      teamId,
+      memberId: playerA,
+      role: "player",
+    });
+    await owner.mutation(api.teams.assignMember, {
+      teamId,
+      memberId: playerB,
+      role: "player",
+    });
+
+    const fixtureId = await owner.mutation(api.fixtures.upsertFixture, {
+      title: "Roster Round 1",
+      startTime: Date.now() + 86_400_000,
+      status: "scheduled",
+    });
+    await owner.mutation(api.fixtures.upsertFixtureTeam, {
+      fixtureId,
+      teamId,
+      side: "home",
+    });
+    const squadId = await owner.mutation(api.matchRosters.seedFromTeam, {
+      fixtureId,
+      teamId,
+    });
+    const [squad] = await owner.query(api.matchRosters.listForFixture, {
+      fixtureId,
+    });
+    expect(squad?.members).toHaveLength(2);
+    expect(squad?.template.positions.map((row) => row.key)).toContain("lock");
+
+    const squadMember = squad!.members.find((row) => row.memberId === playerB)!;
+    await owner.mutation(api.matchRosters.updateParticipation, {
+      squadMemberId: squadMember._id,
+      participationStatus: "arrived",
+      positionKey: "lock",
+      jerseyNumber: "4",
+      isCaptain: true,
+    });
+    const [updated] = await owner.query(api.matchRosters.listMatchDay, {
+      fixtureId,
+    });
+    const updatedMember = updated!.members.find(
+      (row) => row.memberId === playerB,
+    );
+    expect(updatedMember).toMatchObject({
+      positionKey: "lock",
+      positionLabel: "Lock",
+      jerseyNumber: "4",
+      participationStatus: "arrived",
+      isCaptain: true,
+    });
+    expect(updated!.events[0]).toMatchObject({ eventType: "position_change" });
+
+    await expect(
+      owner.mutation(api.matchRosters.updateParticipation, {
+        squadMemberId: squadMember._id,
+        positionKey: "goal_attack",
+      }),
+    ).rejects.toThrow(/not valid/i);
+    await expect(
+      other.query(api.matchRosters.listForFixture, { fixtureId }),
+    ).rejects.toThrow(/not found/i);
+    await expect(
+      parent.mutation(api.matchRosters.seedFromTeam, {
+        fixtureId,
+        teamId,
+      }),
+    ).rejects.toThrow(/permission/i);
+
+    await owner.mutation(api.matchRosters.removeSquadMember, {
+      squadMemberId: squadMember._id,
+    });
+    const [afterRemove] = await owner.query(api.matchRosters.listMatchDay, {
+      fixtureId,
+    });
+    expect(afterRemove!.members.map((row) => row.memberId)).not.toContain(
+      playerB,
+    );
+    expect(squadId).toBeDefined();
+  });
+
   test("legacy soccerMode organisations resolve to the soccer sport pack", async () => {
     const t = convexTest(schema, modules);
     const club = await seedOrg(t, {
