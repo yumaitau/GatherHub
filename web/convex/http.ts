@@ -5,6 +5,27 @@ import { Webhook } from "svix";
 
 const http = httpRouter();
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Max-Age": "86400",
+};
+
+const uploadOwnerTypes = ["news", "qrSettings", "sponsors"] as const;
+const uploadPurposes = ["coverImage", "logo", "qrLogo"] as const;
+
+type UploadOwnerType = (typeof uploadOwnerTypes)[number];
+type UploadPurpose = (typeof uploadPurposes)[number];
+type UploadUrlBody = {
+  ownerType: UploadOwnerType;
+  ownerId: string;
+  purpose: UploadPurpose;
+  fileName?: string;
+  contentType: string;
+  size: number;
+};
+
 /**
  * Clerk webhook → keeps the Convex `users` mirror in sync with Clerk.
  *
@@ -66,13 +87,130 @@ const clerkWebhook = httpAction(async (ctx, request) => {
   return new Response(null, { status: 200 });
 });
 
+const uploadUrl = httpAction(async (ctx, request) => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    return jsonResponse({ error: "Sign in to continue." }, 401);
+  }
+
+  let body: UploadUrlBody;
+  try {
+    body = parseUploadUrlBody(await request.json());
+  } catch (err) {
+    return jsonResponse({ error: errorMessage(err) }, 400);
+  }
+
+  try {
+    const result = await ctx.runMutation(
+      internal.files.generateUploadUrlForHttp,
+      {
+        clerkUserId: identity.subject,
+        ...body,
+      },
+    );
+    return jsonResponse(result);
+  } catch (err) {
+    return jsonResponse(
+      { error: errorMessage(err) },
+      statusForUploadError(errorMessage(err)),
+    );
+  }
+});
+
+const options = httpAction(async () => {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders,
+  });
+});
+
 http.route({
   path: "/clerk-webhook",
   method: "POST",
   handler: clerkWebhook,
 });
 
+http.route({
+  path: "/files/upload-url",
+  method: "POST",
+  handler: uploadUrl,
+});
+
+http.route({
+  path: "/files/upload-url",
+  method: "OPTIONS",
+  handler: options,
+});
+
 export default http;
+
+function jsonResponse(value: unknown, status = 200) {
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders,
+    },
+  });
+}
+
+function parseUploadUrlBody(value: unknown): UploadUrlBody {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Request body must be a JSON object.");
+  }
+  const body = value as Record<string, unknown>;
+  const ownerType = stringEnum(body.ownerType, uploadOwnerTypes, "ownerType");
+  const purpose = stringEnum(body.purpose, uploadPurposes, "purpose");
+  const ownerId = requiredString(body.ownerId, "ownerId");
+  const contentType = requiredString(body.contentType, "contentType");
+  const size = body.size;
+  if (typeof size !== "number" || !Number.isFinite(size) || size <= 0) {
+    throw new Error("size must be a positive number of bytes.");
+  }
+  const fileName =
+    body.fileName === undefined
+      ? undefined
+      : requiredString(body.fileName, "fileName");
+  return { ownerType, ownerId, purpose, fileName, contentType, size };
+}
+
+function requiredString(value: unknown, field: string): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`${field} is required.`);
+  }
+  return value;
+}
+
+function stringEnum<T extends readonly string[]>(
+  value: unknown,
+  allowed: T,
+  field: string,
+): T[number] {
+  if (
+    typeof value !== "string" ||
+    !(allowed as readonly string[]).includes(value)
+  ) {
+    throw new Error(`${field} is not supported.`);
+  }
+  return value as T[number];
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function statusForUploadError(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes("missing required r2")) return 500;
+  if (
+    lower.includes("permission") ||
+    lower.includes("not a member") ||
+    lower.includes("organisation")
+  ) {
+    return 403;
+  }
+  return 400;
+}
 
 const ROLES = [
   "owner",

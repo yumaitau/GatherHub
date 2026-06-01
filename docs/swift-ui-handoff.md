@@ -683,6 +683,10 @@ All mutations call `assertSoccerMode`; on `soccerMode !== true` throw
 - **`files.generateUploadUrl`** — mutation, matching capability per upload
   destination (`sponsors.manage`, `news.manage`, or `assets.admin`).
   Short-lived R2 upload URL; client `PUT`s the file.
+- **`POST /files/upload-url`** — Convex HTTP endpoint for clients that cannot
+  use the Convex SDK. Requires `Authorization: Bearer <Convex JWT>` and the
+  same JSON fields as `files.generateUploadUrl`; returns the same upload URL,
+  object key, headers, and expiry.
 - **`files.completeUpload`** — action. Runs an R2 HEAD check, verifies MIME type
   and byte size, and marks the upload metadata verified. Only verified object
   keys can be attached by the owning mutation. No generic object-key → URL

@@ -153,6 +153,51 @@ describe("R2 image uploads", () => {
     });
   });
 
+  test("HTTP upload URL helper issues scoped R2 keys from Clerk identity", async () => {
+    await withR2Env(async () => {
+      const t = convexTest(schema, modules);
+      const club = await seedOrg(t, {
+        clerkOrg: "org_r2_http_paths",
+        clerkUser: "user_r2_http_paths",
+        role: "owner",
+      });
+      const sponsorId = await club.as.mutation(api.sponsors.create, {
+        name: "HTTP Path Sponsor",
+      });
+
+      const upload = await t.mutation(internal.files.generateUploadUrlForHttp, {
+        clerkUserId: "user_r2_http_paths",
+        ownerType: "sponsors",
+        ownerId: sponsorId,
+        purpose: "logo",
+        fileName: "HTTP Logo.PNG",
+        contentType: "image/png",
+        size: 2048,
+      });
+
+      expect(upload.storageId).toMatch(
+        new RegExp(
+          `^orgs/${escapeRegExp(club.orgId)}/sponsors/${safePathSegmentForTest(sponsorId)}/logo/[a-f0-9-]+-http-logo\\.png$`,
+        ),
+      );
+      const row = await t.run(async (ctx) => {
+        return await ctx.db
+          .query("uploadedFiles")
+          .withIndex("by_storage", (q) => q.eq("storageId", upload.storageId))
+          .first();
+      });
+      expect(row).toMatchObject({
+        orgId: club.orgId,
+        uploadedBy: club.userId,
+        ownerType: "sponsors",
+        ownerId: sponsorId,
+        purpose: "logo",
+        contentType: "image/png",
+        size: 2048,
+      });
+    });
+  });
+
   test("an org cannot attach another org's R2 key", async () => {
     const t = convexTest(schema, modules);
     const a = await seedOrg(t, {

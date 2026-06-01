@@ -30,6 +30,24 @@ const purpose = v.union(
   v.literal("qrLogo"),
 );
 
+const uploadUrlArgs = {
+  ownerType,
+  ownerId: v.string(),
+  purpose,
+  fileName: v.optional(v.string()),
+  contentType: v.string(),
+  size: v.number(),
+};
+
+type GenerateUploadUrlArgs = {
+  ownerType: UploadOwnerType;
+  ownerId: string;
+  purpose: UploadPurpose;
+  fileName?: string;
+  contentType: string;
+  size: number;
+};
+
 function uploadCapabilityFor(ownerType: string, purpose: string): Capability {
   if (ownerType === "sponsors" && purpose === "logo") {
     return "sponsors.manage";
@@ -52,24 +70,67 @@ async function requireUploadCapability(
   await requireCapability(ctx, auth, uploadCapabilityFor(ownerType, purpose));
 }
 
+async function authContextForClerkUserId(
+  ctx: MutationCtx,
+  clerkUserId: string,
+): Promise<AuthContext> {
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", clerkUserId))
+    .unique();
+  if (!user || !user.activeOrgId) {
+    throw new Error("Select or create an organisation to continue.");
+  }
+  const membership = await ctx.db
+    .query("memberships")
+    .withIndex("by_org_and_user", (q) =>
+      q.eq("orgId", user.activeOrgId!).eq("userId", user._id),
+    )
+    .unique();
+  const org = await ctx.db.get(user.activeOrgId);
+  if (!membership || !org) {
+    throw new Error("You are not a member of this organisation.");
+  }
+  return { user, org, membership, role: membership.role };
+}
+
+async function issueOrgUploadUrl(
+  ctx: MutationCtx,
+  auth: AuthContext,
+  args: GenerateUploadUrlArgs,
+) {
+  await requireUploadCapability(ctx, auth, args.ownerType, args.purpose);
+  return await createOrgImageUpload(ctx, auth, args);
+}
+
 /**
  * Issue a short-lived R2 PUT URL for an org-scoped image upload. The returned
  * `storageId` is the R2 object key and remains compatible with existing
  * sponsor/news/QR mutation argument names.
  */
 export const generateUploadUrl = mutation({
-  args: {
-    ownerType,
-    ownerId: v.string(),
-    purpose,
-    fileName: v.optional(v.string()),
-    contentType: v.string(),
-    size: v.number(),
-  },
+  args: uploadUrlArgs,
   handler: async (ctx, args) => {
     const auth = await requireOrgMember(ctx);
-    await requireUploadCapability(ctx, auth, args.ownerType, args.purpose);
-    return await createOrgImageUpload(ctx, auth, {
+    return await issueOrgUploadUrl(ctx, auth, {
+      ownerType: args.ownerType as UploadOwnerType,
+      ownerId: args.ownerId,
+      purpose: args.purpose as UploadPurpose,
+      fileName: args.fileName,
+      contentType: args.contentType,
+      size: args.size,
+    });
+  },
+});
+
+export const generateUploadUrlForHttp = internalMutation({
+  args: {
+    clerkUserId: v.string(),
+    ...uploadUrlArgs,
+  },
+  handler: async (ctx, args) => {
+    const auth = await authContextForClerkUserId(ctx, args.clerkUserId);
+    return await issueOrgUploadUrl(ctx, auth, {
       ownerType: args.ownerType as UploadOwnerType,
       ownerId: args.ownerId,
       purpose: args.purpose as UploadPurpose,

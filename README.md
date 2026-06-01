@@ -121,6 +121,25 @@ In the Convex dashboard (or via `npx convex env set`), set:
 The R2 bucket CORS policy must allow browser `PUT` requests from the web app
 origin with `content-type` and `x-amz-meta-declared-size` request headers.
 
+Authenticated HTTP clients can request an upload URL without the Convex SDK:
+
+```bash
+curl -X POST "$CONVEX_SITE_URL/files/upload-url" \
+  -H "Authorization: Bearer $CONVEX_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ownerType": "sponsors",
+    "ownerId": "<sponsor-id>",
+    "purpose": "logo",
+    "fileName": "logo.png",
+    "contentType": "image/png",
+    "size": 12345
+  }'
+```
+
+The response includes `uploadUrl`, `storageId`, `objectKey`, required request
+`headers`, and `expiresInSeconds`.
+
 ### 4. Environment variables
 
 Copy and fill in the web env file:
