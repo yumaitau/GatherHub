@@ -515,8 +515,8 @@ export const remove = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Deleting an asset is reserved for admins; prefer "retire" in normal use.
-    const auth = await requireRole(ctx, "admin");
+    // Committee+ can fully manage asset records; audit history is retained.
+    const auth = await requireRole(ctx, "committee");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const asset = await ctx.db.get(args.assetId);

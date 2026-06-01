@@ -3,7 +3,6 @@ import { useQuery, useMutation } from "convex/react";
 import { Link } from "react-router-dom";
 import { Building2, Plus } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +20,7 @@ import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatCurrency } from "@/lib/utils";
+import { IMAGE_UPLOAD_ACCEPT, uploadImageFile } from "@/lib/uploads";
 
 export default function SponsorsPage() {
   const { can } = useGatherHub();
@@ -125,17 +125,9 @@ function NewSponsorDialog() {
     setError(null);
     setSaving(true);
     try {
-      let logoStorageId: Id<"_storage"> | undefined;
+      let logoUpload: Awaited<ReturnType<typeof uploadImageFile>> | undefined;
       if (logoFile) {
-        const url = await generateUploadUrl();
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": logoFile.type },
-          body: logoFile,
-        });
-        if (!res.ok) throw new Error("Logo upload failed.");
-        const json = (await res.json()) as { storageId: Id<"_storage"> };
-        logoStorageId = json.storageId;
+        logoUpload = await uploadImageFile(generateUploadUrl, logoFile);
       }
       const valueNum = sponsorshipValue.trim()
         ? Number(sponsorshipValue)
@@ -151,7 +143,8 @@ function NewSponsorDialog() {
             : undefined,
         visibleOnPublicSite,
         notes: notes.trim() || undefined,
-        logoStorageId,
+        logoStorageId: logoUpload?.storageId,
+        logoFileName: logoUpload?.fileName,
       });
       reset();
       setOpen(false);
@@ -236,7 +229,7 @@ function NewSponsorDialog() {
             <Input
               id="sp-logo"
               type="file"
-              accept="image/*"
+              accept={IMAGE_UPLOAD_ACCEPT}
               onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
             />
           </div>

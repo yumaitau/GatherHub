@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		0A24E8BB557CC5A36B1ED408 /* CachedMember.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D63BCDDEB2E3F9BB0A7385 /* CachedMember.swift */; };
 		0E0428946F9B70F9E5248A90 /* GatherHubApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE26217E9DFE35619041376B /* GatherHubApp.swift */; };
+		11A22B33C44D55E66F77A881 /* OperationsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11A22B33C44D55E66F77A882 /* OperationsModels.swift */; };
+		11A22B33C44D55E66F77A883 /* TaskBoardListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11A22B33C44D55E66F77A884 /* TaskBoardListView.swift */; };
+		11A22B33C44D55E66F77A885 /* TrainingCertificationsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11A22B33C44D55E66F77A886 /* TrainingCertificationsListView.swift */; };
 		16F4182D42AF16C9F30E1026 /* CachedPlayerListing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D29CF163D7BB5CEA4BD8234 /* CachedPlayerListing.swift */; };
 		17A7F2664D7C625135036618 /* CachedTeam.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8077DCC127A2A187BA87DAA /* CachedTeam.swift */; };
 		1D2BBCF4B3325C6EC311AD3D /* TagParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D838F2B9AF76381AF73B99AE /* TagParser.swift */; };
@@ -90,6 +93,9 @@
 		0B00773BADD7DD0DE20DEF63 /* OfflineBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineBanner.swift; sourceTree = "<group>"; };
 		0B10153753BBDF8FFB7939C6 /* GatherHub.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GatherHub.entitlements; sourceTree = "<group>"; };
 		0C60DFE29B79A3F424862A7B /* SoccerRegistrationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoccerRegistrationsView.swift; sourceTree = "<group>"; };
+		11A22B33C44D55E66F77A882 /* OperationsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationsModels.swift; sourceTree = "<group>"; };
+		11A22B33C44D55E66F77A884 /* TaskBoardListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskBoardListView.swift; sourceTree = "<group>"; };
+		11A22B33C44D55E66F77A886 /* TrainingCertificationsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingCertificationsListView.swift; sourceTree = "<group>"; };
 		14566E0E86787CDF079AC46A /* Color+GatherHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+GatherHub.swift"; sourceTree = "<group>"; };
 		16C5023C6C8391B8A0EB214B /* GHBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GHBadge.swift; sourceTree = "<group>"; };
 		197FE6D524083509A84E6B4A /* AssetStatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetStatusBadge.swift; sourceTree = "<group>"; };
@@ -247,6 +253,7 @@
 			isa = PBXGroup;
 			children = (
 				03216C01838EB7D83545D41E /* Models.swift */,
+				11A22B33C44D55E66F77A882 /* OperationsModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -339,7 +346,9 @@
 				55CDCC88952FF429C1BE1F97 /* PlayerAssignmentSheet.swift */,
 				452F91E63233484EC79069A5 /* PlayerGradingView.swift */,
 				0C60DFE29B79A3F424862A7B /* SoccerRegistrationsView.swift */,
+				11A22B33C44D55E66F77A884 /* TaskBoardListView.swift */,
 				49B8C8B1929BB800E35239A3 /* TeamsListView.swift */,
+				11A22B33C44D55E66F77A886 /* TrainingCertificationsListView.swift */,
 			);
 			path = More;
 			sourceTree = "<group>";
@@ -510,6 +519,7 @@
 				5FD40DFA605200B5F2A0C5F9 /* NetworkMonitor.swift in Sources */,
 				E7A89B30771EC4DD626D40AD /* OfflineBanner.swift in Sources */,
 				96A2CF8631EA66D5A5F05C22 /* OfflineStateView.swift in Sources */,
+				11A22B33C44D55E66F77A881 /* OperationsModels.swift in Sources */,
 				CAE31ABC63680BE3CDC2EAF4 /* OrgPickerView.swift in Sources */,
 				2BA1F96D4AD068E2CB48FB56 /* OrgSwitcherSheet.swift in Sources */,
 				FA44CCF14EC52A23DC8F18B4 /* OrganizationAddressView.swift in Sources */,
@@ -529,7 +539,9 @@
 				69CDB7BA2C5B337E09735A2A /* SyncEnvironment.swift in Sources */,
 				BD9768EB0B9DC92C292D987A /* SyncState.swift in Sources */,
 				1D2BBCF4B3325C6EC311AD3D /* TagParser.swift in Sources */,
+				11A22B33C44D55E66F77A883 /* TaskBoardListView.swift in Sources */,
 				5B4578C7D9439886E40303C0 /* TeamsListView.swift in Sources */,
+				11A22B33C44D55E66F77A885 /* TrainingCertificationsListView.swift in Sources */,
 				C0D1407D1DC1718C472CDB49 /* Typography.swift in Sources */,
 				A010F7329CAF648FAAD7B337 /* UserFacingError.swift in Sources */,
 			);

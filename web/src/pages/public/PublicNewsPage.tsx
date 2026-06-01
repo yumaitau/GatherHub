@@ -4,6 +4,7 @@ import { api } from "../../../convex/_generated/api";
 import { ArrowLeft } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import { formatDate } from "@/lib/utils";
+import { UploadedImageViewer } from "@/components/uploaded-image-viewer";
 
 export default function PublicNewsPage() {
   const { slug, articleSlug } = useParams<{
@@ -47,10 +48,12 @@ export default function PublicNewsPage() {
           {article.orgName}
         </Link>
         {article.coverImageUrl && (
-          <img
+          <UploadedImageViewer
             src={article.coverImageUrl}
-            alt=""
-            className="mb-7 w-full rounded-md border border-hairline object-cover"
+            alt={`${article.title} cover image`}
+            title={`${article.title} cover image`}
+            className="mb-7 aspect-video w-full"
+            fit="cover"
           />
         )}
         <h1 className="text-display text-ink-strong">{article.title}</h1>

@@ -163,13 +163,13 @@ export default function MembersPage() {
               <Download className="h-4 w-4" />
               Export CSV
             </Button>
-            {can("admin") && <InviteUserDialog />}
+            {can("committee") && <InviteUserDialog />}
             {can("coach") && <AddMemberDialog />}
           </>
         }
       />
 
-      {can("admin") && <PendingInvitesPanel />}
+      {can("committee") && <PendingInvitesPanel />}
 
       {members === undefined ? (
         <LoadingState />

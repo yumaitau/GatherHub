@@ -34,12 +34,12 @@ export default function AuditLogsPage() {
   const { can } = useGatherHub();
   const rows = useQuery(api.assets.allHistory, {});
 
-  if (!can("admin")) {
+  if (!can("committee")) {
     return (
       <EmptyState
         icon={ShieldOff}
-        title="Admin only"
-        description="Audit logs are restricted to owners and admins."
+        title="Committee only"
+        description="Audit logs are restricted to committee members and above."
       />
     );
   }

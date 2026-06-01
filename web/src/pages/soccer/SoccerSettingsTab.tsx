@@ -6,7 +6,6 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -19,12 +18,14 @@ import { LoadingState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 
+const DEFAULT_DIVISION_COLOR = "#0891b2";
+
 export function SoccerSettingsTab() {
   const { org, can } = useGatherHub();
   const setMode = useMutation(api.soccer.setSoccerMode);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const canToggle = can("admin");
+  const canToggle = can("committee");
 
   async function toggle(next: boolean) {
     setError(null);
@@ -64,7 +65,7 @@ export function SoccerSettingsTab() {
           </label>
           {!canToggle && (
             <p className="text-caption text-ink-quiet">
-              Owner or admin can toggle this.
+              Committee members and above can toggle this.
             </p>
           )}
           {error && <p className="text-caption text-danger">{error}</p>}
@@ -386,44 +387,7 @@ function DivisionEditor() {
         </TableHeader>
         <TableBody>
           {divisions.map((d) => (
-            <TableRow key={d._id}>
-              <TableCell className="font-semi text-ink-strong">
-                {d.name}
-              </TableCell>
-              <TableCell numeric>{d.minGrade}</TableCell>
-              <TableCell numeric>{d.maxGrade}</TableCell>
-              <TableCell>
-                <span className="inline-flex items-center gap-2">
-                  <span
-                    aria-hidden="true"
-                    className="inline-block h-4 w-4 rounded-xs border border-hairline"
-                    style={{ background: d.color ?? "transparent" }}
-                  />
-                  <code className="text-mono text-ink-quiet">
-                    {d.color ?? "—"}
-                  </code>
-                </span>
-              </TableCell>
-              <TableCell>
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={d.active}
-                    onChange={(e) =>
-                      upsert({
-                        id: d._id,
-                        name: d.name,
-                        minGrade: d.minGrade,
-                        maxGrade: d.maxGrade,
-                        color: d.color,
-                        active: e.target.checked,
-                      })
-                    }
-                    className="h-4 w-4 accent-primary"
-                  />
-                </label>
-              </TableCell>
-            </TableRow>
+            <DivisionSettingsRow key={d._id} division={d} upsert={upsert} />
           ))}
         </TableBody>
       </Table>
@@ -480,21 +444,162 @@ function DivisionEditor() {
   );
 }
 
+interface DivisionSettingsDivision {
+  _id: Id<"soccerDivisions">;
+  name: string;
+  minGrade: number;
+  maxGrade: number;
+  color?: string;
+  active: boolean;
+}
+
+function DivisionSettingsRow({
+  division,
+  upsert,
+}: {
+  division: DivisionSettingsDivision;
+  upsert: ReturnType<typeof useMutation<typeof api.soccer.upsertDivision>>;
+}) {
+  const [name, setName] = React.useState(division.name);
+  const [min, setMin] = React.useState(String(division.minGrade));
+  const [max, setMax] = React.useState(String(division.maxGrade));
+  const [color, setColor] = React.useState(
+    division.color ?? DEFAULT_DIVISION_COLOR,
+  );
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => setName(division.name), [division.name]);
+  React.useEffect(() => setMin(String(division.minGrade)), [division.minGrade]);
+  React.useEffect(() => setMax(String(division.maxGrade)), [division.maxGrade]);
+  React.useEffect(
+    () => setColor(division.color ?? DEFAULT_DIVISION_COLOR),
+    [division.color],
+  );
+
+  async function save(patch: Partial<DivisionSettingsDivision>) {
+    const nextName = (patch.name ?? name).trim();
+    const nextMin =
+      patch.minGrade ?? (Number.isFinite(Number(min)) ? Number(min) : NaN);
+    const nextMax =
+      patch.maxGrade ?? (Number.isFinite(Number(max)) ? Number(max) : NaN);
+    const nextColor = patch.color ?? color;
+    const nextActive = patch.active ?? division.active;
+    setError(null);
+
+    try {
+      if (!nextName) throw new Error("Division name is required.");
+      if (!Number.isFinite(nextMin) || !Number.isFinite(nextMax)) {
+        throw new Error("Enter numeric grade limits.");
+      }
+      if (nextMin > nextMax) {
+        throw new Error("Min grade must be at or below max grade.");
+      }
+      await upsert({
+        id: division._id,
+        name: nextName,
+        minGrade: nextMin,
+        maxGrade: nextMax,
+        color: nextColor.trim() || undefined,
+        active: nextActive,
+      });
+      toastSuccess("Division updated.");
+    } catch (err) {
+      setError(toastFailure(err, "Could not update division."));
+    }
+  }
+
+  return (
+    <TableRow>
+      <TableCell>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => {
+            const next = name.trim();
+            if (next && next !== division.name) void save({ name: next });
+          }}
+          className="max-w-[220px]"
+        />
+        {error && <p className="mt-1 text-caption text-danger">{error}</p>}
+      </TableCell>
+      <TableCell numeric>
+        <Input
+          type="number"
+          value={min}
+          onChange={(e) => setMin(e.target.value)}
+          onBlur={() => {
+            const next = Number(min);
+            if (Number.isFinite(next) && next !== division.minGrade) {
+              void save({ minGrade: next });
+            }
+          }}
+          className="w-24"
+        />
+      </TableCell>
+      <TableCell numeric>
+        <Input
+          type="number"
+          value={max}
+          onChange={(e) => setMax(e.target.value)}
+          onBlur={() => {
+            const next = Number(max);
+            if (Number.isFinite(next) && next !== division.maxGrade) {
+              void save({ maxGrade: next });
+            }
+          }}
+          className="w-24"
+        />
+      </TableCell>
+      <TableCell>
+        <Input
+          type="color"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          onBlur={() => {
+            if (color !== (division.color ?? DEFAULT_DIVISION_COLOR)) {
+              void save({ color });
+            }
+          }}
+          className="h-9 w-14 p-1"
+        />
+      </TableCell>
+      <TableCell>
+        <label className="inline-flex items-center gap-2 text-caption text-ink-soft">
+          <input
+            type="checkbox"
+            checked={division.active}
+            onChange={(e) => void save({ active: e.target.checked })}
+            className="h-4 w-4 accent-primary"
+          />
+          Active
+        </label>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 function CompetitionEditor() {
   const comps = useQuery(api.soccer.listCompetitions, {});
   const upsert = useMutation(api.soccer.upsertCompetition);
   const [name, setName] = React.useState("");
   const [season, setSeason] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    await upsert({
-      name: name.trim(),
-      season: season.trim() || undefined,
-    });
-    setName("");
-    setSeason("");
+    setError(null);
+    try {
+      await upsert({
+        name: name.trim(),
+        season: season.trim() || undefined,
+      });
+      setName("");
+      setSeason("");
+      toastSuccess("Competition added.");
+    } catch (err) {
+      setError(toastFailure(err, "Could not add competition."));
+    }
   }
 
   if (comps === undefined) return <LoadingState />;
@@ -512,35 +617,24 @@ function CompetitionEditor() {
           No competitions yet.
         </p>
       ) : (
-        <ul className="divide-y divide-hairline">
-          {comps.map((c) => (
-            <li
-              key={c._id}
-              className="flex flex-wrap items-center gap-3 px-5 py-2.5"
-            >
-              <span className="text-body-strong text-ink-strong">{c.name}</span>
-              {c.season && <Badge variant="muted">{c.season}</Badge>}
-              <span className="ml-auto">
-                <label className="inline-flex items-center gap-2 text-caption text-ink-soft">
-                  <input
-                    type="checkbox"
-                    checked={c.active}
-                    onChange={(e) =>
-                      upsert({
-                        id: c._id,
-                        name: c.name,
-                        season: c.season,
-                        active: e.target.checked,
-                      })
-                    }
-                    className="h-4 w-4 accent-primary"
-                  />
-                  Active
-                </label>
-              </span>
-            </li>
-          ))}
-        </ul>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Season</TableHead>
+              <TableHead>Active</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {comps.map((c) => (
+              <CompetitionSettingsRow
+                key={c._id}
+                competition={c}
+                upsert={upsert}
+              />
+            ))}
+          </TableBody>
+        </Table>
       )}
       <form
         onSubmit={add}
@@ -568,7 +662,96 @@ function CompetitionEditor() {
         <Button type="submit" disabled={!name.trim()}>
           <Plus className="h-4 w-4" /> Add
         </Button>
+        {error && <p className="text-caption text-danger">{error}</p>}
       </form>
     </section>
+  );
+}
+
+interface CompetitionSettingsCompetition {
+  _id: Id<"soccerCompetitions">;
+  name: string;
+  season?: string;
+  active: boolean;
+}
+
+function CompetitionSettingsRow({
+  competition,
+  upsert,
+}: {
+  competition: CompetitionSettingsCompetition;
+  upsert: ReturnType<typeof useMutation<typeof api.soccer.upsertCompetition>>;
+}) {
+  const [name, setName] = React.useState(competition.name);
+  const [season, setSeason] = React.useState(competition.season ?? "");
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => setName(competition.name), [competition.name]);
+  React.useEffect(
+    () => setSeason(competition.season ?? ""),
+    [competition.season],
+  );
+
+  async function save(patch: Partial<CompetitionSettingsCompetition>) {
+    const nextName = (patch.name ?? name).trim();
+    const nextSeason =
+      patch.season !== undefined ? patch.season : season.trim() || undefined;
+    const nextActive = patch.active ?? competition.active;
+    setError(null);
+
+    try {
+      if (!nextName) throw new Error("Competition name is required.");
+      await upsert({
+        id: competition._id,
+        name: nextName,
+        season: nextSeason,
+        active: nextActive,
+      });
+      toastSuccess("Competition updated.");
+    } catch (err) {
+      setError(toastFailure(err, "Could not update competition."));
+    }
+  }
+
+  return (
+    <TableRow>
+      <TableCell>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => {
+            const next = name.trim();
+            if (next && next !== competition.name) void save({ name: next });
+          }}
+          className="max-w-[260px]"
+        />
+        {error && <p className="mt-1 text-caption text-danger">{error}</p>}
+      </TableCell>
+      <TableCell>
+        <Input
+          value={season}
+          onChange={(e) => setSeason(e.target.value)}
+          onBlur={() => {
+            const next = season.trim();
+            if (next !== (competition.season ?? "")) {
+              void save({ season: next || undefined });
+            }
+          }}
+          placeholder="e.g. 2026"
+          className="w-32"
+        />
+      </TableCell>
+      <TableCell>
+        <label className="inline-flex items-center gap-2 text-caption text-ink-soft">
+          <input
+            type="checkbox"
+            checked={competition.active}
+            onChange={(e) => void save({ active: e.target.checked })}
+            className="h-4 w-4 accent-primary"
+          />
+          Active
+        </label>
+      </TableCell>
+    </TableRow>
   );
 }

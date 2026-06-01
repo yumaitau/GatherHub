@@ -203,7 +203,7 @@ export const remove = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const team = await ctx.db.get(args.teamId);
     assertSameOrg(auth, team);

@@ -263,7 +263,7 @@ export default function AssetsPage() {
                 cell: ({ row }) => (
                   <AssetRowActions
                     asset={row.original}
-                    canDelete={role ? hasAtLeastRole(role, "admin") : false}
+                    canDelete={role ? hasAtLeastRole(role, "committee") : false}
                   />
                 ),
               } satisfies ColumnDef<AssetRow>,

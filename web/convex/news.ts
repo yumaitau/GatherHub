@@ -2,8 +2,9 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
 import { generateSlug } from "./lib/ids";
+import { attachOrgImage, deleteOrgImage, orgImageUrl } from "./lib/uploads";
 
-/** Admin: list all news (published + drafts) for the org. */
+/** Committee: list all news (published + drafts) for the org. */
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -12,9 +13,19 @@ export const list = query({
       .query("news")
       .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
       .collect();
-    return rows.sort(
-      (a, b) =>
-        (b.publishedAt ?? b._creationTime) - (a.publishedAt ?? a._creationTime),
+    return await Promise.all(
+      rows
+        .sort(
+          (a, b) =>
+            (b.publishedAt ?? b._creationTime) -
+            (a.publishedAt ?? a._creationTime),
+        )
+        .map(async (n) => ({
+          ...n,
+          coverImageUrl: n.coverImageStorageId
+            ? await orgImageUrl(ctx, auth, n.coverImageStorageId)
+            : null,
+        })),
     );
   },
 });
@@ -25,7 +36,14 @@ export const get = query({
     const auth = await requireOrgMember(ctx);
     const post = await ctx.db.get(args.newsId);
     assertSameOrg(auth, post);
-    return post;
+    return post
+      ? {
+          ...post,
+          coverImageUrl: post.coverImageStorageId
+            ? await orgImageUrl(ctx, auth, post.coverImageStorageId)
+            : null,
+        }
+      : null;
   },
 });
 
@@ -35,22 +53,35 @@ export const create = mutation({
     body: v.string(),
     excerpt: v.optional(v.string()),
     coverImageStorageId: v.optional(v.id("_storage")),
+    coverImageFileName: v.optional(v.string()),
     published: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
     const published = args.published ?? false;
-    return await ctx.db.insert("news", {
+    const newsId = await ctx.db.insert("news", {
       orgId: auth.org._id,
       title: args.title.trim(),
       slug: generateSlug(args.title),
       body: args.body,
       excerpt: args.excerpt,
-      coverImageStorageId: args.coverImageStorageId,
       published,
       publishedAt: published ? Date.now() : undefined,
       authorUserId: auth.user._id,
     });
+    if (args.coverImageStorageId) {
+      await attachOrgImage(ctx, auth, {
+        storageId: args.coverImageStorageId,
+        ownerType: "news",
+        ownerId: newsId,
+        purpose: "coverImage",
+        fileName: args.coverImageFileName,
+      });
+      await ctx.db.patch(newsId, {
+        coverImageStorageId: args.coverImageStorageId,
+      });
+    }
+    return newsId;
   },
 });
 
@@ -61,6 +92,7 @@ export const update = mutation({
     body: v.optional(v.string()),
     excerpt: v.optional(v.string()),
     coverImageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+    coverImageFileName: v.optional(v.string()),
     published: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -69,11 +101,26 @@ export const update = mutation({
     assertSameOrg(auth, post);
     if (!post) throw new Error("Not found.");
 
-    const { newsId, coverImageStorageId, published, ...rest } = args;
+    const {
+      newsId,
+      coverImageStorageId,
+      coverImageFileName,
+      published,
+      ...rest
+    } = args;
     const patch: Record<string, unknown> = Object.fromEntries(
       Object.entries(rest).filter(([, v]) => v !== undefined),
     );
     if (coverImageStorageId !== undefined) {
+      if (coverImageStorageId) {
+        await attachOrgImage(ctx, auth, {
+          storageId: coverImageStorageId,
+          ownerType: "news",
+          ownerId: newsId,
+          purpose: "coverImage",
+          fileName: coverImageFileName,
+        });
+      }
       patch.coverImageStorageId = coverImageStorageId ?? undefined;
     }
     if (published !== undefined) {
@@ -81,6 +128,12 @@ export const update = mutation({
       if (published && !post.published) patch.publishedAt = Date.now();
     }
     await ctx.db.patch(newsId, patch);
+    if (
+      coverImageStorageId !== undefined &&
+      coverImageStorageId !== post.coverImageStorageId
+    ) {
+      await deleteOrgImage(ctx, auth, post.coverImageStorageId);
+    }
   },
 });
 
@@ -90,6 +143,7 @@ export const remove = mutation({
     const auth = await requireRole(ctx, "committee");
     const post = await ctx.db.get(args.newsId);
     assertSameOrg(auth, post);
+    await deleteOrgImage(ctx, auth, post!.coverImageStorageId);
     await ctx.db.delete(args.newsId);
   },
 });

@@ -25,7 +25,7 @@ const nullableString = v.union(v.string(), v.null());
 export const setSoccerMode = mutation({
   args: { enabled: v.boolean() },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     await ctx.db.patch(auth.org._id, { soccerMode: args.enabled });
     if (args.enabled) {
       await ensureSkillDefaults(ctx, auth.org._id);
@@ -161,12 +161,12 @@ async function ensureDivisionDefaults(
  * Insert any missing default skills / divisions for the active org.
  * Existing rows (custom or already-seeded) are left untouched — this
  * top-ups the catalogue without overwriting committee customisations.
- * Admin+. Returns counts of what was added.
+ * Committee+. Returns counts of what was added.
  */
 export const restoreGradingDefaults = mutation({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     await assertSoccerMode(ctx, auth.org._id);
 
     const existingSkills = await ctx.db

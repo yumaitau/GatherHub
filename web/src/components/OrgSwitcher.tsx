@@ -268,7 +268,7 @@ function JoinClubAction({ onDone }: { onDone: () => void }) {
         <DialogHeader>
           <DialogTitle>Join an organisation</DialogTitle>
           <DialogDescription>
-            Paste the invite code an admin shared with you.
+            Paste the invite code a committee member shared with you.
           </DialogDescription>
         </DialogHeader>
         <form id={formId} onSubmit={submit} className="grid gap-3 px-6 pb-4">

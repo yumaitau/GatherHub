@@ -1,9 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireRole } from "./lib/auth";
+import { publicImageUrlForOrg } from "./lib/uploads";
 
 /**
- * Read the public site settings for the caller's org. Admin+: matches the
+ * Read the public site settings for the caller's org. Committee+: matches the
  * editor mutation, and these settings are only consumed by the Settings UI.
  * The public-facing site reads them via `publicProfile` (which exposes only
  * the public-safe subset).
@@ -11,7 +12,7 @@ import { requireRole } from "./lib/auth";
 export const getSettings = query({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     return await ctx.db
       .query("publicSiteSettings")
       .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
@@ -33,7 +34,7 @@ export const upsertSettings = mutation({
     websiteUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     const existing = await ctx.db
       .query("publicSiteSettings")
       .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
@@ -107,7 +108,7 @@ export const publicProfile = query({
           name: s.name,
           website: s.website,
           logoUrl: s.logoStorageId
-            ? await ctx.storage.getUrl(s.logoStorageId)
+            ? await publicImageUrlForOrg(ctx, org._id, s.logoStorageId)
             : null,
         })),
       ),
@@ -119,7 +120,7 @@ export const publicProfile = query({
           excerpt: n.excerpt,
           publishedAt: n.publishedAt,
           coverImageUrl: n.coverImageStorageId
-            ? await ctx.storage.getUrl(n.coverImageStorageId)
+            ? await publicImageUrlForOrg(ctx, org._id, n.coverImageStorageId)
             : null,
         })),
       ),
@@ -156,7 +157,7 @@ export const publicNewsArticle = query({
       body: article.body,
       publishedAt: article.publishedAt,
       coverImageUrl: article.coverImageStorageId
-        ? await ctx.storage.getUrl(article.coverImageStorageId)
+        ? await publicImageUrlForOrg(ctx, org._id, article.coverImageStorageId)
         : null,
       orgName: org.name,
     };

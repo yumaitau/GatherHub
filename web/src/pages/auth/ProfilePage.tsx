@@ -186,7 +186,8 @@ function MembershipsPanel() {
         <div className="px-5 py-8">
           <p className="text-body text-ink-soft max-w-prose">
             You are not a member of any organisation yet. Accept an invite from
-            an admin or create your own organisation from the switcher.
+            a committee member or create your own organisation from the
+            switcher.
           </p>
         </div>
       ) : (

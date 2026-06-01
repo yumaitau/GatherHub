@@ -90,6 +90,13 @@ enum Role: String, Codable, Hashable {
         }
     }
 
+    var canManageOperationsAdmin: Bool {
+        switch self {
+        case .owner, .admin, .committee: return true
+        case .coach, .volunteer, .parent, .player: return false
+        }
+    }
+
     var canDeleteAdministrativeRecords: Bool {
         switch self {
         case .owner, .admin: return true
@@ -140,12 +147,13 @@ struct Member: Codable, Identifiable, Hashable {
     let notes: String?
     let isVolunteer: Bool?
     let clubRole: String?
+    var membershipRole: Role? = nil
 
     var fullName: String { "\(firstName) \(lastName)".trimmingCharacters(in: .whitespaces) }
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case firstName, lastName, email, phone, dateOfBirth, status, notes, isVolunteer, clubRole
+        case firstName, lastName, email, phone, dateOfBirth, status, notes, isVolunteer, clubRole, membershipRole
     }
 }
 

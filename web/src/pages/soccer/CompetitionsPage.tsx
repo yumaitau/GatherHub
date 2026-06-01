@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Link } from "react-router-dom";
-import { Plus, Trophy, Pencil } from "lucide-react";
+import { EyeOff, Plus, RotateCcw, Trophy, Pencil } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -29,8 +29,25 @@ type Row = NonNullable<
 export default function CompetitionsPage() {
   const { org, can } = useGatherHub();
   const rows = useQuery(api.soccer.listCompetitions, {});
+  const upsert = useMutation(api.soccer.upsertCompetition);
   const canEdit = can("committee");
   const count = rows?.length ?? 0;
+
+  async function toggleCompetition(row: Row) {
+    try {
+      await upsert({
+        id: row._id,
+        name: row.name,
+        season: row.season ?? undefined,
+        active: !row.active,
+      });
+      toastSuccess(
+        row.active ? "Competition hidden." : "Competition restored.",
+      );
+    } catch (err) {
+      toastFailure(err, "Could not update competition.");
+    }
+  }
 
   if (!org?.soccerMode) {
     return (
@@ -76,11 +93,29 @@ export default function CompetitionsPage() {
       ? ([
           {
             id: "actions",
-            header: "",
+            header: "Actions",
             enableSorting: false,
             cell: ({ row }: { row: { original: Row } }) => (
-              <CompetitionDialog existing={row.original} />
+              <div className="flex justify-end gap-1">
+                <CompetitionDialog existing={row.original} />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleCompetition(row.original)}
+                >
+                  {row.original.active ? (
+                    <>
+                      <EyeOff className="h-4 w-4" /> Hide
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="h-4 w-4" /> Restore
+                    </>
+                  )}
+                </Button>
+              </div>
             ),
+            meta: { className: "text-right" },
           },
         ] as ColumnDef<Row>[])
       : []),

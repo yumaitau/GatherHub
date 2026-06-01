@@ -158,6 +158,28 @@ final class AppDataPreloader {
         )
 
         record(
+            await run("Training certifications") {
+                try guardActive(shouldContinue)
+                let rows = try await convex.listTrainingCertifications()
+                try guardActive(shouldContinue)
+                try store.replaceTrainingCertifications(rows)
+            },
+            loaded: &loaded,
+            failures: &failures
+        )
+
+        record(
+            await run("Tasks") {
+                try guardActive(shouldContinue)
+                let rows = try await convex.listTasks()
+                try guardActive(shouldContinue)
+                try store.replaceTasks(rows)
+            },
+            loaded: &loaded,
+            failures: &failures
+        )
+
+        record(
             await run("Asset categories") {
                 try guardActive(shouldContinue)
                 let rows = try await convex.listAssetCategories()

@@ -26,6 +26,12 @@ import {
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { UploadedImageViewer } from "@/components/uploaded-image-viewer";
+import {
+  IMAGE_UPLOAD_ACCEPT,
+  uploadImageFile,
+  type UploadedImage,
+} from "@/lib/uploads";
 
 type Sponsor = {
   _id: Id<"sponsors">;
@@ -102,7 +108,7 @@ export default function SponsorDetailPage() {
           <>
             {can("committee") && (
               <>
-                <EditSponsorDialog sponsor={sponsor} />
+                <EditSponsorDialog sponsor={sponsor} logoUrl={logoUrl} />
                 <Button variant="outline" onClick={toggleVisible}>
                   {sponsor.visibleOnPublicSite
                     ? "Hide from public site"
@@ -110,7 +116,7 @@ export default function SponsorDetailPage() {
                 </Button>
               </>
             )}
-            {can("admin") && (
+            {can("committee") && (
               <Button variant="destructive" onClick={deleteSponsor}>
                 <Trash2 className="h-4 w-4" />
                 Delete
@@ -125,21 +131,24 @@ export default function SponsorDetailPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader>
-            <div className="flex items-center gap-3">
+            <div className="grid gap-3">
               {logoUrl ? (
-                <img
+                <UploadedImageViewer
                   src={logoUrl}
                   alt={`${sponsor.name} logo`}
-                  className="h-16 w-16 rounded object-contain"
+                  title={`${sponsor.name} logo`}
+                  className="h-36 w-full"
                 />
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded bg-muted">
+                <div className="flex h-36 w-full items-center justify-center rounded-sm border border-hairline bg-surface-sunk">
                   <Building2 className="h-8 w-8 text-muted-foreground" />
                 </div>
               )}
-              {sponsor.visibleOnPublicSite && (
-                <Badge variant="success">Public</Badge>
-              )}
+              <div>
+                {sponsor.visibleOnPublicSite && (
+                  <Badge variant="success">Public</Badge>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
@@ -208,8 +217,15 @@ function DetailRow({ label, value }: { label: string; value?: string }) {
   );
 }
 
-function EditSponsorDialog({ sponsor }: { sponsor: Sponsor }) {
+function EditSponsorDialog({
+  sponsor,
+  logoUrl,
+}: {
+  sponsor: Sponsor;
+  logoUrl: string | null;
+}) {
   const update = useMutation(api.sponsors.update);
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState(sponsor.name);
   const [contactName, setContactName] = React.useState(
@@ -228,14 +244,25 @@ function EditSponsorDialog({ sponsor }: { sponsor: Sponsor }) {
       : "",
   );
   const [notes, setNotes] = React.useState(sponsor.notes ?? "");
+  const [logoFile, setLogoFile] = React.useState<File | null>(null);
+  const [removeLogo, setRemoveLogo] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+
+  function resetLogoState() {
+    setLogoFile(null);
+    setRemoveLogo(false);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSaving(true);
     try {
+      let logoUpload: UploadedImage | undefined;
+      if (logoFile) {
+        logoUpload = await uploadImageFile(generateUploadUrl, logoFile);
+      }
       const valueNum = sponsorshipValue.trim()
         ? Number(sponsorshipValue)
         : undefined;
@@ -251,8 +278,17 @@ function EditSponsorDialog({ sponsor }: { sponsor: Sponsor }) {
             ? valueNum
             : undefined,
         notes: notes.trim() || undefined,
+        ...(logoUpload
+          ? {
+              logoStorageId: logoUpload.storageId,
+              logoFileName: logoUpload.fileName,
+            }
+          : removeLogo
+            ? { logoStorageId: null }
+            : {}),
       });
       setOpen(false);
+      resetLogoState();
       toastSuccess("Sponsor updated.");
     } catch (err) {
       setError(toastFailure(err, "Could not update sponsor."));
@@ -262,7 +298,13 @@ function EditSponsorDialog({ sponsor }: { sponsor: Sponsor }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) resetLogoState();
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="outline">Edit</Button>
       </DialogTrigger>
@@ -334,6 +376,38 @@ function EditSponsorDialog({ sponsor }: { sponsor: Sponsor }) {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="esp-logo">Logo</Label>
+              {logoUrl && !logoFile && (
+                <UploadedImageViewer
+                  src={logoUrl}
+                  alt={`${sponsor.name} logo`}
+                  title={`${sponsor.name} logo`}
+                  className="h-20 w-32"
+                />
+              )}
+              <Input
+                id="esp-logo"
+                type="file"
+                accept={IMAGE_UPLOAD_ACCEPT}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setLogoFile(file);
+                  if (file) setRemoveLogo(false);
+                }}
+              />
+              {logoUrl && !logoFile && (
+                <label className="flex items-center gap-2 text-body text-ink-soft">
+                  <input
+                    type="checkbox"
+                    checked={removeLogo}
+                    onChange={(e) => setRemoveLogo(e.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  Remove current logo
+                </label>
+              )}
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>

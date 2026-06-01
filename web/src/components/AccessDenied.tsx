@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
-import { Building2, ShieldOff, LogIn } from "lucide-react";
+import { Building2, ShieldOff, LogIn, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared";
 import { parseAuthError, type AuthErrorCode } from "@/lib/errors";
@@ -41,7 +41,7 @@ export function AccessDenied({ error }: { error: unknown }) {
         <EmptyState
           icon={Building2}
           title="You are not a member of this organisation"
-          description="Switch organisation or ask an admin to invite you with a code."
+          description="Switch organisation or ask a committee member to invite you with a code."
           action={<OrgSwitcher />}
         />
       );
@@ -53,7 +53,7 @@ export function AccessDenied({ error }: { error: unknown }) {
         <EmptyState
           icon={ShieldOff}
           title="Access denied"
-          description="You do not have permission to view this. If you think this is wrong, ask an admin to update your role."
+          description="You do not have permission to view this. If you think this is wrong, ask a committee member to update your role."
         />
       );
   }
@@ -67,6 +67,19 @@ export function NoOrganisation() {
         icon={Building2}
         title="Select or create an organisation"
         description="Use the organisation switcher in the top bar to create a new organisation or select an existing one."
+        action={<OrgSwitcher />}
+      />
+    </div>
+  );
+}
+
+export function MobileAppOnly() {
+  return (
+    <div className="mx-auto max-w-xl pt-10">
+      <EmptyState
+        icon={Smartphone}
+        title="Mobile app access only"
+        description="Parent and player accounts use the mobile app. Switch to an organisation where your role is volunteer or above to use the web app."
         action={<OrgSwitcher />}
       />
     </div>

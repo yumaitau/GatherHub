@@ -121,6 +121,10 @@ Permission checks live **only on the server**. The web/iOS UI hides controls a
 role can't use, but that is a convenience, not a security boundary — the
 mutation re-checks regardless.
 
+Web app access is for operational roles only: **Volunteer and above** can enter
+the web shell. **Parent** and **Player** accounts are mobile-app-only; if they
+sign in on the web they see an access-state screen and no workspace navigation.
+
 ### Permissions matrix (role × capability)
 
 Legend: ✅ full · 🟡 limited/own-scope · ❌ none.
@@ -129,7 +133,7 @@ Legend: ✅ full · 🟡 limited/own-scope · ❌ none.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | **Members — view** | ✅ | ✅ | ✅ | 🟡 own teams | ❌ | 🟡 own children | 🟡 self |
 | **Members — create/edit** | ✅ | ✅ | ✅ | ❌ | ❌ | 🟡 own children | ❌ |
-| **Members — delete** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Members — delete** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Medical notes — view** | ✅ | ✅ | 🟡 committee policy | 🟡 own team only | ❌ | 🟡 own children | ❌ |
 | **Teams — view** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Teams — create/edit/assign** | ✅ | ✅ | ✅ | 🟡 own teams | ❌ | ❌ | ❌ |
@@ -149,7 +153,7 @@ Legend: ✅ full · 🟡 limited/own-scope · ❌ none.
 | **Public site — edit** | ✅ | ✅ | 🟡 if granted | ❌ | ❌ | ❌ | ❌ |
 | **Audit log — view** | ✅ | ✅ | ✅ | 🟡 own actions | ❌ | ❌ | ❌ |
 | **Audit log — modify/delete** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Org settings / billing** | ✅ | 🟡 settings only | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Org settings / billing** | ✅ | 🟡 settings only | 🟡 settings only | ❌ | ❌ | ❌ | ❌ |
 
 > The audit log is immutable for **everyone**, including Owner — there is no
 > mutation that updates or deletes audit rows.
@@ -227,15 +231,20 @@ All uploads go to **Convex file storage** via a server-issued upload URL.
 - Mutations issue a short-lived upload URL (`ctx.storage.generateUploadUrl()`)
   only to authenticated, authorised callers.
 - After upload, a mutation records the resulting `storageId` against a document,
-  re-checking `orgId` and role.
+  re-checking `orgId` and role. Uploaded objects also get an
+  `uploadedFiles` metadata row with a canonical nested path:
+  `organizations/<orgId>/<ownerType>/<ownerId>/<purpose>/<file>`.
 - **Validation on confirm:** the server checks the stored file's
   `contentType` against an allow-list per use-case (e.g. images:
-  `image/png`, `image/jpeg`, `image/webp`; certificate docs additionally
+  `image/png`, `image/jpeg`, `image/webp`, `image/gif`; certificate docs additionally
   `application/pdf`) and rejects/deletes anything outside the limit.
 - **Size limits** are enforced per use-case (e.g. logos/photos ≤ 5 MB, documents
   ≤ 15 MB); oversized files are rejected and the storage object deleted.
 - File `storageId`s are only ever surfaced through org-scoped, role-checked
   queries that return signed URLs — raw storage ids are not public.
+- Replacing or deleting an uploaded image marks the metadata row deleted and
+  deletes the underlying Convex storage object. Public-site image URLs are
+  exposed only from records already marked public for that organisation.
 
 ---
 

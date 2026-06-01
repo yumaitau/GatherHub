@@ -271,6 +271,30 @@ final class LocalStore {
         try hasCachedValue(for: "taxonomies.teamAgeGroups")
     }
 
+    func replaceTrainingCertifications(_ rows: [TrainingCertificationRow]) throws {
+        try cacheValue(rows, for: "training.certifications")
+    }
+
+    func cachedTrainingCertifications() throws -> [TrainingCertificationRow] {
+        try cachedValue(for: "training.certifications", as: [TrainingCertificationRow].self) ?? []
+    }
+
+    func hasCachedTrainingCertifications() throws -> Bool {
+        try hasCachedValue(for: "training.certifications")
+    }
+
+    func replaceTasks(_ rows: [TaskBoardTask]) throws {
+        try cacheValue(rows, for: "tasks.board")
+    }
+
+    func cachedTasks() throws -> [TaskBoardTask] {
+        try cachedValue(for: "tasks.board", as: [TaskBoardTask].self) ?? []
+    }
+
+    func hasCachedTasks() throws -> Bool {
+        try hasCachedValue(for: "tasks.board")
+    }
+
     func replaceTagLookup(_ result: TagLookupResult, tagId: String) throws {
         try cacheValue(result, for: "tags.lookup.\(tagId)")
     }

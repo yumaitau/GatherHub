@@ -16,6 +16,8 @@ import {
   Newspaper,
   Settings,
   UserCircle,
+  GraduationCap,
+  ClipboardCheck,
 } from "lucide-react";
 import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
@@ -103,6 +105,24 @@ const ENTRIES: PaletteEntry[] = [
     keywords: ["roster", "duty", "certifications"],
   },
   {
+    id: "training-certifications",
+    label: "Training & Certifications",
+    icon: GraduationCap,
+    group: "Operations",
+    to: "/training-certifications",
+    minRole: "committee",
+    keywords: ["certifications", "checks", "licences", "qualifications"],
+  },
+  {
+    id: "task-board",
+    label: "Task Board",
+    icon: ClipboardCheck,
+    group: "Operations",
+    to: "/tasks",
+    minRole: "committee",
+    keywords: ["kanban", "tasks", "deadlines", "reminders"],
+  },
+  {
     id: "sponsors",
     label: "Sponsors",
     icon: Building2,
@@ -126,7 +146,7 @@ const ENTRIES: PaletteEntry[] = [
     icon: Settings,
     group: "Account",
     to: "/settings",
-    minRole: "admin",
+    minRole: "committee",
     keywords: ["preferences", "club settings", "permissions"],
   },
   {

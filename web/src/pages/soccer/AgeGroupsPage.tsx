@@ -7,7 +7,8 @@ import {
   Pencil,
   ArrowUp,
   ArrowDown,
-  Trash2,
+  EyeOff,
+  RotateCcw,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -71,6 +72,15 @@ export default function AgeGroupsPage() {
     });
   }
 
+  async function toggleActive(id: Id<"taxonomies">, active: boolean) {
+    try {
+      await setActive({ id, active });
+      toastSuccess(active ? "Age group restored." : "Age group hidden.");
+    } catch (err) {
+      toastFailure(err, "Could not update age group.");
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -119,11 +129,11 @@ export default function AgeGroupsPage() {
                     </Button>
                     <Button
                       variant="ghost"
-                      size="icon"
-                      onClick={() => setActive({ id: r.id, active: false })}
+                      size="sm"
+                      onClick={() => toggleActive(r.id, false)}
                       title="Hide"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <EyeOff className="h-4 w-4" /> Hide
                     </Button>
                     <AgeGroupDialog existing={r} />
                   </div>
@@ -138,16 +148,22 @@ export default function AgeGroupsPage() {
               </p>
               <ul className="flex flex-wrap gap-2">
                 {hidden.map((r) => (
-                  <li key={String(r.id)}>
+                  <li
+                    key={String(r.id)}
+                    className="inline-flex items-center gap-1 rounded-sm bg-surface px-2 py-1"
+                  >
                     <Badge variant="muted">{r.label}</Badge>
                     {canEdit && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setActive({ id: r.id, active: true })}
-                      >
-                        Restore
-                      </Button>
+                      <>
+                        <AgeGroupDialog existing={r} />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleActive(r.id, true)}
+                        >
+                          <RotateCcw className="h-4 w-4" /> Restore
+                        </Button>
+                      </>
                     )}
                   </li>
                 ))}
@@ -205,8 +221,8 @@ function AgeGroupDialog({ existing }: { existing?: ExistingTaxonomy }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {existing ? (
-          <Button variant="ghost" size="icon" title="Edit">
-            <Pencil className="h-4 w-4" />
+          <Button variant="ghost" size="sm">
+            <Pencil className="h-4 w-4" /> Edit
           </Button>
         ) : (
           <Button>

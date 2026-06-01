@@ -55,6 +55,16 @@ struct MoreView: View {
                     canCreateOrgWide: context.role.canCreateOrgAnnouncements
                 )
             }
+            row("Training & certifications", system: "graduationcap") {
+                TrainingCertificationsListView(
+                    canEdit: context.role.canManageOperationsAdmin
+                )
+            }
+            row("Task board", system: "rectangle.3.group") {
+                TaskBoardListView(
+                    canEdit: context.role.canManageOperationsAdmin
+                )
+            }
             NavigationLink {
                 PendingQueueView()
             } label: {

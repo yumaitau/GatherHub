@@ -96,6 +96,20 @@ export const assetActionValidator = v.union(
 
 export const tagTypeValidator = v.union(v.literal("qr"), v.literal("nfc"));
 
+export const taskStatusValidator = v.union(
+  v.literal("todo"),
+  v.literal("in_progress"),
+  v.literal("blocked"),
+  v.literal("done"),
+);
+
+export const taskReminderEmailStatusValidator = v.union(
+  v.literal("queued"),
+  v.literal("sent"),
+  v.literal("failed"),
+  v.literal("skipped"),
+);
+
 /**
  * Taxonomy kinds: lists of values that orgs configure themselves rather than
  * us hardcoding. The corresponding fields on `events` / `assets` / `teams`
@@ -169,7 +183,7 @@ export default defineSchema({
     .index("by_org_and_user", ["orgId", "userId"])
     .index("by_user_and_org", ["userId", "orgId"]),
 
-  // Email-based org invitations. Admin sends to an email + role; recipient
+  // Email-based org invitations. Committee sends to an email + role; recipient
   // clicks the emailed link, signs in/up via Clerk, and accepts. Codes are
   // opaque, single-use, and expire.
   invitations: defineTable({
@@ -447,6 +461,8 @@ export default defineSchema({
     .index("by_asset", ["assetId"])
     .index("by_org_and_action", ["orgId", "action"]),
 
+  // Historically named from the original volunteer module. This is now the
+  // generic training/certification record table for any member in any org.
   volunteerCertifications: defineTable({
     orgId: v.id("organizations"),
     memberId: v.id("members"),
@@ -459,6 +475,47 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_member", ["memberId"])
     .index("by_org_and_expiry", ["orgId", "expiryDate"]),
+
+  tasks: defineTable({
+    orgId: v.id("organizations"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    assigneeMemberId: v.optional(v.id("members")),
+    status: taskStatusValidator,
+    dueDate: v.optional(v.string()), // ISO yyyy-mm-dd
+    order: v.number(),
+    reminderEnabled: v.boolean(),
+    reminderEveryDays: v.number(),
+    lastReminderQueuedAt: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_status_order", ["orgId", "status", "order"])
+    .index("by_org_assignee", ["orgId", "assigneeMemberId"])
+    .index("by_org_due", ["orgId", "dueDate"])
+    .index("by_due", ["dueDate"]),
+
+  taskReminderEmails: defineTable({
+    orgId: v.id("organizations"),
+    taskId: v.id("tasks"),
+    assigneeMemberId: v.optional(v.id("members")),
+    email: v.optional(v.string()),
+    status: taskReminderEmailStatusValidator,
+    subject: v.string(),
+    body: v.string(),
+    dueDate: v.string(),
+    queuedAt: v.number(),
+    sentAt: v.optional(v.number()),
+    failedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    providerMessageId: v.optional(v.string()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_task", ["taskId"])
+    .index("by_status_queued", ["status", "queuedAt"]),
 
   sponsors: defineTable({
     orgId: v.id("organizations"),
@@ -491,6 +548,26 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_org_and_published", ["orgId", "published"])
     .index("by_org_and_slug", ["orgId", "slug"]),
+
+  uploadedFiles: defineTable({
+    orgId: v.id("organizations"),
+    storageId: v.id("_storage"),
+    path: v.string(),
+    ownerType: v.string(),
+    ownerId: v.string(),
+    purpose: v.string(),
+    fileName: v.optional(v.string()),
+    contentType: v.string(),
+    size: v.number(),
+    uploadedBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_storage", ["storageId"])
+    .index("by_org_path", ["orgId", "path"])
+    .index("by_org_owner", ["orgId", "ownerType", "ownerId"]),
 
   publicSiteSettings: defineTable({
     orgId: v.id("organizations"),
@@ -583,7 +660,7 @@ export default defineSchema({
     comments: v.optional(v.string()),
     // Per-player kit colour override. Optional — when unset, the
     // player inherits the kit colour from `teams.kitColour` of their
-    // assigned team. Free string so admins can store a hex, a name
+    // assigned team. Free string so committee can store a hex, a name
     // ("home"), or anything the club recognises.
     kitColour: v.optional(v.string()),
   })

@@ -455,6 +455,120 @@ final class ConvexService: ObservableObject {
         )
     }
 
+    // MARK: - Training certifications / tasks
+
+    /// `certifications:list` (query) — generic training/certification rows.
+    func listTrainingCertifications(memberId: String? = nil) async throws -> [TrainingCertificationRow] {
+        var args: [String: ConvexEncodable?] = [:]
+        if let memberId { args["memberId"] = memberId }
+        return try await once("certifications:list", with: args)
+    }
+
+    @discardableResult
+    func createTrainingCertification(
+        _ payload: TrainingCertificationMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args = trainingCertificationArgs(from: payload)
+        args["memberId"] = payload.memberId
+        args["name"] = payload.name
+        return try await performMutation(
+            "certifications:create",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func updateTrainingCertification(
+        certId: String,
+        payload: TrainingCertificationMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args = trainingCertificationArgs(from: payload, includeNulls: true)
+        args["certId"] = certId
+        args["memberId"] = payload.memberId
+        args["name"] = payload.name
+        try await performMutation(
+            "certifications:update",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func removeTrainingCertification(
+        certId: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "certifications:remove",
+            with: ["certId": certId],
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `tasks:list` (query) — task board rows for the active org.
+    func listTasks() async throws -> [TaskBoardTask] {
+        try await once("tasks:list", with: [:])
+    }
+
+    @discardableResult
+    func createTask(
+        _ payload: TaskMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args = taskArgs(from: payload)
+        args["title"] = payload.title
+        args["status"] = payload.status.rawValue
+        args["reminderEnabled"] = payload.reminderEnabled
+        args["reminderEveryDays"] = payload.reminderEveryDays
+        return try await performMutation(
+            "tasks:create",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func updateTask(
+        taskId: String,
+        payload: TaskMutationPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args = taskArgs(from: payload, includeNulls: true)
+        args["taskId"] = taskId
+        args["title"] = payload.title
+        args["status"] = payload.status.rawValue
+        args["reminderEnabled"] = payload.reminderEnabled
+        args["reminderEveryDays"] = payload.reminderEveryDays
+        try await performMutation(
+            "tasks:update",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func moveTask(
+        taskId: String,
+        status: TaskStatus,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "tasks:move",
+            with: ["taskId": taskId, "status": status.rawValue],
+            clientMutationId: clientMutationId
+        )
+    }
+
+    func removeTask(
+        taskId: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "tasks:remove",
+            with: ["taskId": taskId],
+            clientMutationId: clientMutationId
+        )
+    }
+
     /// `soccer:playerListing` (query).
     func listPlayerRegistrations() async throws -> [PlayerListingRow] {
         try await once("soccer:playerListing")
@@ -886,6 +1000,29 @@ final class ConvexService: ObservableObject {
     ) -> [String: ConvexEncodable?] {
         var args: [String: ConvexEncodable?] = [:]
         putOptionalString("teamId", payload.teamId, into: &args, includeNull: includeNulls)
+        return args
+    }
+
+    private func trainingCertificationArgs(
+        from payload: TrainingCertificationMutationPayload,
+        includeNulls: Bool = false
+    ) -> [String: ConvexEncodable?] {
+        var args: [String: ConvexEncodable?] = [:]
+        putOptionalString("issuer", payload.issuer, into: &args, includeNull: includeNulls)
+        putOptionalString("issuedDate", payload.issuedDate, into: &args, includeNull: includeNulls)
+        putOptionalString("expiryDate", payload.expiryDate, into: &args, includeNull: includeNulls)
+        putOptionalString("notes", payload.notes, into: &args, includeNull: includeNulls)
+        return args
+    }
+
+    private func taskArgs(
+        from payload: TaskMutationPayload,
+        includeNulls: Bool = false
+    ) -> [String: ConvexEncodable?] {
+        var args: [String: ConvexEncodable?] = [:]
+        putOptionalString("description", payload.description, into: &args, includeNull: includeNulls)
+        putOptionalString("assigneeMemberId", payload.assigneeMemberId, into: &args, includeNull: includeNulls)
+        putOptionalString("dueDate", payload.dueDate, into: &args, includeNull: includeNulls)
         return args
     }
 

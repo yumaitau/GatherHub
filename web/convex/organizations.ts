@@ -57,7 +57,7 @@ const JOIN_RL_MAX_ATTEMPTS = 5;
 
 /**
  * Join an existing club using its current invite code. The caller is added as
- * a `player` (admins can promote later) and the club becomes their active org.
+ * a `player` (committee can promote later) and the club becomes their active org.
  *
  * Rate-limited per user to prevent brute-forcing the invite code.
  */
@@ -178,13 +178,13 @@ export const leave = mutation({
 });
 
 /**
- * Read the active org's invite code. Admin-and-above only — the code is what
- * lets anyone join, so it should not leak to ordinary members.
+ * Read the active org's invite code. Committee-and-above only — the code is
+ * what lets anyone join, so it should not leak to ordinary members.
  */
 export const getInviteCode = query({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     return { code: auth.org.inviteCode ?? null };
   },
 });
@@ -198,25 +198,25 @@ export const locationDefaults = query({
   },
 });
 
-/** Rotate (or set, if missing) the active org's invite code. Admin+ only. */
+/** Rotate (or set, if missing) the active org's invite code. Committee+ only. */
 export const rotateInviteCode = mutation({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     const code = newInviteCode();
     await ctx.db.patch(auth.org._id, { inviteCode: code });
     return { code };
   },
 });
 
-/** Edit location defaults. Admin+ only. */
+/** Edit location defaults. Committee+ only. */
 export const updateLocationSettings = mutation({
   args: {
     defaultAddress: v.optional(v.string()),
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const defaultAddress = args.defaultAddress?.trim();
     await ctx.db.patch(auth.org._id, {
@@ -231,7 +231,7 @@ export const updateLocationSettings = mutation({
   },
 });
 
-/** Edit basic club details (name, slug, image). Admin+ only. */
+/** Edit basic club details (name, slug, image). Committee+ only. */
 export const update = mutation({
   args: {
     name: v.optional(v.string()),
@@ -239,7 +239,7 @@ export const update = mutation({
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     const patch: Record<string, string> = {};
     if (args.name !== undefined) {
       const name = args.name.trim();

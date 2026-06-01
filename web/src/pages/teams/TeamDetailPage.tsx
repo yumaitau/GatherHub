@@ -112,7 +112,7 @@ export default function TeamDetailPage() {
               </>
             )}
             {can("committee") && <AssignMemberDialog teamId={team._id} />}
-            {can("admin") && (
+            {can("committee") && (
               <Button variant="destructive" onClick={deleteTeam}>
                 <Trash2 className="h-4 w-4" />
                 Delete

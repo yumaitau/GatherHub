@@ -51,7 +51,7 @@ export function QrSettingsTab() {
   const { can } = useGatherHub();
   const saved = useQuery(api.qrSettings.get, {});
   const upsert = useMutation(api.qrSettings.upsert);
-  const canEdit = can("admin");
+  const canEdit = can("committee");
 
   const [s, setS] = React.useState<QRSettings>(DEFAULT_QR_SETTINGS);
   const [logoUrl, setLogoUrl] = React.useState<string>("");

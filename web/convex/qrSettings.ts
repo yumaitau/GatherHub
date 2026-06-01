@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireOrgMember, requireRole } from "./lib/auth";
+import { attachOrgImage, deleteOrgImage, orgImageUrl } from "./lib/uploads";
 
 /**
  * Read the active org's QR render settings. Returns `null` when the
@@ -20,7 +21,7 @@ export const get = query({
       .unique();
     if (!row) return null;
     const logoUrl = row.logoStorageId
-      ? await ctx.storage.getUrl(row.logoStorageId)
+      ? await orgImageUrl(ctx, auth, row.logoStorageId)
       : null;
     return {
       fgColor: row.fgColor,
@@ -39,7 +40,7 @@ export const get = query({
 });
 
 /**
- * Save (or create) the org's QR render settings. Admin+ only.
+ * Save (or create) the org's QR render settings. Committee+ only.
  * Settings are the same shape `web/src/lib/qr/types.ts:QRSettings`
  * minus the runtime-only `size` field and plus an optional uploaded
  * logo storage id.
@@ -52,30 +53,61 @@ export const upsert = mutation({
     cornerSquareStyle: v.string(),
     margin: v.number(),
     logoSize: v.string(),
-    logoStorageId: v.optional(v.id("_storage")),
+    logoStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+    logoFileName: v.optional(v.string()),
     borderEnabled: v.boolean(),
     borderColor: v.string(),
     borderWidth: v.number(),
     borderRadius: v.number(),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     const existing = await ctx.db
       .query("qrSettings")
       .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
       .unique();
+    if (args.logoStorageId) {
+      await attachOrgImage(ctx, auth, {
+        storageId: args.logoStorageId,
+        ownerType: "qrSettings",
+        ownerId: auth.org._id,
+        purpose: "qrLogo",
+        fileName: args.logoFileName,
+      });
+    }
     const patch = {
-      ...args,
+      fgColor: args.fgColor,
+      bgColor: args.bgColor,
+      dotStyle: args.dotStyle,
+      cornerSquareStyle: args.cornerSquareStyle,
+      margin: args.margin,
+      logoSize: args.logoSize,
+      borderEnabled: args.borderEnabled,
+      borderColor: args.borderColor,
+      borderWidth: args.borderWidth,
+      borderRadius: args.borderRadius,
       updatedAt: Date.now(),
       updatedBy: auth.user._id,
     };
     if (existing) {
-      await ctx.db.patch(existing._id, patch);
+      await ctx.db.patch(existing._id, {
+        ...patch,
+        ...(args.logoStorageId !== undefined
+          ? { logoStorageId: args.logoStorageId ?? undefined }
+          : {}),
+      });
+      if (
+        args.logoStorageId !== undefined &&
+        args.logoStorageId !== existing.logoStorageId
+      ) {
+        await deleteOrgImage(ctx, auth, existing.logoStorageId);
+      }
       return existing._id;
     }
     return await ctx.db.insert("qrSettings", {
       orgId: auth.org._id,
       ...patch,
+      logoStorageId: args.logoStorageId ?? undefined,
     });
   },
 });

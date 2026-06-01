@@ -31,13 +31,14 @@ export const listMembers = query({
 });
 
 /**
- * Change a member's role. Only admins/owners may do this; only owners may grant
- * the owner role; the last remaining owner cannot be demoted.
+ * Change a member's role. Committee+ may manage non-owner roles; only owners
+ * may grant or change the owner role; the last remaining owner cannot be
+ * demoted.
  */
 export const updateRole = mutation({
   args: { membershipId: v.id("memberships"), role: roleValidator },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     const target = await ctx.db.get(args.membershipId);
     assertSameOrg(auth, target);
     if (!target) throw new Error("Not found.");
@@ -47,7 +48,7 @@ export const updateRole = mutation({
     }
 
     // Only an owner may mutate another owner's role (demote, transfer).
-    // Admins must not be able to remove owners.
+    // Non-owners must not be able to remove owners.
     if (target.role === "owner" && auth.role !== "owner") {
       throw new Error("Only an owner can change another owner's role.");
     }

@@ -1,7 +1,7 @@
 import { query } from "./_generated/server";
 import { requireOrgMember } from "./lib/auth";
 
-/** Aggregate counts and headline figures for the admin dashboard. */
+/** Aggregate counts and headline figures for the workspace dashboard. */
 export const stats = query({
   args: {},
   handler: async (ctx) => {

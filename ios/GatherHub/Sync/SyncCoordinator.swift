@@ -226,6 +226,49 @@ final class SyncCoordinator {
                     clientMutationId: op.clientId
                 )
                 await refreshAnnouncementsCache()
+            case .trainingCertificationCreate:
+                let args = try JSONDecoder().decode(TrainingCertificationMutationPayload.self, from: op.payload)
+                try await convex.createTrainingCertification(args, clientMutationId: op.clientId)
+                await refreshTrainingCertificationCaches()
+            case .trainingCertificationUpdate:
+                let args = try JSONDecoder().decode(TrainingCertificationUpdatePayload.self, from: op.payload)
+                try await convex.updateTrainingCertification(
+                    certId: args.certId,
+                    payload: args.certification,
+                    clientMutationId: op.clientId
+                )
+                await refreshTrainingCertificationCaches()
+            case .trainingCertificationDelete:
+                let args = try JSONDecoder().decode(TrainingCertificationDeletePayload.self, from: op.payload)
+                try await convex.removeTrainingCertification(
+                    certId: args.certId,
+                    clientMutationId: op.clientId
+                )
+                await refreshTrainingCertificationCaches()
+            case .taskCreate:
+                let args = try JSONDecoder().decode(TaskMutationPayload.self, from: op.payload)
+                try await convex.createTask(args, clientMutationId: op.clientId)
+                await refreshTaskCaches()
+            case .taskUpdate:
+                let args = try JSONDecoder().decode(TaskUpdatePayload.self, from: op.payload)
+                try await convex.updateTask(
+                    taskId: args.taskId,
+                    payload: args.task,
+                    clientMutationId: op.clientId
+                )
+                await refreshTaskCaches()
+            case .taskMove:
+                let args = try JSONDecoder().decode(TaskMovePayload.self, from: op.payload)
+                try await convex.moveTask(
+                    taskId: args.taskId,
+                    status: args.status,
+                    clientMutationId: op.clientId
+                )
+                await refreshTaskCaches()
+            case .taskDelete:
+                let args = try JSONDecoder().decode(TaskDeletePayload.self, from: op.payload)
+                try await convex.removeTask(taskId: args.taskId, clientMutationId: op.clientId)
+                await refreshTaskCaches()
             case .memberCreate:
                 let args = try JSONDecoder().decode(MemberMutationPayload.self, from: op.payload)
                 try await convex.createMember(args, clientMutationId: op.clientId)
@@ -370,6 +413,18 @@ final class SyncCoordinator {
     private func refreshAnnouncementsCache() async {
         if let rows = try? await convex.listAnnouncements() {
             try? store.replaceAnnouncements(rows)
+        }
+    }
+
+    private func refreshTrainingCertificationCaches() async {
+        if let rows = try? await convex.listTrainingCertifications() {
+            try? store.replaceTrainingCertifications(rows)
+        }
+    }
+
+    private func refreshTaskCaches() async {
+        if let rows = try? await convex.listTasks() {
+            try? store.replaceTasks(rows)
         }
     }
 

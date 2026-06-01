@@ -45,6 +45,20 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     case announcementUpdate
     /// `announcements:remove` — delete an announcement.
     case announcementDelete
+    /// `certifications:create` — create a training certification record.
+    case trainingCertificationCreate
+    /// `certifications:update` — edit a training certification record.
+    case trainingCertificationUpdate
+    /// `certifications:remove` — delete a training certification record.
+    case trainingCertificationDelete
+    /// `tasks:create` — create a task-board item.
+    case taskCreate
+    /// `tasks:update` — edit task details/reminder settings.
+    case taskUpdate
+    /// `tasks:move` — move a task between board columns.
+    case taskMove
+    /// `tasks:remove` — delete a task-board item.
+    case taskDelete
     /// `members:create` — create a member captured in the field.
     case memberCreate
     /// `members:update` — edit member details/status.
@@ -100,6 +114,13 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
         case .announcementCreate: return "Announcement creation"
         case .announcementUpdate: return "Announcement edit"
         case .announcementDelete: return "Announcement deletion"
+        case .trainingCertificationCreate: return "Training certification creation"
+        case .trainingCertificationUpdate: return "Training certification edit"
+        case .trainingCertificationDelete: return "Training certification deletion"
+        case .taskCreate: return "Task creation"
+        case .taskUpdate: return "Task edit"
+        case .taskMove: return "Task move"
+        case .taskDelete: return "Task deletion"
         case .memberCreate: return "Member creation"
         case .memberUpdate: return "Member edit"
         case .memberDelete: return "Member deletion"

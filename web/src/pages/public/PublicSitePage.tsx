@@ -4,6 +4,7 @@ import { api } from "../../../convex/_generated/api";
 import { Mail, Phone, MapPin, Globe } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import { formatDate } from "@/lib/utils";
+import { UploadedImageViewer } from "@/components/uploaded-image-viewer";
 
 export default function PublicSitePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -171,24 +172,32 @@ export default function PublicSitePage() {
             <ul className="flex flex-wrap items-center gap-5">
               {sponsors.map((s) => (
                 <li key={s.id}>
-                  <a
-                    href={s.website ?? "#"}
-                    target={s.website ? "_blank" : undefined}
-                    rel="noreferrer"
-                    className="inline-flex flex-col items-center gap-1 rounded-sm focus-visible:outline-none focus-visible:shadow-focus"
-                  >
+                  <div className="inline-flex flex-col items-center gap-2">
                     {s.logoUrl ? (
-                      <img
+                      <UploadedImageViewer
                         src={s.logoUrl}
-                        alt={s.name}
-                        className="h-14 w-auto object-contain"
+                        alt={`${s.name} logo`}
+                        title={`${s.name} logo`}
+                        className="h-16 w-36"
                       />
                     ) : (
                       <div className="grid h-14 w-32 place-items-center rounded-xs border border-hairline bg-surface text-caption font-semi text-ink-soft">
                         {s.name}
                       </div>
                     )}
-                  </a>
+                    {s.website && (
+                      <a
+                        href={s.website}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={`${s.name} website`}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-ink-quiet hover:bg-surface-sunk hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
+                      >
+                        <Globe className="h-4 w-4" />
+                        <span className="sr-only">{s.name} website</span>
+                      </a>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

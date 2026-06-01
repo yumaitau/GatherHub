@@ -7,7 +7,7 @@ import { createClerkClient } from "@clerk/backend";
 import { roleValidator } from "./schema";
 
 /**
- * Clerk-native invitations. Admin sends → Clerk emails invite link →
+ * Clerk-native invitations. Committee sends → Clerk emails invite link →
  * /sign-up consumes Clerk's ticket and creates the account → on first sign-in
  * `syncClerk.ensureFromClerk` reads `publicMetadata.pendingOrgId` +
  * `pendingRole` from Clerk and creates the Convex membership.
@@ -22,7 +22,7 @@ import { roleValidator } from "./schema";
 const clerkClient = () =>
   createClerkClient({ secretKey: requireClerkSecretKey() });
 
-/** Send an invitation via Clerk. Admin+ only. */
+/** Send an invitation via Clerk. Committee+ only. */
 export const send = action({
   args: { email: v.string(), role: roleValidator },
   handler: async (ctx, args) => {
@@ -73,7 +73,7 @@ export type InvitationRow = {
   acceptedAt: number | null;
 };
 
-/** List Clerk invitations scoped to the active org. Admin+ only. */
+/** List Clerk invitations scoped to the active org. Committee+ only. */
 export const list = action({
   args: {},
   handler: async (ctx): Promise<InvitationRow[]> => {
@@ -104,7 +104,7 @@ export const list = action({
   },
 });
 
-/** Revoke a pending Clerk invitation. Admin+ only. */
+/** Revoke a pending Clerk invitation. Committee+ only. */
 export const revoke = action({
   args: { invitationId: v.string() },
   handler: async (ctx, args) => {

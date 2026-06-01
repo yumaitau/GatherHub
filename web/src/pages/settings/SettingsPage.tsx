@@ -11,6 +11,7 @@ import {
   Trash2,
   Plus,
   MapPin,
+  ShieldOff,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -36,7 +37,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { PageHeader, LoadingState } from "@/components/shared";
+import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import {
   AddressAutocompleteInput,
@@ -49,8 +50,17 @@ import { humanise, formatDateTime } from "@/lib/utils";
 
 export default function SettingsPage() {
   const { org, can } = useGatherHub();
-  const isAdmin = can("admin");
+  const canManage = can("committee");
   const soccerMode = Boolean(org?.soccerMode);
+  if (!canManage) {
+    return (
+      <EmptyState
+        icon={ShieldOff}
+        title="Access denied"
+        description="Settings are available to committee members and above."
+      />
+    );
+  }
   return (
     <div>
       <PageHeader
@@ -60,10 +70,8 @@ export default function SettingsPage() {
       <Tabs defaultValue="roles">
         <TabsList>
           <TabsTrigger value="roles">Members & roles</TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger value="invitations">Invitations</TabsTrigger>
-          )}
-          {isAdmin && <TabsTrigger value="locations">Locations</TabsTrigger>}
+          <TabsTrigger value="invitations">Invitations</TabsTrigger>
+          <TabsTrigger value="locations">Locations</TabsTrigger>
           {can("committee") && (
             <TabsTrigger value="taxonomies">Lists & types</TabsTrigger>
           )}
@@ -78,16 +86,12 @@ export default function SettingsPage() {
         <TabsContent value="roles">
           <RolesTab />
         </TabsContent>
-        {isAdmin && (
-          <TabsContent value="invitations">
-            <InvitationsTab />
-          </TabsContent>
-        )}
-        {isAdmin && (
-          <TabsContent value="locations">
-            <LocationSettingsTab />
-          </TabsContent>
-        )}
+        <TabsContent value="invitations">
+          <InvitationsTab />
+        </TabsContent>
+        <TabsContent value="locations">
+          <LocationSettingsTab />
+        </TabsContent>
         {can("committee") && (
           <TabsContent value="taxonomies">
             <TaxonomiesTab />
@@ -184,7 +188,7 @@ function LocationSettingsTab() {
 
 /**
  * Clerk-native email invitations plus a Convex-native shareable invite code.
- * Admin+ only; server functions enforce the same gates.
+ * Committee+ only; server functions enforce the same gates.
  */
 function InvitationsTab() {
   return (
@@ -441,6 +445,7 @@ function InvitationListCard() {
 }
 
 function RolesTab() {
+  const { role: currentRole } = useGatherHub();
   const members = useQuery(api.roles.listMembers);
   const updateRole = useMutation(api.roles.updateRole);
   const [error, setError] = React.useState<string | null>(null);
@@ -483,13 +488,18 @@ function RolesTab() {
                   <Select
                     value={m.role}
                     onValueChange={(v) => change(m.membershipId, v as Role)}
+                    disabled={m.role === "owner" && currentRole !== "owner"}
                   >
                     <SelectTrigger className="w-40">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {ALL_ROLES.map((r) => (
-                        <SelectItem key={r} value={r}>
+                        <SelectItem
+                          key={r}
+                          value={r}
+                          disabled={r === "owner" && currentRole !== "owner"}
+                        >
                           {humanise(r)}
                         </SelectItem>
                       ))}

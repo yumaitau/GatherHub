@@ -16,18 +16,24 @@ import {
   Menu,
   X,
   ClipboardList,
+  ClipboardCheck,
   Gauge,
   Trophy,
   Layers,
   Layers3,
   UserCog,
   Award,
+  GraduationCap,
   ChevronRight,
 } from "lucide-react";
 import { useGatherHub } from "@/lib/gatherhub";
 import { cn } from "@/lib/utils";
 import { LoadingState } from "@/components/shared";
-import { NoOrganisation, AuthErrorBoundary } from "@/components/AccessDenied";
+import {
+  NoOrganisation,
+  MobileAppOnly,
+  AuthErrorBoundary,
+} from "@/components/AccessDenied";
 import {
   CommandPaletteProvider,
   CommandPaletteTrigger,
@@ -76,6 +82,18 @@ function buildNav(_soccerMode: boolean): NavGroup[] {
         { to: "/announcements", label: "Announcements", icon: Megaphone },
         { to: "/assets", label: "KitTrace", icon: Package, shortcut: "K" },
         { to: "/volunteers", label: "Volunteers", icon: HandHeart },
+        {
+          to: "/training-certifications",
+          label: "Training & Certs",
+          icon: GraduationCap,
+          minRole: "committee",
+        },
+        {
+          to: "/tasks",
+          label: "Task Board",
+          icon: ClipboardCheck,
+          minRole: "committee",
+        },
       ],
     },
     {
@@ -133,7 +151,7 @@ const SOCCER_NAV: NavGroup = {
 };
 
 const SYSTEM_NAV: NavItem[] = [
-  { to: "/settings", label: "Settings", icon: Settings, minRole: "admin" },
+  { to: "/settings", label: "Settings", icon: Settings, minRole: "committee" },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -145,12 +163,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
-  const { isLoading, isSignedInToOrg, org, can } = useGatherHub();
+  const { isLoading, isSignedInToOrg, org, role, can } = useGatherHub();
   const soccerMode = Boolean(org?.soccerMode);
   const baseNav = buildNav(soccerMode);
   const groups = soccerMode ? [...baseNav, SOCCER_NAV] : baseNav;
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const location = useLocation();
+  const hasWebAccess = !role || can("volunteer");
+  const showNavigation = Boolean(isSignedInToOrg && org && hasWebAccess);
 
   React.useEffect(() => setMobileOpen(false), [location.pathname]);
 
@@ -166,12 +186,14 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
         <button
           type="button"
           onClick={() => setMobileOpen((v) => !v)}
+          disabled={!showNavigation}
           aria-label="Toggle navigation"
           className={cn(
             "md:hidden inline-flex h-8 w-8 items-center justify-center",
             "rounded-sm text-ink-soft hover:text-ink hover:bg-surface-sunk",
             "transition-colors duration-fast ease-out",
             "focus-visible:outline-none focus-visible:shadow-focus",
+            !showNavigation && "invisible pointer-events-none",
           )}
         >
           {mobileOpen ? (
@@ -209,33 +231,33 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
-        <aside
-          className={cn(
-            "fixed top-13 bottom-0 left-0 z-20 w-sidebar",
-            "border-r border-hairline bg-surface-sunk",
-            "transition-transform duration-base ease-out",
-            "md:sticky md:top-13 md:bottom-auto md:h-[calc(100vh-3.25rem)]",
-            "md:translate-x-0",
-            mobileOpen ? "translate-x-0" : "-translate-x-full",
-          )}
-        >
-          <div className="flex h-full flex-col overflow-y-auto px-2 pt-3 pb-4">
-            {groups.map((group) => (
-              <NavSection key={group.label} group={group} can={can} />
-            ))}
-            <div className="mt-auto pt-4">
-              {SYSTEM_NAV.filter((n) => !n.minRole || can(n.minRole)).map(
-                (item) => (
-                  <NavRow key={item.to} item={item} />
-                ),
-              )}
+        {showNavigation && (
+          <aside
+            className={cn(
+              "fixed top-13 bottom-0 left-0 z-20 w-sidebar",
+              "border-r border-hairline bg-surface-sunk",
+              "transition-transform duration-base ease-out",
+              "md:sticky md:top-13 md:bottom-auto md:h-[calc(100vh-3.25rem)]",
+              "md:translate-x-0",
+              mobileOpen ? "translate-x-0" : "-translate-x-full",
+            )}
+          >
+            <div className="flex h-full flex-col overflow-y-auto px-2 pt-3 pb-4">
+              {groups.map((group) => (
+                <NavSection key={group.label} group={group} can={can} />
+              ))}
+              <div className="mt-auto pt-4">
+                {SYSTEM_NAV.filter((n) => !n.minRole || can(n.minRole)).map(
+                  (item) => (
+                    <NavRow key={item.to} item={item} />
+                  ),
+                )}
+              </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
 
-        {/* Mobile backdrop */}
-        {mobileOpen && (
+        {mobileOpen && showNavigation && (
           <div
             className="fixed inset-0 z-10 bg-ink-strong/30 md:hidden"
             onClick={() => setMobileOpen(false)}
@@ -243,13 +265,14 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
           />
         )}
 
-        {/* Main */}
         <main className="flex-1 min-w-0">
           <div className="mx-auto w-full max-w-[1280px] px-5 py-7 md:px-8 md:py-9">
             {isLoading ? (
               <LoadingState label="Loading your organisation…" />
             ) : !isSignedInToOrg || !org ? (
               <NoOrganisation />
+            ) : !hasWebAccess ? (
+              <MobileAppOnly />
             ) : (
               <AuthErrorBoundary>{children}</AuthErrorBoundary>
             )}
@@ -259,7 +282,6 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
 function NavSection({
   group,
   can,

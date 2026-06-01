@@ -28,12 +28,19 @@ import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatDate } from "@/lib/utils";
+import { UploadedImageViewer } from "@/components/uploaded-image-viewer";
+import {
+  IMAGE_UPLOAD_ACCEPT,
+  uploadImageFile,
+  type UploadedImage,
+} from "@/lib/uploads";
 
 type NewsPost = {
   _id: Id<"news">;
   title: string;
   body: string;
   excerpt?: string;
+  coverImageUrl?: string | null;
   published: boolean;
   publishedAt?: number;
 };
@@ -102,7 +109,18 @@ export default function NewsAdminPage() {
               {news.map((post) => (
                 <TableRow key={post._id}>
                   <TableCell className="font-semi text-ink-strong">
-                    {post.title}
+                    <div className="flex min-w-0 items-center gap-3">
+                      {post.coverImageUrl && (
+                        <UploadedImageViewer
+                          src={post.coverImageUrl}
+                          alt={`${post.title} cover image`}
+                          title={`${post.title} cover image`}
+                          className="h-12 w-16 shrink-0"
+                          fit="cover"
+                        />
+                      )}
+                      <span className="truncate">{post.title}</span>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={post.published ? "success" : "muted"}>
@@ -151,6 +169,7 @@ function NewsDialog(
 ) {
   const create = useMutation(api.news.create);
   const update = useMutation(api.news.update);
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const isEdit = props.mode === "edit";
   const post = props.post;
 
@@ -159,6 +178,8 @@ function NewsDialog(
   const [excerpt, setExcerpt] = React.useState(post?.excerpt ?? "");
   const [body, setBody] = React.useState(post?.body ?? "");
   const [published, setPublished] = React.useState(post?.published ?? false);
+  const [coverImageFile, setCoverImageFile] = React.useState<File | null>(null);
+  const [removeCoverImage, setRemoveCoverImage] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
@@ -167,6 +188,8 @@ function NewsDialog(
     setExcerpt(post?.excerpt ?? "");
     setBody(post?.body ?? "");
     setPublished(post?.published ?? false);
+    setCoverImageFile(null);
+    setRemoveCoverImage(false);
     setError(null);
   }
 
@@ -175,6 +198,10 @@ function NewsDialog(
     setError(null);
     setSaving(true);
     try {
+      let coverUpload: UploadedImage | undefined;
+      if (coverImageFile) {
+        coverUpload = await uploadImageFile(generateUploadUrl, coverImageFile);
+      }
       if (isEdit && post) {
         await update({
           newsId: post._id,
@@ -182,6 +209,14 @@ function NewsDialog(
           excerpt: excerpt.trim() || undefined,
           body,
           published,
+          ...(coverUpload
+            ? {
+                coverImageStorageId: coverUpload.storageId,
+                coverImageFileName: coverUpload.fileName,
+              }
+            : removeCoverImage
+              ? { coverImageStorageId: null }
+              : {}),
         });
       } else {
         await create({
@@ -189,6 +224,8 @@ function NewsDialog(
           excerpt: excerpt.trim() || undefined,
           body,
           published,
+          coverImageStorageId: coverUpload?.storageId,
+          coverImageFileName: coverUpload?.fileName,
         });
       }
       reset();
@@ -258,6 +295,39 @@ function NewsDialog(
                 className="min-h-[160px]"
                 required
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="news-cover">Cover image</Label>
+              {post?.coverImageUrl && !coverImageFile && (
+                <UploadedImageViewer
+                  src={post.coverImageUrl}
+                  alt={`${post.title} cover image`}
+                  title={`${post.title} cover image`}
+                  className="h-28 w-full"
+                  fit="cover"
+                />
+              )}
+              <Input
+                id="news-cover"
+                type="file"
+                accept={IMAGE_UPLOAD_ACCEPT}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setCoverImageFile(file);
+                  if (file) setRemoveCoverImage(false);
+                }}
+              />
+              {post?.coverImageUrl && !coverImageFile && (
+                <label className="flex items-center gap-2 text-body text-ink-soft">
+                  <input
+                    type="checkbox"
+                    checked={removeCoverImage}
+                    onChange={(e) => setRemoveCoverImage(e.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  Remove current cover image
+                </label>
+              )}
             </div>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input

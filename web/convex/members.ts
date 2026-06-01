@@ -11,6 +11,11 @@ import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 
 const nullableString = v.union(v.string(), v.null());
 
+function cleanString(value: string | null | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 /** List members in the caller's organisation. */
 export const list = query({
   args: {
@@ -45,10 +50,28 @@ export const list = query({
       filtered = filtered.filter((m) => m.isLifetimeMember);
     }
 
-    return filtered.sort((a, b) =>
+    const sorted = filtered.sort((a, b) =>
       `${a.lastName} ${a.firstName}`.localeCompare(
         `${b.lastName} ${b.firstName}`,
       ),
+    );
+
+    return await Promise.all(
+      sorted.map(async (member) => {
+        const memberUserId = member.userId;
+        const membership = memberUserId
+          ? await ctx.db
+              .query("memberships")
+              .withIndex("by_user_and_org", (q) =>
+                q.eq("userId", memberUserId).eq("orgId", auth.org._id),
+              )
+              .unique()
+          : null;
+        return {
+          ...member,
+          membershipRole: membership?.role,
+        };
+      }),
     );
   },
 });
@@ -173,6 +196,7 @@ export const create = mutation({
     status: v.optional(memberStatusValidator),
     notes: v.optional(v.string()),
     isVolunteer: v.optional(v.boolean()),
+    clubRole: v.optional(nullableString),
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -195,6 +219,7 @@ export const create = mutation({
       status: args.status ?? "active",
       notes: args.notes,
       isVolunteer: args.isVolunteer ?? false,
+      clubRole: cleanString(args.clubRole),
     });
     await recordClientMutation(
       ctx,
@@ -256,7 +281,7 @@ export const remove = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "admin");
+    const auth = await requireRole(ctx, "committee");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);

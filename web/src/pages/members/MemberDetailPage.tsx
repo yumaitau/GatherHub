@@ -105,7 +105,7 @@ export default function MemberDetailPage() {
                 {member.status === "active" ? "Set inactive" : "Set active"}
               </Button>
             )}
-            {can("admin") && (
+            {can("committee") && (
               <Button variant="destructive" onClick={deleteMember}>
                 <Trash2 className="h-4 w-4" />
                 Delete
@@ -678,7 +678,7 @@ function CertificationsTab({
   data: MemberData;
   canEdit: boolean;
 }) {
-  const remove = useMutation(api.volunteers.removeCertification);
+  const remove = useMutation(api.certifications.remove);
   const [error, setError] = React.useState<string | null>(null);
 
   async function rm(certId: Id<"volunteerCertifications">) {
@@ -963,7 +963,7 @@ function AddEmergencyContactDialog({ memberId }: { memberId: Id<"members"> }) {
 
 function AddCertDialog({ memberId }: { memberId: Id<"members"> }) {
   const [open, setOpen] = React.useState(false);
-  const add = useMutation(api.volunteers.addCertification);
+  const add = useMutation(api.certifications.create);
   const [name, setName] = React.useState("");
   const [issuer, setIssuer] = React.useState("");
   const [issuedDate, setIssuedDate] = React.useState("");

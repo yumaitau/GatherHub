@@ -18,6 +18,8 @@ import AssetsPage from "@/pages/assets/AssetsPage";
 import AssetDetailPage from "@/pages/assets/AssetDetailPage";
 import QrSheetPage from "@/pages/assets/QrSheetPage";
 import VolunteersPage from "@/pages/VolunteersPage";
+import TrainingCertificationsPage from "@/pages/TrainingCertificationsPage";
+import TaskBoardPage from "@/pages/TaskBoardPage";
 import SponsorsPage from "@/pages/sponsors/SponsorsPage";
 import SponsorDetailPage from "@/pages/sponsors/SponsorDetailPage";
 import NewsAdminPage from "@/pages/NewsAdminPage";
@@ -88,6 +90,11 @@ function AuthedApp() {
               <Route path="/assets/qr-sheet" element={<QrSheetPage />} />
               <Route path="/assets/:assetId" element={<AssetDetailPage />} />
               <Route path="/volunteers" element={<VolunteersPage />} />
+              <Route
+                path="/training-certifications"
+                element={<TrainingCertificationsPage />}
+              />
+              <Route path="/tasks" element={<TaskBoardPage />} />
               <Route path="/sponsors" element={<SponsorsPage />} />
               <Route
                 path="/sponsors/:sponsorId"

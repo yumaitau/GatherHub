@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { Role } from "./lib/auth";
 
@@ -103,6 +103,270 @@ describe("role-based permissions", () => {
       lastName: "Coach",
     });
     expect(id).toBeDefined();
+  });
+
+  test("committee can manage formerly admin-only workspace objects", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_committee_crud",
+      clerkUser: "user_committee_crud",
+      role: "committee",
+    });
+
+    await club.as.mutation(api.organizations.updateLocationSettings, {
+      defaultAddress: "Committee Clubhouse",
+    });
+    await expect(
+      club.as.mutation(api.organizations.rotateInviteCode, {}),
+    ).resolves.toHaveProperty("code");
+    await club.as.mutation(api.publicSite.upsertSettings, {
+      enabled: true,
+      tagline: "Committee managed.",
+    });
+    expect(await club.as.query(api.publicSite.getSettings, {})).toMatchObject({
+      enabled: true,
+    });
+    await club.as.mutation(api.qrSettings.upsert, {
+      fgColor: "#111111",
+      bgColor: "#ffffff",
+      dotStyle: "square",
+      cornerSquareStyle: "square",
+      margin: 4,
+      logoSize: "medium",
+      borderEnabled: false,
+      borderColor: "#111111",
+      borderWidth: 1,
+      borderRadius: 4,
+    });
+    await club.as.mutation(api.soccer.setSoccerMode, { enabled: true });
+
+    const memberId = await club.as.mutation(api.members.create, {
+      firstName: "Committee",
+      lastName: "Delete",
+    });
+    await club.as.mutation(api.members.remove, { memberId });
+    expect(await club.as.query(api.members.list, {})).toHaveLength(0);
+
+    const teamId = await club.as.mutation(api.teams.create, {
+      name: "Committee Team",
+    });
+    await club.as.mutation(api.teams.remove, { teamId });
+    expect(
+      await club.as.query(api.teams.list, { includeInactive: true }),
+    ).toHaveLength(0);
+
+    const assetId = await club.as.mutation(api.assets.create, {
+      name: "Committee Asset",
+      category: "equipment",
+    });
+    await club.as.mutation(api.assets.remove, { assetId });
+    expect(await club.as.query(api.assets.list, {})).toHaveLength(0);
+
+    const sponsorId = await club.as.mutation(api.sponsors.create, {
+      name: "Committee Sponsor",
+    });
+    await club.as.mutation(api.sponsors.remove, { sponsorId });
+    expect(await club.as.query(api.sponsors.list, {})).toHaveLength(0);
+
+    const targetMembershipId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", {
+        clerkUserId: "user_role_target",
+        email: "role-target@example.test",
+        activeOrgId: club.orgId,
+      });
+      return await ctx.db.insert("memberships", {
+        orgId: club.orgId,
+        userId,
+        role: "player",
+      });
+    });
+    await club.as.mutation(api.roles.updateRole, {
+      membershipId: targetMembershipId,
+      role: "volunteer",
+    });
+    const memberships = await club.as.query(api.roles.listMembers, {});
+    expect(
+      memberships.find((row) => row.membershipId === targetMembershipId)?.role,
+    ).toBe("volunteer");
+  });
+
+  test("parent and player roles cannot use committee object mutations", async () => {
+    const t = convexTest(schema, modules);
+    const parent = await seedOrg(t, {
+      clerkOrg: "org_parent_blocked",
+      clerkUser: "user_parent_blocked",
+      role: "parent",
+    });
+    const player = await seedOrg(t, {
+      clerkOrg: "org_player_blocked",
+      clerkUser: "user_player_blocked",
+      role: "player",
+    });
+
+    await expect(
+      parent.as.mutation(api.sponsors.create, { name: "Parent Sponsor" }),
+    ).rejects.toThrow(/permission/i);
+    await expect(
+      player.as.mutation(api.publicSite.upsertSettings, { enabled: true }),
+    ).rejects.toThrow(/permission/i);
+    await expect(
+      player.as.mutation(api.organizations.rotateInviteCode, {}),
+    ).rejects.toThrow(/permission/i);
+  });
+
+  test("training certifications are generic member records", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_training_certs",
+      clerkUser: "user_training_certs",
+      role: "committee",
+    });
+    const memberId = await club.as.mutation(api.members.create, {
+      firstName: "Taylor",
+      lastName: "Qualified",
+      email: "taylor@example.test",
+    });
+
+    const certId = await club.as.mutation(api.certifications.create, {
+      memberId,
+      name: "Forklift licence",
+      issuer: "SafeWork",
+      issuedDate: "2026-01-01",
+      expiryDate: "2026-12-31",
+    });
+    const memberDetail = await club.as.query(api.members.get, { memberId });
+    expect(memberDetail.member.isVolunteer).toBe(false);
+
+    await club.as.mutation(api.certifications.update, {
+      certId,
+      name: "Forklift licence updated",
+      expiryDate: null,
+    });
+    const certs = await club.as.query(api.certifications.list, {});
+    const cert = certs.find((row) => row.cert._id === certId);
+    expect(cert?.member?._id).toBe(memberId);
+    expect(cert?.cert.name).toBe("Forklift licence updated");
+    expect(cert?.cert.expiryDate ?? null).toBeNull();
+
+    await club.as.mutation(api.certifications.remove, { certId });
+    expect(await club.as.query(api.certifications.list, {})).toHaveLength(0);
+  });
+
+  test("committee can manage tasks and overdue reminder queueing", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_task_board",
+      clerkUser: "user_task_board",
+      role: "committee",
+    });
+    const assigneeMemberId = await club.as.mutation(api.members.create, {
+      firstName: "Ari",
+      lastName: "Assignee",
+      email: "ari@example.test",
+    });
+    const playerMemberId = await club.as.mutation(api.members.create, {
+      firstName: "Pat",
+      lastName: "Player",
+      clubRole: "player",
+    });
+    const parentMemberId = await club.as.mutation(api.members.create, {
+      firstName: "Penny",
+      lastName: "Parent",
+      clubRole: "parent",
+    });
+    const linkedParentMemberId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", {
+        clerkUserId: "user_task_parent",
+        email: "linked-parent@example.test",
+        activeOrgId: club.orgId,
+      });
+      await ctx.db.insert("memberships", {
+        orgId: club.orgId,
+        userId,
+        role: "parent",
+      });
+      return await ctx.db.insert("members", {
+        orgId: club.orgId,
+        userId,
+        firstName: "Linked",
+        lastName: "Parent",
+        status: "active",
+        isVolunteer: false,
+      });
+    });
+    const yesterday = new Date(Date.now() - 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+
+    const listedMembers = await club.as.query(api.members.list, {});
+    expect(
+      listedMembers.find((member) => member._id === linkedParentMemberId)
+        ?.membershipRole,
+    ).toBe("parent");
+    await expect(
+      club.as.mutation(api.tasks.create, {
+        title: "Do not assign to player",
+        assigneeMemberId: playerMemberId,
+      }),
+    ).rejects.toThrow(/parents or players/i);
+    await expect(
+      club.as.mutation(api.tasks.create, {
+        title: "Do not assign to parent",
+        assigneeMemberId: parentMemberId,
+      }),
+    ).rejects.toThrow(/parents or players/i);
+    await expect(
+      club.as.mutation(api.tasks.create, {
+        title: "Do not assign to linked parent",
+        assigneeMemberId: linkedParentMemberId,
+      }),
+    ).rejects.toThrow(/parents or players/i);
+
+    const taskId = await club.as.mutation(api.tasks.create, {
+      title: "Submit venue risk assessment",
+      assigneeMemberId,
+      dueDate: yesterday,
+    });
+    let tasks = await club.as.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.reminderEnabled).toBe(true);
+    expect(tasks[0]?.reminderEveryDays).toBe(3);
+    expect(tasks[0]?.assignee?._id).toBe(assigneeMemberId);
+
+    await expect(
+      club.as.mutation(api.tasks.update, {
+        taskId,
+        assigneeMemberId: playerMemberId,
+      }),
+    ).rejects.toThrow(/parents or players/i);
+
+    await club.as.mutation(api.tasks.move, {
+      taskId,
+      status: "in_progress",
+    });
+    tasks = await club.as.query(api.tasks.list, {});
+    expect(tasks[0]?.status).toBe("in_progress");
+
+    const firstQueue = await t.mutation(internal.tasks.queueDueReminders, {});
+    expect(firstQueue.queued).toBe(1);
+    const queuedAfterFirst = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("taskReminderEmails")
+        .withIndex("by_task", (q) => q.eq("taskId", taskId))
+        .collect();
+    });
+    expect(queuedAfterFirst).toHaveLength(1);
+    expect(queuedAfterFirst[0]?.email).toBe("ari@example.test");
+
+    const secondQueue = await t.mutation(internal.tasks.queueDueReminders, {});
+    expect(secondQueue.queued).toBe(0);
+
+    await club.as.mutation(api.tasks.move, { taskId, status: "done" });
+    const thirdQueue = await t.mutation(internal.tasks.queueDueReminders, {});
+    expect(thirdQueue.queued).toBe(0);
+
+    await club.as.mutation(api.tasks.remove, { taskId });
+    expect(await club.as.query(api.tasks.list, {})).toHaveLength(0);
   });
 
   test("anonymous callers are rejected", async () => {
@@ -690,6 +954,72 @@ describe("asset operations & audit log", () => {
     );
     expect(replayedDivisionId).toBe(divisionId);
     if (!divisionId) throw new Error("Expected division id.");
+
+    await club.as.mutation(api.soccer.upsertDivision, {
+      id: divisionId,
+      name: "Offline Division Updated",
+      minGrade: 5,
+      maxGrade: 55,
+      color: "#333333",
+      active: false,
+      clientMutationId: "crud-division-update-1",
+    });
+    await club.as.mutation(api.soccer.upsertDivision, {
+      id: divisionId,
+      name: "Ignored Division",
+      minGrade: 10,
+      maxGrade: 20,
+      color: "#444444",
+      active: true,
+      clientMutationId: "crud-division-update-1",
+    });
+    const divisions = await club.as.query(api.soccer.listDivisions, {});
+    const editedDivision = divisions.find((row) => row._id === divisionId);
+    expect(editedDivision?.name).toBe("Offline Division Updated");
+    expect(editedDivision?.minGrade).toBe(5);
+    expect(editedDivision?.maxGrade).toBe(55);
+    expect(editedDivision?.color).toBe("#333333");
+    expect(editedDivision?.active).toBe(false);
+
+    const competitionId = await club.as.mutation(api.soccer.upsertCompetition, {
+      name: "Offline Competition",
+      season: "2026",
+      active: true,
+      clientMutationId: "crud-competition-create-1",
+    });
+    const replayedCompetitionId = await club.as.mutation(
+      api.soccer.upsertCompetition,
+      {
+        name: "Duplicate Competition",
+        season: "2027",
+        active: false,
+        clientMutationId: "crud-competition-create-1",
+      },
+    );
+    expect(replayedCompetitionId).toBe(competitionId);
+    if (!competitionId) throw new Error("Expected competition id.");
+
+    await club.as.mutation(api.soccer.upsertCompetition, {
+      id: competitionId,
+      name: "Offline Competition Updated",
+      season: null,
+      active: false,
+      clientMutationId: "crud-competition-update-1",
+    });
+    await club.as.mutation(api.soccer.upsertCompetition, {
+      id: competitionId,
+      name: "Ignored Competition",
+      season: "Ignored",
+      active: true,
+      clientMutationId: "crud-competition-update-1",
+    });
+    const competitions = await club.as.query(api.soccer.listCompetitions, {});
+    const editedCompetition = competitions.find(
+      (row) => row._id === competitionId,
+    );
+    expect(editedCompetition?.name).toBe("Offline Competition Updated");
+    expect(editedCompetition?.season ?? null).toBeNull();
+    expect(editedCompetition?.active).toBe(false);
 
     const teamId = await club.as.mutation(api.teams.create, {
       name: "Offline Team",
