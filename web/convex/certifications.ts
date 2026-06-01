@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { assertSameOrg, requireOrgMember, requireRole } from "./lib/auth";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+import { requireModule } from "./lib/orgConfig";
 
 const nullableString = v.union(v.string(), v.null());
 
@@ -85,6 +86,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "training");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const certId = ctx.db.normalizeId(
@@ -138,6 +140,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "training");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const cert = await ctx.db.get(args.certId);
@@ -185,6 +188,7 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "training");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const cert = await ctx.db.get(args.certId);
     assertSameOrg(auth, cert);

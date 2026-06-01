@@ -15,6 +15,7 @@ import {
   type Role,
 } from "./lib/auth";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+import { requireModule } from "./lib/orgConfig";
 
 const nullableString = v.union(v.string(), v.null());
 const DEFAULT_REMINDER_EVERY_DAYS = 3;
@@ -184,6 +185,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "tasks");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const taskId = ctx.db.normalizeId("tasks", replay.resultId);
@@ -236,6 +238,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "tasks");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const task = await ctx.db.get(args.taskId);
@@ -288,6 +291,7 @@ export const move = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "tasks");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const task = await ctx.db.get(args.taskId);
@@ -316,6 +320,7 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "tasks");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const task = await ctx.db.get(args.taskId);
     assertSameOrg(auth, task);

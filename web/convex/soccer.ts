@@ -27,6 +27,28 @@ export const setSoccerMode = mutation({
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
     await ctx.db.patch(auth.org._id, { soccerMode: args.enabled });
+    for (const key of ["sport", "soccer"] as const) {
+      const existing = await ctx.db
+        .query("organizationModules")
+        .withIndex("by_org_key", (q) =>
+          q.eq("orgId", auth.org._id).eq("key", key),
+        )
+        .unique();
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          enabled: args.enabled,
+          updatedAt: Date.now(),
+        });
+      } else {
+        await ctx.db.insert("organizationModules", {
+          orgId: auth.org._id,
+          key,
+          enabled: args.enabled,
+          version: "1",
+          updatedAt: Date.now(),
+        });
+      }
+    }
     if (args.enabled) {
       await ensureSkillDefaults(ctx, auth.org._id);
       await ensureDivisionDefaults(ctx, auth.org._id);
@@ -39,7 +61,12 @@ export async function isSoccerMode(
   orgId: Id<"organizations">,
 ): Promise<boolean> {
   const org = await ctx.db.get(orgId);
-  return Boolean(org?.soccerMode);
+  if (org?.soccerMode) return true;
+  const module = await ctx.db
+    .query("organizationModules")
+    .withIndex("by_org_key", (q) => q.eq("orgId", orgId).eq("key", "soccer"))
+    .unique();
+  return Boolean(module?.enabled);
 }
 
 async function assertSoccerMode(ctx: MutationCtx, orgId: Id<"organizations">) {

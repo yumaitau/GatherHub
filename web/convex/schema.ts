@@ -110,6 +110,72 @@ export const taskReminderEmailStatusValidator = v.union(
   v.literal("skipped"),
 );
 
+export const organizationKindValidator = v.union(
+  v.literal("sports_club"),
+  v.literal("community_org"),
+  v.literal("field_service"),
+  v.literal("waste_operator"),
+  v.literal("logistics"),
+  v.literal("school_group"),
+  v.literal("event_company"),
+  v.literal("other"),
+);
+
+export const organizationModuleKeyValidator = v.union(
+  v.literal("core"),
+  v.literal("people"),
+  v.literal("teams"),
+  v.literal("events"),
+  v.literal("announcements"),
+  v.literal("assets"),
+  v.literal("volunteers"),
+  v.literal("training"),
+  v.literal("tasks"),
+  v.literal("public_site"),
+  v.literal("sponsors"),
+  v.literal("news"),
+  v.literal("sport"),
+  v.literal("soccer"),
+  v.literal("field_service"),
+  v.literal("logistics"),
+  v.literal("waste"),
+  v.literal("safety"),
+);
+
+export const organizationTerminologyValidator = v.object({
+  orgSingular: v.optional(v.string()),
+  orgPlural: v.optional(v.string()),
+  memberSingular: v.optional(v.string()),
+  memberPlural: v.optional(v.string()),
+  teamSingular: v.optional(v.string()),
+  teamPlural: v.optional(v.string()),
+  eventSingular: v.optional(v.string()),
+  eventPlural: v.optional(v.string()),
+  assetSingular: v.optional(v.string()),
+  assetPlural: v.optional(v.string()),
+  volunteerSingular: v.optional(v.string()),
+  volunteerPlural: v.optional(v.string()),
+  sponsorSingular: v.optional(v.string()),
+  sponsorPlural: v.optional(v.string()),
+  newsSingular: v.optional(v.string()),
+  newsPlural: v.optional(v.string()),
+  taskSingular: v.optional(v.string()),
+  taskPlural: v.optional(v.string()),
+  certificationSingular: v.optional(v.string()),
+  certificationPlural: v.optional(v.string()),
+  sportSingular: v.optional(v.string()),
+  sportPlural: v.optional(v.string()),
+  competitionSingular: v.optional(v.string()),
+  competitionPlural: v.optional(v.string()),
+  divisionSingular: v.optional(v.string()),
+  divisionPlural: v.optional(v.string()),
+  ageGroupSingular: v.optional(v.string()),
+  ageGroupPlural: v.optional(v.string()),
+  registrationSingular: v.optional(v.string()),
+  registrationPlural: v.optional(v.string()),
+  gradingSingular: v.optional(v.string()),
+});
+
 /**
  * Taxonomy kinds: lists of values that orgs configure themselves rather than
  * us hardcoding. The corresponding fields on `events` / `assets` / `teams`
@@ -156,10 +222,12 @@ export default defineSchema({
     activeOrgId: v.optional(v.id("organizations")),
   }).index("by_clerk_id", ["clerkUserId"]),
 
-  // Clubs. Created and owned entirely in Convex. `inviteCode` is an opaque
+  // Organisations. Created and owned entirely in Convex. `inviteCode` is an opaque
   // short string used by `organizations.joinByCode`; null/absent disables it.
   // `soccerMode` unlocks soccer-specific surfaces (Registrations, Grading,
-  // soccer settings, kit metadata on teams).
+  // soccer settings, kit metadata on teams). New tenants use `kind`,
+  // `templateKey`, `terminology`, and `organizationModules`; `soccerMode`
+  // remains as the compatibility flag for older code and soccer templates.
   organizations: defineTable({
     name: v.string(),
     slug: v.optional(v.string()),
@@ -167,10 +235,25 @@ export default defineSchema({
     createdBy: v.id("users"),
     inviteCode: v.optional(v.string()),
     soccerMode: v.optional(v.boolean()),
+    kind: v.optional(organizationKindValidator),
+    templateKey: v.optional(v.string()),
+    terminology: v.optional(organizationTerminologyValidator),
+    profileUpdatedAt: v.optional(v.number()),
     defaultAddress: v.optional(v.string()),
   })
     .index("by_slug", ["slug"])
     .index("by_invite_code", ["inviteCode"]),
+
+  organizationModules: defineTable({
+    orgId: v.id("organizations"),
+    key: organizationModuleKeyValidator,
+    enabled: v.boolean(),
+    version: v.optional(v.string()),
+    configJson: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_key", ["orgId", "key"]),
 
   // User ↔ organisation link with role. Convex-native; not synced from Clerk.
   memberships: defineTable({

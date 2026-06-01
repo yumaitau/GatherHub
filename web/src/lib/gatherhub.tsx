@@ -3,6 +3,11 @@ import * as React from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { type Role, hasAtLeastRole } from "./roles";
+import type {
+  OrganizationKind,
+  OrganizationModule,
+  OrganizationTerminology,
+} from "./verticals";
 
 export interface GatherHubContextValue {
   isLoading: boolean;
@@ -20,6 +25,10 @@ export interface GatherHubContextValue {
     name: string;
     slug?: string;
     soccerMode: boolean;
+    kind: OrganizationKind;
+    templateKey: string;
+    terminology: OrganizationTerminology;
+    modules: OrganizationModule[];
     defaultAddress?: string;
   } | null;
   /** UI-only gate: does the caller hold at least `min`? (server re-checks). */
@@ -68,6 +77,10 @@ export function GatherHubProvider({ children }: { children: React.ReactNode }) {
             name: context.org.name,
             slug: context.org.slug ?? undefined,
             soccerMode: Boolean(context.org.soccerMode),
+            kind: context.org.kind,
+            templateKey: context.org.templateKey,
+            terminology: context.org.terminology,
+            modules: context.org.modules,
             defaultAddress: context.org.defaultAddress ?? undefined,
           }
         : null,

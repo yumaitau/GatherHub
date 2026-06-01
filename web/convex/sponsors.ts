@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
 import { attachOrgImage, deleteOrgImage, orgImageUrl } from "./lib/uploads";
+import { requireModule } from "./lib/orgConfig";
 
 export const list = query({
   args: {},
@@ -64,6 +65,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "sponsors");
     const sponsorId = await ctx.db.insert("sponsors", {
       orgId: auth.org._id,
       name: args.name.trim(),
@@ -109,6 +111,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "sponsors");
     const sponsor = await ctx.db.get(args.sponsorId);
     assertSameOrg(auth, sponsor);
     const { sponsorId, logoStorageId, logoFileName, ...rest } = args;
@@ -141,6 +144,7 @@ export const remove = mutation({
   args: { sponsorId: v.id("sponsors") },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "sponsors");
     const sponsor = await ctx.db.get(args.sponsorId);
     assertSameOrg(auth, sponsor);
     // Unlink sponsored assets.

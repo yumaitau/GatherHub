@@ -40,6 +40,13 @@ import {
 } from "@/components/layout/command-palette";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import type { Role } from "@/lib/roles";
+import {
+  moduleEnabled,
+  term,
+  titleCase,
+  type OrganizationModuleKey,
+  type VerticalOrgConfig,
+} from "@/lib/verticals";
 
 type IconType = React.ComponentType<{ className?: string }>;
 
@@ -49,6 +56,7 @@ interface NavItem {
   icon: IconType;
   shortcut?: string;
   minRole?: Role;
+  module?: OrganizationModuleKey;
   end?: boolean;
 }
 
@@ -59,8 +67,8 @@ interface NavGroup {
   defaultOpen?: boolean;
 }
 
-function buildNav(_soccerMode: boolean): NavGroup[] {
-  return [
+function buildNav(org: VerticalOrgConfig | null): NavGroup[] {
+  const groups: NavGroup[] = [
     {
       label: "Workspace",
       items: [
@@ -76,79 +84,141 @@ function buildNav(_soccerMode: boolean): NavGroup[] {
     {
       label: "Operations",
       items: [
-        { to: "/members", label: "Members", icon: Users, shortcut: "M" },
-        { to: "/teams", label: "Teams", icon: Shield, shortcut: "T" },
-        { to: "/events", label: "Events", icon: CalendarDays, shortcut: "E" },
-        { to: "/announcements", label: "Announcements", icon: Megaphone },
-        { to: "/assets", label: "KitTrace", icon: Package, shortcut: "K" },
-        { to: "/volunteers", label: "Volunteers", icon: HandHeart },
+        {
+          to: "/members",
+          label: titleCase(term(org, "memberPlural")),
+          icon: Users,
+          shortcut: "M",
+          module: "people",
+        },
+        {
+          to: "/teams",
+          label: titleCase(term(org, "teamPlural")),
+          icon: Shield,
+          shortcut: "T",
+          module: "teams",
+        },
+        {
+          to: "/events",
+          label: titleCase(term(org, "eventPlural")),
+          icon: CalendarDays,
+          shortcut: "E",
+          module: "events",
+        },
+        {
+          to: "/announcements",
+          label: "Announcements",
+          icon: Megaphone,
+          module: "announcements",
+        },
+        {
+          to: "/assets",
+          label: titleCase(term(org, "assetPlural")),
+          icon: Package,
+          shortcut: "K",
+          module: "assets",
+        },
+        {
+          to: "/volunteers",
+          label: titleCase(term(org, "volunteerPlural")),
+          icon: HandHeart,
+          module: "volunteers",
+        },
         {
           to: "/training-certifications",
-          label: "Training & Certs",
+          label: `Training & ${titleCase(term(org, "certificationPlural"))}`,
           icon: GraduationCap,
           minRole: "committee",
+          module: "training",
         },
         {
           to: "/tasks",
-          label: "Task Board",
+          label: titleCase(term(org, "taskPlural")),
           icon: ClipboardCheck,
           minRole: "committee",
+          module: "tasks",
         },
       ],
     },
     {
-      label: "Club",
+      label: titleCase(term(org, "orgSingular")),
       items: [
-        { to: "/lifetime-members", label: "Lifetime Members", icon: Award },
+        {
+          to: "/lifetime-members",
+          label: `Lifetime ${titleCase(term(org, "memberPlural"))}`,
+          icon: Award,
+          module: "people",
+        },
         {
           to: "/sponsors",
-          label: "Sponsors",
+          label: titleCase(term(org, "sponsorPlural")),
           icon: Building2,
           minRole: "committee",
+          module: "sponsors",
         },
-        { to: "/news", label: "News", icon: Newspaper, minRole: "committee" },
+        {
+          to: "/news",
+          label: titleCase(term(org, "newsPlural")),
+          icon: Newspaper,
+          minRole: "committee",
+          module: "news",
+        },
       ],
     },
   ];
+  if (moduleEnabled(org, "soccer")) groups.push(buildSoccerNav(org));
+  return groups;
 }
 
-const SOCCER_NAV: NavGroup = {
-  label: "Soccer",
-  collapsible: true,
-  defaultOpen: false,
-  items: [
-    {
-      to: "/soccer/registrations",
-      label: "Player Registrations",
-      icon: ClipboardList,
-      minRole: "committee",
-    },
-    {
-      to: "/soccer/coaches-managers",
-      label: "Coaches & Managers",
-      icon: UserCog,
-    },
-    {
-      to: "/soccer/competitions",
-      label: "Competitions",
-      icon: Trophy,
-      minRole: "committee",
-    },
-    {
-      to: "/soccer/age-groups",
-      label: "Age Groups",
-      icon: Layers3,
-      minRole: "committee",
-    },
-    { to: "/soccer/divisions", label: "Divisions", icon: Layers },
-    {
-      to: "/soccer/grading",
-      label: "Grading",
-      icon: Gauge,
-      minRole: "coach",
-    },
-  ],
-};
+function buildSoccerNav(org: VerticalOrgConfig | null): NavGroup {
+  return {
+    label: titleCase(term(org, "sportSingular")),
+    collapsible: true,
+    defaultOpen: false,
+    items: [
+      {
+        to: "/soccer/registrations",
+        label: titleCase(term(org, "registrationPlural")),
+        icon: ClipboardList,
+        minRole: "committee",
+        module: "soccer",
+      },
+      {
+        to: "/soccer/coaches-managers",
+        label: "Coaches & Managers",
+        icon: UserCog,
+        module: "soccer",
+      },
+      {
+        to: "/soccer/competitions",
+        label: titleCase(term(org, "competitionPlural")),
+        icon: Trophy,
+        minRole: "committee",
+        module: "soccer",
+      },
+      {
+        to: "/soccer/age-groups",
+        label: titleCase(term(org, "ageGroupPlural")),
+        icon: Layers3,
+        minRole: "committee",
+        module: "soccer",
+      },
+      {
+        to: "/soccer/divisions",
+        label: titleCase(term(org, "divisionPlural")),
+        icon: Layers,
+        module: "soccer",
+      },
+      {
+        to: "/soccer/grading",
+        label: titleCase(term(org, "gradingSingular")),
+        icon: Gauge,
+        minRole: "coach",
+        module: "soccer",
+      },
+    ],
+  };
+}
 
 const SYSTEM_NAV: NavItem[] = [
   { to: "/settings", label: "Settings", icon: Settings, minRole: "committee" },
@@ -164,9 +234,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { isLoading, isSignedInToOrg, org, role, can } = useGatherHub();
-  const soccerMode = Boolean(org?.soccerMode);
-  const baseNav = buildNav(soccerMode);
-  const groups = soccerMode ? [...baseNav, SOCCER_NAV] : baseNav;
+  const groups = buildNav(org);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const location = useLocation();
   const hasWebAccess = !role || can("volunteer");
@@ -244,7 +312,12 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
           >
             <div className="flex h-full flex-col overflow-y-auto px-2 pt-3 pb-4">
               {groups.map((group) => (
-                <NavSection key={group.label} group={group} can={can} />
+                <NavSection
+                  key={group.label}
+                  group={group}
+                  can={can}
+                  org={org}
+                />
               ))}
               <div className="mt-auto pt-4">
                 {SYSTEM_NAV.filter((n) => !n.minRole || can(n.minRole)).map(
@@ -285,11 +358,17 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 function NavSection({
   group,
   can,
+  org,
 }: {
   group: NavGroup;
   can: (role: Role) => boolean;
+  org: VerticalOrgConfig | null;
 }) {
-  const items = group.items.filter((n) => !n.minRole || can(n.minRole));
+  const items = group.items.filter(
+    (n) =>
+      (!n.minRole || can(n.minRole)) &&
+      (!n.module || moduleEnabled(org, n.module)),
+  );
   const location = useLocation();
   const hasActive = items.some((i) =>
     i.end

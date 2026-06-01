@@ -92,7 +92,7 @@ final class AppDataPreloader {
                 try guardActive(shouldContinue)
                 let stats = try await convex.dashboardStats()
                 var soccer: SoccerDashboardStats?
-                if context.org.soccerMode == true {
+                if context.org.moduleEnabled("soccer") {
                     soccer = try? await convex.soccerDashboardStats()
                 }
                 try guardActive(shouldContinue)
@@ -102,38 +102,44 @@ final class AppDataPreloader {
             failures: &failures
         )
 
-        record(
-            await run("Members") {
-                try guardActive(shouldContinue)
-                let rows = try await convex.listMembers()
-                try guardActive(shouldContinue)
-                try store.replaceMembers(rows)
-            },
-            loaded: &loaded,
-            failures: &failures
-        )
+        if context.org.moduleEnabled("people") {
+            record(
+                await run("Members") {
+                    try guardActive(shouldContinue)
+                    let rows = try await convex.listMembers()
+                    try guardActive(shouldContinue)
+                    try store.replaceMembers(rows)
+                },
+                loaded: &loaded,
+                failures: &failures
+            )
+        }
 
-        record(
-            await run("Teams") {
-                try guardActive(shouldContinue)
-                let rows = try await convex.listTeams(includeInactive: true)
-                try guardActive(shouldContinue)
-                try store.replaceTeams(rows)
-            },
-            loaded: &loaded,
-            failures: &failures
-        )
+        if context.org.moduleEnabled("teams") {
+            record(
+                await run("Teams") {
+                    try guardActive(shouldContinue)
+                    let rows = try await convex.listTeams(includeInactive: true)
+                    try guardActive(shouldContinue)
+                    try store.replaceTeams(rows)
+                },
+                loaded: &loaded,
+                failures: &failures
+            )
+        }
 
-        record(
-            await run("Events") {
-                try guardActive(shouldContinue)
-                let rows = try await convex.listEvents(upcomingOnly: false)
-                try guardActive(shouldContinue)
-                try store.replaceEvents(rows)
-            },
-            loaded: &loaded,
-            failures: &failures
-        )
+        if context.org.moduleEnabled("events") {
+            record(
+                await run("Events") {
+                    try guardActive(shouldContinue)
+                    let rows = try await convex.listEvents(upcomingOnly: false)
+                    try guardActive(shouldContinue)
+                    try store.replaceEvents(rows)
+                },
+                loaded: &loaded,
+                failures: &failures
+            )
+        }
 
         record(
             await run("Event types") {
@@ -146,38 +152,44 @@ final class AppDataPreloader {
             failures: &failures
         )
 
-        record(
-            await run("Announcements") {
-                try guardActive(shouldContinue)
-                let rows = try await convex.listAnnouncements()
-                try guardActive(shouldContinue)
-                try store.replaceAnnouncements(rows)
-            },
-            loaded: &loaded,
-            failures: &failures
-        )
+        if context.org.moduleEnabled("announcements") {
+            record(
+                await run("Announcements") {
+                    try guardActive(shouldContinue)
+                    let rows = try await convex.listAnnouncements()
+                    try guardActive(shouldContinue)
+                    try store.replaceAnnouncements(rows)
+                },
+                loaded: &loaded,
+                failures: &failures
+            )
+        }
 
-        record(
-            await run("Training certifications") {
-                try guardActive(shouldContinue)
-                let rows = try await convex.listTrainingCertifications()
-                try guardActive(shouldContinue)
-                try store.replaceTrainingCertifications(rows)
-            },
-            loaded: &loaded,
-            failures: &failures
-        )
+        if context.org.moduleEnabled("training") {
+            record(
+                await run("Training certifications") {
+                    try guardActive(shouldContinue)
+                    let rows = try await convex.listTrainingCertifications()
+                    try guardActive(shouldContinue)
+                    try store.replaceTrainingCertifications(rows)
+                },
+                loaded: &loaded,
+                failures: &failures
+            )
+        }
 
-        record(
-            await run("Tasks") {
-                try guardActive(shouldContinue)
-                let rows = try await convex.listTasks()
-                try guardActive(shouldContinue)
-                try store.replaceTasks(rows)
-            },
-            loaded: &loaded,
-            failures: &failures
-        )
+        if context.org.moduleEnabled("tasks") {
+            record(
+                await run("Tasks") {
+                    try guardActive(shouldContinue)
+                    let rows = try await convex.listTasks()
+                    try guardActive(shouldContinue)
+                    try store.replaceTasks(rows)
+                },
+                loaded: &loaded,
+                failures: &failures
+            )
+        }
 
         record(
             await run("Asset categories") {
@@ -212,47 +224,49 @@ final class AppDataPreloader {
             failures: &failures
         )
 
-        var assetDetailCandidates: [AssetSummary] = []
-        let assets = await runValue("Assets") {
-            try guardActive(shouldContinue)
-            let rows = try await convex.listAssets()
-            try guardActive(shouldContinue)
-            try store.replaceAssets(rows)
-            return rows
-        }
-        record(assets, loaded: &loaded, failures: &failures)
-        if let rows = assets.value {
-            assetDetailCandidates.append(contentsOf: rows)
+        if context.org.moduleEnabled("assets") {
+            var assetDetailCandidates: [AssetSummary] = []
+            let assets = await runValue("Assets") {
+                try guardActive(shouldContinue)
+                let rows = try await convex.listAssets()
+                try guardActive(shouldContinue)
+                try store.replaceAssets(rows)
+                return rows
+            }
+            record(assets, loaded: &loaded, failures: &failures)
+            if let rows = assets.value {
+                assetDetailCandidates.append(contentsOf: rows)
+            }
+
+            let checkedOutAssets = await runValue("Checked-out assets") {
+                try guardActive(shouldContinue)
+                let rows = try await convex.checkedOutAssets()
+                try guardActive(shouldContinue)
+                try store.replaceCheckedOutAssets(rows)
+                return rows
+            }
+            record(checkedOutAssets, loaded: &loaded, failures: &failures)
+            if let rows = checkedOutAssets.value {
+                assetDetailCandidates.append(contentsOf: rows)
+            }
+
+            if !assetDetailCandidates.isEmpty {
+                record(
+                    await run("Asset details") {
+                        try await preloadAssetDetails(
+                            from: assetDetailCandidates,
+                            convex: convex,
+                            store: store,
+                            shouldContinue: shouldContinue
+                        )
+                    },
+                    loaded: &loaded,
+                    failures: &failures
+                )
+            }
         }
 
-        let checkedOutAssets = await runValue("Checked-out assets") {
-            try guardActive(shouldContinue)
-            let rows = try await convex.checkedOutAssets()
-            try guardActive(shouldContinue)
-            try store.replaceCheckedOutAssets(rows)
-            return rows
-        }
-        record(checkedOutAssets, loaded: &loaded, failures: &failures)
-        if let rows = checkedOutAssets.value {
-            assetDetailCandidates.append(contentsOf: rows)
-        }
-
-        if !assetDetailCandidates.isEmpty {
-            record(
-                await run("Asset details") {
-                    try await preloadAssetDetails(
-                        from: assetDetailCandidates,
-                        convex: convex,
-                        store: store,
-                        shouldContinue: shouldContinue
-                    )
-                },
-                loaded: &loaded,
-                failures: &failures
-            )
-        }
-
-        if context.org.soccerMode == true {
+        if context.org.moduleEnabled("soccer") {
             await preloadSoccerData(
                 convex: convex,
                 store: store,

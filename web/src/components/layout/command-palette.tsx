@@ -23,6 +23,13 @@ import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import { useGatherHub } from "@/lib/gatherhub";
 import type { Role } from "@/lib/roles";
+import {
+  moduleEnabled,
+  term,
+  titleCase,
+  type OrganizationModuleKey,
+  type VerticalOrgConfig,
+} from "@/lib/verticals";
 
 type IconType = React.ComponentType<{ className?: string }>;
 
@@ -34,130 +41,144 @@ interface PaletteEntry {
   group: "Jump to" | "Operations" | "Club" | "Account";
   to: string;
   minRole?: Role;
+  module?: OrganizationModuleKey;
   keywords?: string[];
 }
 
-const ENTRIES: PaletteEntry[] = [
-  {
-    id: "dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    group: "Jump to",
-    to: "/",
-    keywords: ["home", "overview"],
-  },
-  {
-    id: "members",
-    label: "Members",
-    icon: Users,
-    group: "Operations",
-    to: "/members",
-    keywords: ["people", "players", "parents"],
-  },
-  {
-    id: "teams",
-    label: "Teams",
-    icon: Shield,
-    group: "Operations",
-    to: "/teams",
-    keywords: ["squad", "roster"],
-  },
-  {
-    id: "events",
-    label: "Events",
-    icon: CalendarDays,
-    group: "Operations",
-    to: "/events",
-    keywords: ["training", "match", "calendar"],
-  },
-  {
-    id: "announcements",
-    label: "Announcements",
-    icon: Megaphone,
-    group: "Operations",
-    to: "/announcements",
-    keywords: ["notice", "broadcast"],
-  },
-  {
-    id: "assets",
-    label: "KitTrace",
-    icon: Package,
-    group: "Operations",
-    to: "/assets",
-    keywords: [
-      "kit",
-      "assets",
-      "items",
-      "equipment",
-      "inventory",
-      "history",
-      "audit",
-      "checked out",
-      "track",
-    ],
-  },
-  {
-    id: "volunteers",
-    label: "Volunteers",
-    icon: HandHeart,
-    group: "Operations",
-    to: "/volunteers",
-    keywords: ["roster", "duty", "certifications"],
-  },
-  {
-    id: "training-certifications",
-    label: "Training & Certifications",
-    icon: GraduationCap,
-    group: "Operations",
-    to: "/training-certifications",
-    minRole: "committee",
-    keywords: ["certifications", "checks", "licences", "qualifications"],
-  },
-  {
-    id: "task-board",
-    label: "Task Board",
-    icon: ClipboardCheck,
-    group: "Operations",
-    to: "/tasks",
-    minRole: "committee",
-    keywords: ["kanban", "tasks", "deadlines", "reminders"],
-  },
-  {
-    id: "sponsors",
-    label: "Sponsors",
-    icon: Building2,
-    group: "Club",
-    to: "/sponsors",
-    minRole: "committee",
-    keywords: ["partner", "donor"],
-  },
-  {
-    id: "news",
-    label: "News",
-    icon: Newspaper,
-    group: "Club",
-    to: "/news",
-    minRole: "committee",
-    keywords: ["articles", "stories", "public site"],
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    icon: Settings,
-    group: "Account",
-    to: "/settings",
-    minRole: "committee",
-    keywords: ["preferences", "club settings", "permissions"],
-  },
-  {
-    id: "profile",
-    label: "Your profile",
-    icon: UserCircle,
-    group: "Account",
-    to: "/profile",
-    keywords: ["account", "me"],
-  },
-];
+function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
+  return [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      group: "Jump to",
+      to: "/",
+      keywords: ["home", "overview"],
+    },
+    {
+      id: "members",
+      label: titleCase(term(org, "memberPlural")),
+      icon: Users,
+      group: "Operations",
+      to: "/members",
+      module: "people",
+      keywords: ["people", "players", "parents", term(org, "memberPlural")],
+    },
+    {
+      id: "teams",
+      label: titleCase(term(org, "teamPlural")),
+      icon: Shield,
+      group: "Operations",
+      to: "/teams",
+      module: "teams",
+      keywords: ["squad", "roster", term(org, "teamPlural")],
+    },
+    {
+      id: "events",
+      label: titleCase(term(org, "eventPlural")),
+      icon: CalendarDays,
+      group: "Operations",
+      to: "/events",
+      module: "events",
+      keywords: ["training", "match", "calendar", term(org, "eventPlural")],
+    },
+    {
+      id: "announcements",
+      label: "Announcements",
+      icon: Megaphone,
+      group: "Operations",
+      to: "/announcements",
+      module: "announcements",
+      keywords: ["notice", "broadcast"],
+    },
+    {
+      id: "assets",
+      label: titleCase(term(org, "assetPlural")),
+      icon: Package,
+      group: "Operations",
+      to: "/assets",
+      module: "assets",
+      keywords: [
+        "kit",
+        "assets",
+        "items",
+        "equipment",
+        "inventory",
+        "history",
+        "audit",
+        "checked out",
+        "track",
+        term(org, "assetPlural"),
+      ],
+    },
+    {
+      id: "volunteers",
+      label: titleCase(term(org, "volunteerPlural")),
+      icon: HandHeart,
+      group: "Operations",
+      to: "/volunteers",
+      module: "volunteers",
+      keywords: ["roster", "duty", "certifications"],
+    },
+    {
+      id: "training-certifications",
+      label: `Training & ${titleCase(term(org, "certificationPlural"))}`,
+      icon: GraduationCap,
+      group: "Operations",
+      to: "/training-certifications",
+      minRole: "committee",
+      module: "training",
+      keywords: ["certifications", "checks", "licences", "qualifications"],
+    },
+    {
+      id: "task-board",
+      label: titleCase(term(org, "taskPlural")),
+      icon: ClipboardCheck,
+      group: "Operations",
+      to: "/tasks",
+      minRole: "committee",
+      module: "tasks",
+      keywords: ["kanban", "tasks", "deadlines", "reminders"],
+    },
+    {
+      id: "sponsors",
+      label: titleCase(term(org, "sponsorPlural")),
+      icon: Building2,
+      group: "Club",
+      to: "/sponsors",
+      minRole: "committee",
+      module: "sponsors",
+      keywords: ["partner", "donor"],
+    },
+    {
+      id: "news",
+      label: titleCase(term(org, "newsPlural")),
+      icon: Newspaper,
+      group: "Club",
+      to: "/news",
+      minRole: "committee",
+      module: "news",
+      keywords: ["articles", "stories", "public site"],
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: Settings,
+      group: "Account",
+      to: "/settings",
+      minRole: "committee",
+      keywords: ["preferences", "organisation settings", "permissions"],
+    },
+    {
+      id: "profile",
+      label: "Your profile",
+      icon: UserCircle,
+      group: "Account",
+      to: "/profile",
+      keywords: ["account", "me"],
+    },
+  ];
+}
 
 interface CommandPaletteContextValue {
   open: boolean;
@@ -223,10 +244,11 @@ function CommandPaletteDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const navigate = useNavigate();
-  const { can } = useGatherHub();
+  const { can, org } = useGatherHub();
   const [query, setQuery] = React.useState("");
   const [activeIndex, setActiveIndex] = React.useState(0);
   const listRef = React.useRef<HTMLDivElement | null>(null);
+  const entries = React.useMemo(() => buildEntries(org), [org]);
 
   React.useEffect(() => {
     if (!open) {
@@ -237,10 +259,13 @@ function CommandPaletteDialog({
 
   const visible = React.useMemo(
     () =>
-      ENTRIES.filter(
-        (e) => (!e.minRole || can(e.minRole)) && matches(query, e),
+      entries.filter(
+        (e) =>
+          (!e.minRole || can(e.minRole)) &&
+          (!e.module || moduleEnabled(org, e.module)) &&
+          matches(query, e),
       ),
-    [query, can],
+    [entries, query, can, org],
   );
 
   React.useEffect(() => {

@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { getAuthContext } from "./lib/auth";
+import { effectiveOrgProfile } from "./lib/orgConfig";
 
 type IdentityClaims = {
   email?: string;
@@ -119,6 +120,7 @@ export const currentContext = query({
   handler: async (ctx) => {
     const auth = await getAuthContext(ctx);
     if (!auth) return null;
+    const profile = await effectiveOrgProfile(ctx, auth.org);
     return {
       user: {
         id: auth.user._id,
@@ -132,6 +134,10 @@ export const currentContext = query({
         name: auth.org.name,
         slug: auth.org.slug,
         soccerMode: Boolean(auth.org.soccerMode),
+        kind: profile.kind,
+        templateKey: profile.templateKey,
+        terminology: profile.terminology,
+        modules: profile.modules,
         defaultAddress: auth.org.defaultAddress,
       },
       role: auth.role,

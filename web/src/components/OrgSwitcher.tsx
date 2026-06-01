@@ -16,6 +16,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { cn, humanise } from "@/lib/utils";
 
@@ -153,9 +160,11 @@ export function OrgSwitcher({ compact = false }: { compact?: boolean }) {
 
 function CreateClubAction({ onDone }: { onDone: () => void }) {
   const create = useMutation(api.organizations.create);
+  const templates = useQuery(api.organizations.verticalTemplates, {});
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
+  const [templateKey, setTemplateKey] = React.useState("sports_club");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -164,7 +173,8 @@ function CreateClubAction({ onDone }: { onDone: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await create({ name });
+      const template = templates?.find((row) => row.key === templateKey);
+      await create({ name, templateKey, kind: template?.kind });
       setName("");
       setOpen(false);
       onDone();
@@ -210,6 +220,21 @@ function CreateClubAction({ onDone }: { onDone: () => void }) {
               required
               autoFocus
             />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Template</Label>
+            <Select value={templateKey} onValueChange={setTemplateKey}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(templates ?? []).map((template) => (
+                  <SelectItem key={template.key} value={template.key}>
+                    {template.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>

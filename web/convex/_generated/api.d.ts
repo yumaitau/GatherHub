@@ -24,6 +24,7 @@ import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_idempotency from "../lib/idempotency.js";
 import type * as lib_ids from "../lib/ids.js";
+import type * as lib_orgConfig from "../lib/orgConfig.js";
 import type * as lib_uploads from "../lib/uploads.js";
 import type * as members from "../members.js";
 import type * as news from "../news.js";
@@ -67,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/idempotency": typeof lib_idempotency;
   "lib/ids": typeof lib_ids;
+  "lib/orgConfig": typeof lib_orgConfig;
   "lib/uploads": typeof lib_uploads;
   members: typeof members;
   news: typeof news;

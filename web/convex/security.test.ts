@@ -369,6 +369,96 @@ describe("role-based permissions", () => {
     expect(await club.as.query(api.tasks.list, {})).toHaveLength(0);
   });
 
+  test("organisation profiles expose defaults and gate disabled module writes", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_vertical_defaults",
+      clerkUser: "user_vertical_defaults",
+      role: "committee",
+    });
+
+    const context = await club.as.query(api.sync.currentContext, {});
+    expect(context?.org.kind).toBe("sports_club");
+    expect(
+      context?.org.modules.some((m) => m.key === "tasks" && m.enabled),
+    ).toBe(true);
+
+    await club.as.mutation(api.organizations.setModule, {
+      key: "tasks",
+      enabled: false,
+    });
+    await expect(
+      club.as.mutation(api.tasks.create, { title: "Blocked task" }),
+    ).rejects.toThrow(/module.*disabled|disabled/i);
+
+    await club.as.mutation(api.organizations.setModule, {
+      key: "tasks",
+      enabled: true,
+    });
+    const taskId = await club.as.mutation(api.tasks.create, {
+      title: "Allowed task",
+    });
+    expect(taskId).toBeDefined();
+  });
+
+  test("new organisations can choose a non-sport vertical template", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", {
+        clerkUserId: "user_waste_owner",
+        email: "waste-owner@example.test",
+      });
+    });
+    const owner = t.withIdentity({ subject: "user_waste_owner" });
+
+    await owner.mutation(api.organizations.create, {
+      name: "Northside Waste",
+      kind: "waste_operator",
+      templateKey: "waste_operator",
+    });
+    const context = await owner.query(api.sync.currentContext, {});
+    expect(context?.org.kind).toBe("waste_operator");
+    expect(context?.org.terminology.eventSingular).toBe("job");
+    expect(context?.org.terminology.assetPlural).toBe("vehicles and bins");
+    expect(
+      context?.org.modules.some((m) => m.key === "waste" && m.enabled),
+    ).toBe(true);
+    expect(
+      context?.org.modules.some((m) => m.key === "soccer" && m.enabled),
+    ).toBe(false);
+  });
+
+  test("missing legacy organisation profile rows are migratable", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_legacy_profile",
+      clerkUser: "user_legacy_profile",
+      role: "owner",
+    });
+
+    const before = await t.run(async (ctx) => await ctx.db.get(club.orgId));
+    expect(before?.kind).toBeUndefined();
+
+    const result = await t.mutation(
+      internal.organizations.migrateMissingProfiles,
+      {},
+    );
+    expect(result.migrated).toBeGreaterThan(0);
+
+    const after = await t.run(async (ctx) => {
+      const org = await ctx.db.get(club.orgId);
+      const modules = await ctx.db
+        .query("organizationModules")
+        .withIndex("by_org", (q) => q.eq("orgId", club.orgId))
+        .collect();
+      return { org, modules };
+    });
+    expect(after.org?.kind).toBe("sports_club");
+    expect(after.modules.some((m) => m.key === "people" && m.enabled)).toBe(
+      true,
+    );
+  });
+
   test("anonymous callers are rejected", async () => {
     const t = convexTest(schema, modules);
     await expect(t.query(api.members.list, {})).rejects.toThrow();

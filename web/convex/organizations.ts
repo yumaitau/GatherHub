@@ -1,10 +1,25 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { requireRole, requireUser } from "./lib/auth";
 import { generateSlug, generateTagId } from "./lib/ids";
 import { seedAllDefaultsForOrg } from "./taxonomies";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+import {
+  effectiveOrgProfile,
+  ensureOrganizationProfile,
+  listVerticalTemplates,
+  normalizedProfileInput,
+  ORGANIZATION_MODULE_KEYS,
+  replaceOrganizationModules,
+  seedOrganizationProfile,
+  type OrganizationModuleKey,
+} from "./lib/orgConfig";
+import {
+  organizationKindValidator,
+  organizationModuleKeyValidator,
+  organizationTerminologyValidator,
+} from "./schema";
 
 /**
  * Convex-native organisation (club) lifecycle: create, join by invite code,
@@ -17,9 +32,14 @@ function newInviteCode(): string {
   return generateTagId().slice(4, 14).toUpperCase();
 }
 
-/** Create a new club. The caller becomes its owner and active member. */
+/** Create a new organisation. The caller becomes its owner and active member. */
 export const create = mutation({
-  args: { name: v.string(), slug: v.optional(v.string()) },
+  args: {
+    name: v.string(),
+    slug: v.optional(v.string()),
+    kind: v.optional(organizationKindValidator),
+    templateKey: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     const name = args.name.trim();
@@ -38,6 +58,10 @@ export const create = mutation({
       createdBy: user._id,
       inviteCode: newInviteCode(),
     });
+    await seedOrganizationProfile(ctx, orgId, {
+      kind: args.kind,
+      templateKey: args.templateKey,
+    });
     await ctx.db.insert("memberships", {
       orgId,
       userId: user._id,
@@ -46,6 +70,19 @@ export const create = mutation({
     await ctx.db.patch(user._id, { activeOrgId: orgId });
     await seedAllDefaultsForOrg(ctx, orgId);
     return { orgId, slug };
+  },
+});
+
+export const verticalTemplates = query({
+  args: {},
+  handler: async () => listVerticalTemplates(),
+});
+
+export const profile = query({
+  args: {},
+  handler: async (ctx) => {
+    const auth = await requireRole(ctx, "player");
+    return await effectiveOrgProfile(ctx, auth.org);
   },
 });
 
@@ -195,6 +232,116 @@ export const locationDefaults = query({
   handler: async (ctx) => {
     const auth = await requireRole(ctx, "player");
     return { defaultAddress: auth.org.defaultAddress ?? null };
+  },
+});
+
+export const updateProfile = mutation({
+  args: {
+    kind: v.optional(organizationKindValidator),
+    templateKey: v.optional(v.string()),
+    terminology: v.optional(organizationTerminologyValidator),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireRole(ctx, "committee");
+    const profile = normalizedProfileInput({
+      kind: args.kind ?? auth.org.kind,
+      templateKey: args.templateKey ?? auth.org.templateKey,
+      terminology: args.terminology ?? auth.org.terminology,
+    });
+    const template = listVerticalTemplates().find(
+      (row) => row.key === profile.templateKey,
+    );
+    const enabled = new Set<OrganizationModuleKey>(
+      (template?.modules ?? []).filter((key): key is OrganizationModuleKey =>
+        (ORGANIZATION_MODULE_KEYS as readonly string[]).includes(key),
+      ),
+    );
+    await ctx.db.patch(auth.org._id, {
+      kind: profile.kind,
+      templateKey: profile.templateKey,
+      terminology: profile.terminology,
+      soccerMode: enabled.has("soccer"),
+      profileUpdatedAt: Date.now(),
+    });
+    if (template) {
+      await replaceOrganizationModules(ctx, auth.org._id, enabled);
+    }
+  },
+});
+
+export const setModule = mutation({
+  args: {
+    key: organizationModuleKeyValidator,
+    enabled: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireRole(ctx, "committee");
+    if ((args.key === "core" || args.key === "people") && !args.enabled) {
+      throw new ConvexError("Core and people modules cannot be disabled.");
+    }
+    await ensureOrganizationProfile(ctx, auth.org);
+    const existing = await ctx.db
+      .query("organizationModules")
+      .withIndex("by_org_key", (q) =>
+        q.eq("orgId", auth.org._id).eq("key", args.key),
+      )
+      .unique();
+    const now = Date.now();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        enabled: args.enabled,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("organizationModules", {
+        orgId: auth.org._id,
+        key: args.key,
+        enabled: args.enabled,
+        version: "1",
+        updatedAt: now,
+      });
+    }
+    if (args.key === "soccer") {
+      await ctx.db.patch(auth.org._id, { soccerMode: args.enabled });
+      if (args.enabled) {
+        const sport = await ctx.db
+          .query("organizationModules")
+          .withIndex("by_org_key", (q) =>
+            q.eq("orgId", auth.org._id).eq("key", "sport"),
+          )
+          .unique();
+        if (sport) {
+          await ctx.db.patch(sport._id, { enabled: true, updatedAt: now });
+        } else {
+          await ctx.db.insert("organizationModules", {
+            orgId: auth.org._id,
+            key: "sport",
+            enabled: true,
+            version: "1",
+            updatedAt: now,
+          });
+        }
+      }
+    }
+  },
+});
+
+export const migrateMissingProfiles = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const orgs = await ctx.db.query("organizations").collect();
+    let migrated = 0;
+    for (const org of orgs) {
+      const modules = await ctx.db
+        .query("organizationModules")
+        .withIndex("by_org", (q) => q.eq("orgId", org._id))
+        .first();
+      if (!org.kind || !org.templateKey || !org.terminology || !modules) {
+        await ensureOrganizationProfile(ctx, org);
+        migrated += 1;
+      }
+    }
+    return { migrated };
   },
 });
 

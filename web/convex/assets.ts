@@ -13,6 +13,7 @@ import { generateTagId } from "./lib/ids";
 import { assetStatusValidator } from "./schema";
 import { assertTaxonomyKey } from "./taxonomies";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+import { requireModule } from "./lib/orgConfig";
 
 const nullableString = v.union(v.string(), v.null());
 
@@ -223,6 +224,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    await requireModule(ctx, auth, "assets");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const assetId = ctx.db.normalizeId("assets", replay.resultId);
@@ -333,6 +335,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    await requireModule(ctx, auth, "assets");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const asset = await ctx.db.get(args.assetId);
@@ -401,6 +404,7 @@ export const reassignTag = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    await requireModule(ctx, auth, "assets");
     const target = await ctx.db.get(args.toAssetId);
     assertSameOrg(auth, target);
     if (!target) throw new Error("Target asset not found.");
@@ -461,6 +465,7 @@ export const registerNfc = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    await requireModule(ctx, auth, "assets");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await ctx.db.get(args.assetId);
     assertSameOrg(auth, asset);
@@ -517,6 +522,7 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     // Committee+ can fully manage asset records; audit history is retained.
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "assets");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const asset = await ctx.db.get(args.assetId);

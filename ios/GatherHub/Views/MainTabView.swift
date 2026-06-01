@@ -21,11 +21,25 @@ struct MainTabView: View {
                 }
                 .tabItem { Label("Home", systemImage: "house") }
 
-                AssetsView(context: context)
-                    .tabItem { Label("Assets", systemImage: "qrcode.viewfinder") }
+                if context.org.moduleEnabled("assets") {
+                    AssetsView(context: context)
+                        .tabItem {
+                            Label(
+                                context.org.term(\.assetPlural, fallback: "assets").capitalized,
+                                systemImage: "qrcode.viewfinder"
+                            )
+                        }
+                }
 
-                EventCalendarView(context: context)
-                    .tabItem { Label("Events", systemImage: "calendar") }
+                if context.org.moduleEnabled("events") {
+                    EventCalendarView(context: context)
+                        .tabItem {
+                            Label(
+                                context.org.term(\.eventPlural, fallback: "events").capitalized,
+                                systemImage: "calendar"
+                            )
+                        }
+                }
 
                 MoreView(context: context)
                     .tabItem { Label("More", systemImage: "ellipsis.circle") }

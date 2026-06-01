@@ -32,7 +32,69 @@ struct Org: Codable, Identifiable, Hashable {
     let name: String
     let slug: String?
     let soccerMode: Bool?
+    let kind: String?
+    let templateKey: String?
+    let terminology: OrganizationTerminology?
+    let modules: [OrganizationModule]?
     let defaultAddress: String?
+
+    func moduleEnabled(_ key: String) -> Bool {
+        if let modules, !modules.isEmpty {
+            return modules.first { $0.key == key }?.enabled == true
+        }
+        if key == "soccer" { return soccerMode == true }
+        if key == "sport" { return soccerMode == true || kind == "sports_club" }
+        return [
+            "core", "people", "teams", "events", "announcements", "assets",
+            "volunteers", "training", "tasks", "public_site", "sponsors",
+            "news", "sport",
+        ].contains(key)
+    }
+
+    func term(_ keyPath: KeyPath<OrganizationTerminology, String?>, fallback: String) -> String {
+        terminology?[keyPath: keyPath] ?? fallback
+    }
+}
+
+struct OrganizationModule: Codable, Hashable {
+    let key: String
+    let enabled: Bool
+    let version: String?
+    let configJson: String?
+}
+
+struct OrganizationTerminology: Codable, Hashable {
+    let orgSingular: String?
+    let orgPlural: String?
+    let memberSingular: String?
+    let memberPlural: String?
+    let teamSingular: String?
+    let teamPlural: String?
+    let eventSingular: String?
+    let eventPlural: String?
+    let assetSingular: String?
+    let assetPlural: String?
+    let volunteerSingular: String?
+    let volunteerPlural: String?
+    let sponsorSingular: String?
+    let sponsorPlural: String?
+    let newsSingular: String?
+    let newsPlural: String?
+    let taskSingular: String?
+    let taskPlural: String?
+    let certificationSingular: String?
+    let certificationPlural: String?
+    let sportSingular: String?
+    let sportPlural: String?
+    let competitionSingular: String?
+    let competitionPlural: String?
+    let divisionSingular: String?
+    let divisionPlural: String?
+    let ageGroupSingular: String?
+    let ageGroupPlural: String?
+    let registrationSingular: String?
+    let registrationPlural: String?
+    let gradingSingular: String?
 }
 
 /// GatherHub role. Mirrors `roleValidator` in schema.ts.

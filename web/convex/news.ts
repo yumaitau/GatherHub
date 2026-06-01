@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
 import { generateSlug } from "./lib/ids";
 import { attachOrgImage, deleteOrgImage, orgImageUrl } from "./lib/uploads";
+import { requireModule } from "./lib/orgConfig";
 
 /** Committee: list all news (published + drafts) for the org. */
 export const list = query({
@@ -58,6 +59,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "news");
     const published = args.published ?? false;
     const newsId = await ctx.db.insert("news", {
       orgId: auth.org._id,
@@ -97,6 +99,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "news");
     const post = await ctx.db.get(args.newsId);
     assertSameOrg(auth, post);
     if (!post) throw new Error("Not found.");
@@ -141,6 +144,7 @@ export const remove = mutation({
   args: { newsId: v.id("news") },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "news");
     const post = await ctx.db.get(args.newsId);
     assertSameOrg(auth, post);
     await deleteOrgImage(ctx, auth, post!.coverImageStorageId);

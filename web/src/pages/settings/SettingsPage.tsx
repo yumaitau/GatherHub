@@ -47,6 +47,13 @@ import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { ALL_ROLES, type Role } from "@/lib/roles";
 import { humanise, formatDateTime } from "@/lib/utils";
+import {
+  DEFAULT_TERMINOLOGY,
+  MODULE_LABELS,
+  type OrganizationKind,
+  type OrganizationModuleKey,
+  type OrganizationTerminology,
+} from "@/lib/verticals";
 
 export default function SettingsPage() {
   const { org, can } = useGatherHub();
@@ -69,6 +76,7 @@ export default function SettingsPage() {
       />
       <Tabs defaultValue="roles">
         <TabsList>
+          <TabsTrigger value="profile">Organisation profile</TabsTrigger>
           <TabsTrigger value="roles">Members & roles</TabsTrigger>
           <TabsTrigger value="invitations">Invitations</TabsTrigger>
           <TabsTrigger value="locations">Locations</TabsTrigger>
@@ -83,6 +91,9 @@ export default function SettingsPage() {
           {can("committee") && <TabsTrigger value="qr">QR codes</TabsTrigger>}
           <TabsTrigger value="public">Public website</TabsTrigger>
         </TabsList>
+        <TabsContent value="profile">
+          <ProfileSettingsTab />
+        </TabsContent>
         <TabsContent value="roles">
           <RolesTab />
         </TabsContent>
@@ -111,6 +122,183 @@ export default function SettingsPage() {
           <PublicSiteTab />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+const TERMINOLOGY_FIELDS: Array<{
+  key: keyof OrganizationTerminology;
+  label: string;
+}> = [
+  { key: "orgSingular", label: "Organisation singular" },
+  { key: "orgPlural", label: "Organisation plural" },
+  { key: "memberSingular", label: "Person singular" },
+  { key: "memberPlural", label: "Person plural" },
+  { key: "teamSingular", label: "Team/group singular" },
+  { key: "teamPlural", label: "Team/group plural" },
+  { key: "eventSingular", label: "Event/job singular" },
+  { key: "eventPlural", label: "Event/job plural" },
+  { key: "assetSingular", label: "Asset/equipment singular" },
+  { key: "assetPlural", label: "Asset/equipment plural" },
+  { key: "taskSingular", label: "Task singular" },
+  { key: "taskPlural", label: "Task plural" },
+  { key: "certificationSingular", label: "Certification singular" },
+  { key: "certificationPlural", label: "Certification plural" },
+  { key: "sponsorSingular", label: "Sponsor/supporter singular" },
+  { key: "sponsorPlural", label: "Sponsor/supporter plural" },
+  { key: "registrationPlural", label: "Registration plural" },
+  { key: "gradingSingular", label: "Grading label" },
+];
+
+function ProfileSettingsTab() {
+  const profile = useQuery(api.organizations.profile, {});
+  const templates = useQuery(api.organizations.verticalTemplates, {});
+  const updateProfile = useMutation(api.organizations.updateProfile);
+  const setModule = useMutation(api.organizations.setModule);
+  const [templateKey, setTemplateKey] = React.useState("sports_club");
+  const [kind, setKind] = React.useState<OrganizationKind>("sports_club");
+  const [terms, setTerms] =
+    React.useState<OrganizationTerminology>(DEFAULT_TERMINOLOGY);
+  const [saving, setSaving] = React.useState(false);
+  const [moduleBusy, setModuleBusy] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!profile) return;
+    setTemplateKey(profile.templateKey);
+    setKind(profile.kind);
+    setTerms({ ...DEFAULT_TERMINOLOGY, ...profile.terminology });
+  }, [profile]);
+
+  if (!profile || !templates) return <LoadingState />;
+
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await updateProfile({ kind, templateKey, terminology: terms });
+      toastSuccess("Organisation profile saved.");
+    } catch (err) {
+      toastFailure(err, "Could not save organisation profile.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleModule(key: OrganizationModuleKey, enabled: boolean) {
+    setModuleBusy(key);
+    try {
+      await setModule({ key, enabled });
+      toastSuccess(
+        `${MODULE_LABELS[key]} ${enabled ? "enabled" : "disabled"}.`,
+      );
+    } catch (err) {
+      toastFailure(err, "Could not update module.");
+    } finally {
+      setModuleBusy(null);
+    }
+  }
+
+  return (
+    <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile and terminology</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={saveProfile} className="grid gap-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label>Template</Label>
+                <Select
+                  value={templateKey}
+                  onValueChange={(value) => {
+                    const selected = templates.find((row) => row.key === value);
+                    setTemplateKey(value);
+                    if (selected) setKind(selected.kind);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.map((template) => (
+                      <SelectItem key={template.key} value={template.key}>
+                        {template.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Organisation type</Label>
+                <Input value={humanise(kind)} readOnly />
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {TERMINOLOGY_FIELDS.map((field) => (
+                <div key={field.key} className="grid gap-1.5">
+                  <Label htmlFor={`term-${field.key}`}>{field.label}</Label>
+                  <Input
+                    id={`term-${field.key}`}
+                    value={terms[field.key] ?? ""}
+                    onChange={(event) =>
+                      setTerms((current) => ({
+                        ...current,
+                        [field.key]: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Saving..." : "Save profile"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Enabled modules</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {profile.modules.map((module) => {
+              const locked = module.key === "core" || module.key === "people";
+              return (
+                <div
+                  key={module.key}
+                  className="flex items-center justify-between gap-3 rounded-sm border border-hairline bg-surface px-3 py-2"
+                >
+                  <div>
+                    <p className="text-body-strong">
+                      {MODULE_LABELS[module.key]}
+                    </p>
+                    <p className="text-caption text-ink-quiet">
+                      {module.enabled
+                        ? "Visible and active"
+                        : "Hidden and gated"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant={module.enabled ? "outline" : "default"}
+                    disabled={locked || moduleBusy === module.key}
+                    onClick={() => toggleModule(module.key, !module.enabled)}
+                  >
+                    {module.enabled ? "Disable" : "Enable"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireRole } from "./lib/auth";
 import { publicImageUrlForOrg } from "./lib/uploads";
+import { requireModule } from "./lib/orgConfig";
 
 /**
  * Read the public site settings for the caller's org. Committee+: matches the
@@ -35,6 +36,7 @@ export const upsertSettings = mutation({
   },
   handler: async (ctx, args) => {
     const auth = await requireRole(ctx, "committee");
+    await requireModule(ctx, auth, "public_site");
     const existing = await ctx.db
       .query("publicSiteSettings")
       .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
