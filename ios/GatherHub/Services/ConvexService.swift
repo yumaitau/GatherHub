@@ -220,6 +220,15 @@ final class ConvexService: ObservableObject {
         return try await once("events:list", with: args)
     }
 
+    /// `fixtures:listFixtures` (query) — multi-sport fixtures for offline field reference.
+    func listSportFixtures(upcomingOnly: Bool = true) async throws -> [SportFixture] {
+        var args: [String: ConvexEncodable?] = [:]
+        if upcomingOnly {
+            args["startFrom"] = Date().timeIntervalSince1970 * 1000
+        }
+        return try await once("fixtures:listFixtures", with: args)
+    }
+
     /// `events:setRsvp` (mutation, `{ eventId, memberId, status }`).
     func setRsvp(
         eventId: String,

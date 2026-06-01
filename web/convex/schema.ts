@@ -144,6 +144,20 @@ export const taskReminderEmailStatusValidator = v.union(
   v.literal("skipped"),
 );
 
+export const fixtureStatusValidator = v.union(
+  v.literal("scheduled"),
+  v.literal("postponed"),
+  v.literal("cancelled"),
+  v.literal("completed"),
+  v.literal("forfeit"),
+);
+
+export const fixtureTeamSideValidator = v.union(
+  v.literal("home"),
+  v.literal("away"),
+  v.literal("neutral"),
+);
+
 export const organizationKindValidator = v.union(
   v.literal("sports_club"),
   v.literal("community_org"),
@@ -728,6 +742,147 @@ export default defineSchema({
     instagramUrl: v.optional(v.string()),
     websiteUrl: v.optional(v.string()),
   }).index("by_org", ["orgId"]),
+
+  seasons: defineTable({
+    orgId: v.id("organizations"),
+    sportKey: v.optional(sportKeyValidator),
+    name: v.string(),
+    startsOn: v.optional(v.string()),
+    endsOn: v.optional(v.string()),
+    active: v.boolean(),
+    isDefault: v.optional(v.boolean()),
+    order: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_active", ["orgId", "active"])
+    .index("by_org_order", ["orgId", "order"]),
+
+  sportCompetitions: defineTable({
+    orgId: v.id("organizations"),
+    sportKey: v.optional(sportKeyValidator),
+    seasonId: v.optional(v.id("seasons")),
+    name: v.string(),
+    format: v.optional(v.string()),
+    active: v.boolean(),
+    order: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_season", ["orgId", "seasonId"])
+    .index("by_org_order", ["orgId", "order"]),
+
+  sportDivisions: defineTable({
+    orgId: v.id("organizations"),
+    sportKey: v.optional(sportKeyValidator),
+    name: v.string(),
+    ageGroupKey: v.optional(v.string()),
+    color: v.optional(v.string()),
+    active: v.boolean(),
+    order: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_order", ["orgId", "order"]),
+
+  venues: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    address: v.optional(v.string()),
+    fieldName: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    active: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_active", ["orgId", "active"]),
+
+  fixtures: defineTable({
+    orgId: v.id("organizations"),
+    sportKey: v.optional(sportKeyValidator),
+    seasonId: v.optional(v.id("seasons")),
+    competitionId: v.optional(v.id("sportCompetitions")),
+    divisionId: v.optional(v.id("sportDivisions")),
+    venueId: v.optional(v.id("venues")),
+    title: v.string(),
+    roundNumber: v.optional(v.number()),
+    roundName: v.optional(v.string()),
+    fieldName: v.optional(v.string()),
+    startTime: v.number(),
+    endTime: v.optional(v.number()),
+    status: fixtureStatusValidator,
+    resultJson: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_start", ["orgId", "startTime"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_org_season", ["orgId", "seasonId"])
+    .index("by_org_competition", ["orgId", "competitionId"]),
+
+  fixtureTeams: defineTable({
+    orgId: v.id("organizations"),
+    fixtureId: v.id("fixtures"),
+    teamId: v.optional(v.id("teams")),
+    side: fixtureTeamSideValidator,
+    displayName: v.optional(v.string()),
+    score: v.optional(v.number()),
+    result: v.optional(v.string()),
+    order: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_fixture", ["fixtureId"])
+    .index("by_team", ["teamId"]),
+
+  fixtureStandings: defineTable({
+    orgId: v.id("organizations"),
+    sportKey: v.optional(sportKeyValidator),
+    seasonId: v.optional(v.id("seasons")),
+    competitionId: v.optional(v.id("sportCompetitions")),
+    divisionId: v.optional(v.id("sportDivisions")),
+    teamId: v.id("teams"),
+    played: v.number(),
+    wins: v.number(),
+    draws: v.number(),
+    losses: v.number(),
+    pointsFor: v.number(),
+    pointsAgainst: v.number(),
+    points: v.number(),
+    rank: v.optional(v.number()),
+    metadataJson: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_season", ["orgId", "seasonId"])
+    .index("by_org_competition", ["orgId", "competitionId"])
+    .index("by_org_division", ["orgId", "divisionId"])
+    .index("by_team", ["teamId"]),
+
+  officialAssignments: defineTable({
+    orgId: v.id("organizations"),
+    fixtureId: v.id("fixtures"),
+    memberId: v.optional(v.id("members")),
+    role: v.string(),
+    name: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_fixture", ["fixtureId"])
+    .index("by_member", ["memberId"]),
+
+  fixtureAuditLog: defineTable({
+    orgId: v.id("organizations"),
+    fixtureId: v.optional(v.id("fixtures")),
+    action: v.string(),
+    actorUserId: v.id("users"),
+    metadataJson: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_fixture", ["fixtureId"]),
 
   // ---------- Soccer-mode tables --------------------------------------
   // Only used when `organizations.soccerMode === true`. Designed as

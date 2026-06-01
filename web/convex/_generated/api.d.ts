@@ -17,6 +17,7 @@ import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as events from "../events.js";
 import type * as files from "../files.js";
+import type * as fixtures from "../fixtures.js";
 import type * as http from "../http.js";
 import type * as invitations from "../invitations.js";
 import type * as invitationsAdmin from "../invitationsAdmin.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   dashboard: typeof dashboard;
   events: typeof events;
   files: typeof files;
+  fixtures: typeof fixtures;
   http: typeof http;
   invitations: typeof invitations;
   invitationsAdmin: typeof invitationsAdmin;

@@ -88,6 +88,16 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       keywords: ["training", "match", "calendar", term(org, "eventPlural")],
     },
     {
+      id: "sport-fixtures",
+      label: "Fixtures",
+      icon: CalendarDays,
+      group: "Operations",
+      to: "/sport/fixtures",
+      module: "sport",
+      capability: "events.read",
+      keywords: ["matches", "draw", "schedule", "ladder", "competition"],
+    },
+    {
       id: "announcements",
       label: "Announcements",
       icon: Megaphone,

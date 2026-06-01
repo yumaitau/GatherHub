@@ -176,7 +176,9 @@ function buildNav(org: VerticalOrgConfig | null): NavGroup[] {
       ],
     },
   ];
-  if (legacySoccerSurfacesEnabled(org)) groups.push(buildSportNav(org));
+  if (moduleEnabled(org, "sport") || legacySoccerSurfacesEnabled(org)) {
+    groups.push(buildSportNav(org));
+  }
   return groups;
 }
 
@@ -186,6 +188,13 @@ function buildSportNav(org: VerticalOrgConfig | null): NavGroup {
     collapsible: true,
     defaultOpen: false,
     items: [
+      {
+        to: "/sport/fixtures",
+        label: "Fixtures",
+        icon: CalendarDays,
+        module: "sport",
+        capability: "events.read",
+      },
       {
         to: "/sport/registrations",
         label: titleCase(term(org, "registrationPlural")),

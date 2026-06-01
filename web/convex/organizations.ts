@@ -17,6 +17,7 @@ import {
   type SportKey,
 } from "./lib/orgConfig";
 import { ensureOrganizationRoles, requireCapability } from "./lib/capabilities";
+import { seedSportDefaultsForOrg } from "./fixtures";
 import {
   organizationKindValidator,
   organizationModuleKeyValidator,
@@ -77,6 +78,12 @@ export const create = mutation({
     });
     await ctx.db.patch(user._id, { activeOrgId: orgId });
     await seedAllDefaultsForOrg(ctx, orgId);
+    const profile = await effectiveOrgProfile(ctx, org!);
+    if (
+      profile.modules.some((module) => module.key === "sport" && module.enabled)
+    ) {
+      await seedSportDefaultsForOrg(ctx, orgId, profile.sportKey);
+    }
     return { orgId, slug };
   },
 });
@@ -288,6 +295,9 @@ export const updateProfile = mutation({
     if (template) {
       await replaceOrganizationModules(ctx, auth.org._id, enabled);
     }
+    if (enabled.has("sport")) {
+      await seedSportDefaultsForOrg(ctx, auth.org._id, profile.sportKey);
+    }
   },
 });
 
@@ -341,11 +351,13 @@ export const setModule = mutation({
     }
     if (args.key === "sport" && args.enabled && !auth.org.sportKey) {
       await ctx.db.patch(auth.org._id, { sportKey: "multi_sport" });
+      await seedSportDefaultsForOrg(ctx, auth.org._id, "multi_sport");
     }
     if (args.key === "soccer") {
       await ctx.db.patch(auth.org._id, { soccerMode: args.enabled });
       if (args.enabled) {
         await ctx.db.patch(auth.org._id, { sportKey: "soccer" });
+        await seedSportDefaultsForOrg(ctx, auth.org._id, "soccer");
         const sport = await ctx.db
           .query("organizationModules")
           .withIndex("by_org_key", (q) =>
@@ -383,7 +395,17 @@ export const migrateMissingProfiles = internalMutation({
         migrated += 1;
       }
       const updated = await ctx.db.get(org._id);
-      if (updated) await ensureOrganizationRoles(ctx, updated);
+      if (updated) {
+        await ensureOrganizationRoles(ctx, updated);
+        const profile = await effectiveOrgProfile(ctx, updated);
+        if (
+          profile.modules.some(
+            (module) => module.key === "sport" && module.enabled,
+          )
+        ) {
+          await seedSportDefaultsForOrg(ctx, updated._id, profile.sportKey);
+        }
+      }
     }
     return { migrated };
   },

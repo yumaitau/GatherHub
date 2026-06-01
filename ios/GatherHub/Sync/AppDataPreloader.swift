@@ -142,6 +142,19 @@ final class AppDataPreloader {
             )
         }
 
+        if context.org.moduleEnabled("sport") && context.hasCapability("events.read") {
+            record(
+                await run("Fixtures") {
+                    try guardActive(shouldContinue)
+                    let rows = try await convex.listSportFixtures(upcomingOnly: false)
+                    try guardActive(shouldContinue)
+                    try store.replaceSportFixtures(rows)
+                },
+                loaded: &loaded,
+                failures: &failures
+            )
+        }
+
         record(
             await run("Event types") {
                 try guardActive(shouldContinue)

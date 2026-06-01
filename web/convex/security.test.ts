@@ -567,6 +567,146 @@ describe("role-based permissions", () => {
     expect(
       context?.org.modules.some((m) => m.key === "soccer" && m.enabled),
     ).toBe(false);
+
+    const seasons = await owner.query(api.fixtures.listSeasons, {});
+    const competitions = await owner.query(api.fixtures.listCompetitions, {});
+    const divisions = await owner.query(api.fixtures.listDivisions, {});
+    expect(seasons[0]?.name).toMatch(/\d{4} season/);
+    expect(competitions.map((row) => row.name)).toContain("Junior rugby");
+    expect(divisions.map((row) => row.name)).toContain("Junior");
+  });
+
+  test("multi-sport fixtures are CRUDable, scoped, and capability checked", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", {
+        clerkUserId: "user_fixture_owner",
+        email: "fixture-owner@example.test",
+      });
+      await ctx.db.insert("users", {
+        clerkUserId: "user_fixture_other",
+        email: "fixture-other@example.test",
+      });
+      await ctx.db.insert("users", {
+        clerkUserId: "user_fixture_parent",
+        email: "fixture-parent@example.test",
+      });
+    });
+    const owner = t.withIdentity({ subject: "user_fixture_owner" });
+    const other = t.withIdentity({ subject: "user_fixture_other" });
+
+    const { orgId } = await owner.mutation(api.organizations.create, {
+      name: "Rugby Fixtures",
+      kind: "sports_club",
+      templateKey: "rugby_union_club",
+      sportKey: "rugby_union",
+    });
+    await other.mutation(api.organizations.create, {
+      name: "Other Fixtures",
+      kind: "sports_club",
+      templateKey: "cricket_club",
+      sportKey: "cricket",
+    });
+    await t.run(async (ctx) => {
+      const parent = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) =>
+          q.eq("clerkUserId", "user_fixture_parent"),
+        )
+        .unique();
+      await ctx.db.patch(parent!._id, { activeOrgId: orgId });
+      await ctx.db.insert("memberships", {
+        orgId,
+        userId: parent!._id,
+        role: "parent",
+      });
+    });
+    const parent = t.withIdentity({ subject: "user_fixture_parent" });
+
+    const [season] = await owner.query(api.fixtures.listSeasons, {});
+    const [competition] = await owner.query(api.fixtures.listCompetitions, {});
+    const [division] = await owner.query(api.fixtures.listDivisions, {});
+    const venueId = await owner.mutation(api.fixtures.upsertVenue, {
+      name: "Main field",
+      fieldName: "Field 1",
+    });
+    const homeTeamId = await owner.mutation(api.teams.create, {
+      name: "First XV",
+    });
+    const awayTeamId = await owner.mutation(api.teams.create, {
+      name: "Harbour Away",
+    });
+
+    const fixtureId = await owner.mutation(api.fixtures.upsertFixture, {
+      title: "Round 1",
+      seasonId: season!._id,
+      competitionId: competition!._id,
+      divisionId: division!._id,
+      venueId,
+      startTime: Date.now() + 86_400_000,
+      status: "scheduled",
+    });
+    await owner.mutation(api.fixtures.upsertFixtureTeam, {
+      fixtureId,
+      side: "home",
+      teamId: homeTeamId,
+      order: 1,
+    });
+    await owner.mutation(api.fixtures.upsertFixtureTeam, {
+      fixtureId,
+      side: "away",
+      teamId: awayTeamId,
+      order: 2,
+    });
+
+    const detail = await owner.query(api.fixtures.getFixture, { fixtureId });
+    const homeRow = detail.teams.find((row) => row.side === "home");
+    await owner.mutation(api.fixtures.upsertFixtureTeam, {
+      id: homeRow!._id,
+      fixtureId,
+      side: "home",
+      teamId: null,
+      displayName: "First XV external",
+      order: 1,
+    });
+    const edited = await owner.query(api.fixtures.getFixture, { fixtureId });
+    expect(edited.teams.filter((row) => row.side === "home")).toHaveLength(1);
+    expect(edited.venueName).toBe("Main field");
+
+    const filtered = await owner.query(api.fixtures.listFixtures, {
+      teamId: awayTeamId,
+      status: "scheduled",
+    });
+    expect(filtered.map((row) => row._id)).toContain(fixtureId);
+
+    await owner.mutation(api.fixtures.upsertStanding, {
+      seasonId: season!._id,
+      teamId: homeTeamId,
+      played: 1,
+      wins: 1,
+      pointsFor: 24,
+      pointsAgainst: 12,
+      points: 4,
+      rank: 1,
+    });
+    const standings = await owner.query(api.fixtures.listStandings, {
+      seasonId: season!._id,
+    });
+    expect(standings[0]).toMatchObject({ teamName: "First XV", points: 4 });
+
+    await expect(
+      other.query(api.fixtures.getFixture, { fixtureId }),
+    ).rejects.toThrow(/not found/i);
+    await expect(
+      parent.mutation(api.fixtures.upsertFixture, {
+        title: "Parent write",
+        startTime: Date.now(),
+      }),
+    ).rejects.toThrow(/permission/i);
+
+    await owner.mutation(api.fixtures.removeFixture, { fixtureId });
+    const afterDelete = await owner.query(api.fixtures.listFixtures, {});
+    expect(afterDelete.map((row) => row._id)).not.toContain(fixtureId);
   });
 
   test("legacy soccerMode organisations resolve to the soccer sport pack", async () => {

@@ -11,6 +11,7 @@ import { requireOrgMember, assertSameOrg } from "./lib/auth";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 import { assertTaxonomyKey } from "./taxonomies";
 import { requireCapability } from "./lib/capabilities";
+import { seedSportDefaultsForOrg } from "./fixtures";
 
 const nullableString = v.union(v.string(), v.null());
 
@@ -59,6 +60,7 @@ export const setSoccerMode = mutation({
       }
     }
     if (args.enabled) {
+      await seedSportDefaultsForOrg(ctx, auth.org._id, "soccer");
       await ensureSkillDefaults(ctx, auth.org._id);
       await ensureDivisionDefaults(ctx, auth.org._id);
     }

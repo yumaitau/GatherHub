@@ -295,6 +295,18 @@ final class LocalStore {
         try hasCachedValue(for: "tasks.board")
     }
 
+    func replaceSportFixtures(_ rows: [SportFixture]) throws {
+        try cacheValue(rows, for: "sport.fixtures")
+    }
+
+    func cachedSportFixtures() throws -> [SportFixture] {
+        try cachedValue(for: "sport.fixtures", as: [SportFixture].self) ?? []
+    }
+
+    func hasCachedSportFixtures() throws -> Bool {
+        try hasCachedValue(for: "sport.fixtures")
+    }
+
     func replaceTagLookup(_ result: TagLookupResult, tagId: String) throws {
         try cacheValue(result, for: "tags.lookup.\(tagId)")
     }

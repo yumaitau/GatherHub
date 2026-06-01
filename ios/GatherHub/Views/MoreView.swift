@@ -18,8 +18,9 @@ struct MoreView: View {
                 if context.hasCapability("settings.admin") {
                     adminSection
                 }
-                if context.org.legacySoccerSurfacesEnabled &&
-                    (context.hasCapability("soccer.manage") || context.hasCapability("soccer.grade")) {
+                if (context.org.moduleEnabled("sport") && context.hasCapability("events.read")) ||
+                    (context.org.legacySoccerSurfacesEnabled &&
+                     (context.hasCapability("soccer.manage") || context.hasCapability("soccer.grade"))) {
                     sportSection
                 }
             }
@@ -96,6 +97,11 @@ struct MoreView: View {
 
     private var sportSection: some View {
         Section(context.org.sportLabel) {
+            if context.org.moduleEnabled("sport") && context.hasCapability("events.read") {
+                row("Fixtures", system: "calendar") {
+                    SportFixturesListView()
+                }
+            }
             if context.hasCapability("soccer.manage") {
                 row(context.org.term(\.registrationPlural, fallback: "player registrations").capitalized, system: "list.clipboard") {
                     SoccerRegistrationsView(canEdit: true)
