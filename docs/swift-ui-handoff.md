@@ -681,7 +681,8 @@ All mutations call `assertSoccerMode`; on `soccerMode !== true` throw
 ### 7.18 Files — `web/convex/files.ts`
 
 - **`files.generateUploadUrl`** — mutation, matching capability per upload
-  destination (`sponsors.manage`, `news.manage`, or `assets.admin`).
+  destination (`sponsors.manage`, `news.manage`, `assets.admin`, or
+  `training.manage` for certification documents).
   Short-lived R2 upload URL; client `PUT`s the file.
 - **`POST /files/upload-url`** — Convex HTTP endpoint for clients that cannot
   use the Convex SDK. Requires `Authorization: Bearer <Convex JWT>` and the

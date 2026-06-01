@@ -419,22 +419,24 @@ Append-only history of every asset operation. **Never updated or deleted.**
 **Indexes:** `by_org` `["orgId"]`, `by_asset` `["assetId"]`, `by_asset_at` `["assetId","at"]`.
 
 ### volunteerCertifications
-Certifications/clearances held by a volunteer member (e.g. Working With
-Children Check, First Aid, Coaching accreditation).
+Generic training, licence, and certification records for any member. The table
+keeps the historical name from the volunteer module but is no longer limited to
+volunteers or soccer clubs.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `orgId` | `v.id("organisations")` | |
+| `orgId` | `v.id("organizations")` | |
 | `memberId` | `v.id("members")` | |
-| `type` | `v.string()` | "WWCC", "First Aid", "Level 1 Coach". |
-| `referenceNumber` | `v.optional(v.string())` | |
-| `issuedAt` | `v.optional(v.string())` | ISO date. |
-| `expiresAt` | `v.optional(v.string())` | ISO date — drives expiry reminders. |
+| `name` | `v.string()` | e.g. "WWCC", "First Aid", "Forklift licence". |
+| `issuer` | `v.optional(v.string())` | Issuing body or authority. |
+| `issuedDate` | `v.optional(v.string())` | ISO date. |
+| `expiryDate` | `v.optional(v.string())` | ISO date — drives expiry reminders. |
 | `documentStorageId` | `v.optional(v.string())` | Compatibility field name; stores an R2 object key for scanned certificate. |
-| `verifiedByUserId` | `v.optional(v.id("users"))` | |
+| `documentFileName` | `v.optional(v.string())` | Original display filename for the attached certificate document. |
+| `notes` | `v.optional(v.string())` | |
 
 **Org-scoping field:** `orgId`.
-**Indexes:** `by_org` `["orgId"]`, `by_member` `["memberId"]`, `by_org_expiresAt` `["orgId","expiresAt"]`.
+**Indexes:** `by_org` `["orgId"]`, `by_member` `["memberId"]`, `by_org_and_expiry` `["orgId","expiryDate"]`.
 
 ### sponsors
 A club sponsor.
@@ -495,9 +497,9 @@ resolution.
 | `orgId` | `v.id("organisations")` | |
 | `storageId` | `v.string()` | Compatibility field name; stores the R2 object key. |
 | `path` | `v.string()` | Canonical nested object path, currently the same value as `storageId`. |
-| `ownerType` | `v.string()` | e.g. `sponsors`, `news`, `qrSettings`. |
+| `ownerType` | `v.string()` | e.g. `sponsors`, `news`, `qrSettings`, `certifications`. |
 | `ownerId` | `v.string()` | Owning record id as a string. |
-| `purpose` | `v.string()` | e.g. `logo`, `coverImage`, `qrLogo`. |
+| `purpose` | `v.string()` | e.g. `logo`, `coverImage`, `qrLogo`, `document`. |
 | `fileName` | `v.optional(v.string())` | Original display filename. |
 | `contentType` | `v.string()` | Verified MIME type after R2 HEAD check. |
 | `size` | `v.number()` | Verified byte size after R2 HEAD check. |

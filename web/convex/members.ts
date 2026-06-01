@@ -4,6 +4,7 @@ import { requireOrgMember, assertSameOrg, canViewRestricted } from "./lib/auth";
 import { memberStatusValidator } from "./schema";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 import { hasCapability, requireCapability } from "./lib/capabilities";
+import { orgImageUrl } from "./lib/uploads";
 
 const nullableString = v.union(v.string(), v.null());
 
@@ -167,10 +168,18 @@ export const get = query({
       medicalNotes = note?.notes ?? null;
     }
 
-    const certifications = await ctx.db
+    const certificationRows = await ctx.db
       .query("volunteerCertifications")
       .withIndex("by_member", (q) => q.eq("memberId", member._id))
       .collect();
+    const certifications = await Promise.all(
+      certificationRows.map(async (cert) => ({
+        ...cert,
+        documentUrl: cert.documentStorageId
+          ? await orgImageUrl(ctx, auth, cert.documentStorageId)
+          : null,
+      })),
+    );
 
     return {
       member,

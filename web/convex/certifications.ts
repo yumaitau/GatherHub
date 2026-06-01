@@ -4,6 +4,7 @@ import { assertSameOrg, requireOrgMember } from "./lib/auth";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 import { requireModule } from "./lib/orgConfig";
 import { requireCapability } from "./lib/capabilities";
+import { attachOrgImage, deleteOrgImage, orgImageUrl } from "./lib/uploads";
 
 const nullableString = v.union(v.string(), v.null());
 
@@ -37,7 +38,12 @@ export const list = query({
 
     return await Promise.all(
       certs.map(async (cert) => ({
-        cert,
+        cert: {
+          ...cert,
+          documentUrl: cert.documentStorageId
+            ? await orgImageUrl(ctx, auth, cert.documentStorageId)
+            : null,
+        },
         member: await ctx.db.get(cert.memberId),
       })),
     );
@@ -68,7 +74,12 @@ export const expiring = query({
 
     return await Promise.all(
       expiring.map(async (cert) => ({
-        cert,
+        cert: {
+          ...cert,
+          documentUrl: cert.documentStorageId
+            ? await orgImageUrl(ctx, auth, cert.documentStorageId)
+            : null,
+        },
         member: await ctx.db.get(cert.memberId),
       })),
     );
@@ -137,6 +148,8 @@ export const update = mutation({
     issuer: v.optional(nullableString),
     issuedDate: v.optional(nullableString),
     expiryDate: v.optional(nullableString),
+    documentStorageId: v.optional(v.union(v.string(), v.null())),
+    documentFileName: v.optional(v.string()),
     notes: v.optional(nullableString),
     clientMutationId: v.optional(v.string()),
   },
@@ -149,37 +162,64 @@ export const update = mutation({
     const cert = await ctx.db.get(args.certId);
     assertSameOrg(auth, cert);
 
+    const {
+      certId,
+      memberId,
+      name,
+      issuer,
+      issuedDate,
+      expiryDate,
+      documentStorageId,
+      documentFileName,
+      notes,
+    } = args;
     const patch: Record<string, unknown> = {};
-    if (args.memberId !== undefined) {
-      const member = await ctx.db.get(args.memberId);
+    if (memberId !== undefined) {
+      const member = await ctx.db.get(memberId);
       assertSameOrg(auth, member);
-      patch.memberId = args.memberId;
+      patch.memberId = memberId;
     }
-    if (args.name !== undefined) {
-      const name = args.name.trim();
-      if (!name) {
+    if (name !== undefined) {
+      const cleanName = name.trim();
+      if (!cleanName) {
         throw new ConvexError({
           code: "invalid_certification",
           message: "Certification name is required.",
         });
       }
-      patch.name = name;
+      patch.name = cleanName;
     }
-    if (args.issuer !== undefined)
-      patch.issuer = args.issuer?.trim() || undefined;
-    if (args.issuedDate !== undefined)
-      patch.issuedDate = args.issuedDate ?? undefined;
-    if (args.expiryDate !== undefined)
-      patch.expiryDate = args.expiryDate ?? undefined;
-    if (args.notes !== undefined) patch.notes = args.notes?.trim() || undefined;
+    if (issuer !== undefined) patch.issuer = issuer?.trim() || undefined;
+    if (issuedDate !== undefined) patch.issuedDate = issuedDate ?? undefined;
+    if (expiryDate !== undefined) patch.expiryDate = expiryDate ?? undefined;
+    if (notes !== undefined) patch.notes = notes?.trim() || undefined;
+    if (documentStorageId !== undefined) {
+      if (documentStorageId) {
+        await attachOrgImage(ctx, auth, {
+          storageId: documentStorageId,
+          ownerType: "certifications",
+          ownerId: args.certId,
+          purpose: "document",
+          fileName: documentFileName,
+        });
+      }
+      patch.documentStorageId = documentStorageId ?? undefined;
+      patch.documentFileName = documentStorageId ? documentFileName : undefined;
+    }
 
-    await ctx.db.patch(args.certId, patch);
+    await ctx.db.patch(certId, patch);
+    if (
+      documentStorageId !== undefined &&
+      documentStorageId !== cert!.documentStorageId
+    ) {
+      await deleteOrgImage(ctx, auth, cert!.documentStorageId);
+    }
     await recordClientMutation(
       ctx,
       auth,
       args.clientMutationId,
       "certifications:update",
-      String(args.certId),
+      String(certId),
     );
   },
 });
@@ -196,6 +236,7 @@ export const remove = mutation({
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const cert = await ctx.db.get(args.certId);
     assertSameOrg(auth, cert);
+    await deleteOrgImage(ctx, auth, cert!.documentStorageId);
     await ctx.db.delete(args.certId);
     await recordClientMutation(
       ctx,

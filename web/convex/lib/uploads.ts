@@ -18,9 +18,18 @@ export const IMAGE_CONTENT_TYPES = new Set([
 ]);
 
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export const DOCUMENT_CONTENT_TYPES = new Set([
+  ...IMAGE_CONTENT_TYPES,
+  "application/pdf",
+]);
+export const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
 
-export type UploadOwnerType = "news" | "qrSettings" | "sponsors";
-export type UploadPurpose = "coverImage" | "logo" | "qrLogo";
+export type UploadOwnerType =
+  | "certifications"
+  | "news"
+  | "qrSettings"
+  | "sponsors";
+export type UploadPurpose = "coverImage" | "document" | "logo" | "qrLogo";
 
 type StorageMetadata = {
   size: number;
@@ -43,6 +52,8 @@ function extensionForContentType(contentType: string): string {
       return "webp";
     case "image/gif":
       return "gif";
+    case "application/pdf":
+      return "pdf";
     default:
       return "bin";
   }
@@ -107,11 +118,42 @@ export function imageValidationError(
   return null;
 }
 
+export function uploadValidationError(
+  purpose: string,
+  metadata: StorageMetadata | null,
+): string | null {
+  if (purpose !== "document") return imageValidationError(metadata);
+  if (!metadata) return "Uploaded document was not found.";
+  const contentType = metadata.contentType ?? "";
+  if (!DOCUMENT_CONTENT_TYPES.has(contentType)) {
+    return "Upload must be a PDF, PNG, JPEG, WebP, or GIF file.";
+  }
+  if (metadata.size > MAX_DOCUMENT_BYTES) {
+    return "Document uploads must be 15 MB or smaller.";
+  }
+  return null;
+}
+
 export function validateDeclaredImageMetadata(metadata: StorageMetadata): {
   contentType: string;
   size: number;
 } {
   const error = imageValidationError(metadata);
+  if (error) throw new Error(error);
+  return {
+    contentType: metadata.contentType!,
+    size: metadata.size,
+  };
+}
+
+export function validateDeclaredUploadMetadata(
+  purpose: string,
+  metadata: StorageMetadata,
+): {
+  contentType: string;
+  size: number;
+} {
+  const error = uploadValidationError(purpose, metadata);
   if (error) throw new Error(error);
   return {
     contentType: metadata.contentType!,
@@ -131,7 +173,7 @@ export async function createOrgImageUpload(
     size: number;
   },
 ) {
-  const metadata = validateDeclaredImageMetadata({
+  const metadata = validateDeclaredUploadMetadata(args.purpose, {
     contentType: args.contentType,
     size: args.size,
   });
@@ -193,25 +235,25 @@ export async function attachOrgImage(
     .withIndex("by_storage", (q) => q.eq("storageId", args.storageId))
     .first();
   if (!existing) {
-    throw new Error("Uploaded image was not issued by this application.");
+    throw new Error("Uploaded file was not issued by this application.");
   }
   if (existing.orgId !== auth.org._id) {
-    throw new Error("Uploaded image is not available to this organisation.");
+    throw new Error("Uploaded file is not available to this organisation.");
   }
   if (existing.deletedAt) {
-    throw new Error("Uploaded image has already been deleted.");
+    throw new Error("Uploaded file has already been deleted.");
   }
   if (!existing.verifiedAt) {
-    throw new Error("Uploaded image has not been verified.");
+    throw new Error("Uploaded file has not been verified.");
   }
   if (
     existing.ownerType !== args.ownerType ||
     existing.ownerId !== args.ownerId ||
     existing.purpose !== args.purpose
   ) {
-    throw new Error("Uploaded image is already attached to another record.");
+    throw new Error("Uploaded file is already attached to another record.");
   }
-  const metadata = validateDeclaredImageMetadata({
+  const metadata = validateDeclaredUploadMetadata(existing.purpose, {
     contentType: existing.contentType,
     size: existing.size,
   });
@@ -237,7 +279,7 @@ export async function deleteOrgImage(
     .first();
   if (!existing) return;
   if (existing.orgId !== auth.org._id) {
-    throw new Error("Uploaded image is not available to this organisation.");
+    throw new Error("Uploaded file is not available to this organisation.");
   }
   if (!existing.deletedAt) {
     await ctx.db.patch(existing._id, {
@@ -264,7 +306,7 @@ async function imageUrlForOrg(
   if (!existing) return null;
   if (existing.orgId !== orgId || existing.deletedAt) return null;
   if (
-    imageValidationError({
+    uploadValidationError(existing.purpose, {
       contentType: existing.contentType,
       size: existing.size,
     })

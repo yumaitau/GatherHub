@@ -66,7 +66,7 @@ describe("organisation isolation", () => {
   });
 });
 
-describe("R2 image uploads", () => {
+describe("R2 uploads", () => {
   function withR2Env(fn: () => Promise<void>) {
     const previous = {
       R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
@@ -195,6 +195,135 @@ describe("R2 image uploads", () => {
         contentType: "image/png",
         size: 2048,
       });
+    });
+  });
+
+  test("certification document uploads use training permissions and document-safe R2 keys", async () => {
+    await withR2Env(async () => {
+      const t = convexTest(schema, modules);
+      const club = await seedOrg(t, {
+        clerkOrg: "org_r2_cert_docs",
+        clerkUser: "user_r2_cert_docs",
+        role: "owner",
+      });
+      const memberId = await club.as.mutation(api.members.create, {
+        firstName: "Taylor",
+        lastName: "Nguyen",
+      });
+      const certId = await club.as.mutation(api.certifications.create, {
+        memberId,
+        name: "Working with Children Check",
+      });
+
+      const upload = await club.as.mutation(api.files.generateUploadUrl, {
+        ownerType: "certifications",
+        ownerId: certId,
+        purpose: "document",
+        fileName: "WWCC Certificate.PDF",
+        contentType: "application/pdf",
+        size: 4096,
+      });
+
+      expect(upload.storageId).toMatch(
+        new RegExp(
+          `^orgs/${escapeRegExp(club.orgId)}/certifications/${safePathSegmentForTest(certId)}/document/[a-f0-9-]+-wwcc-certificate\\.pdf$`,
+        ),
+      );
+      expect(upload.headers).toMatchObject({
+        "content-type": "application/pdf",
+        "x-amz-meta-declared-size": "4096",
+      });
+
+      const row = await t.run(async (ctx) => {
+        return await ctx.db
+          .query("uploadedFiles")
+          .withIndex("by_storage", (q) => q.eq("storageId", upload.storageId))
+          .first();
+      });
+      expect(row).toMatchObject({
+        orgId: club.orgId,
+        ownerType: "certifications",
+        ownerId: certId,
+        purpose: "document",
+        fileName: "WWCC Certificate.PDF",
+        contentType: "application/pdf",
+        size: 4096,
+        uploadedBy: club.userId,
+      });
+    });
+  });
+
+  test("certification document uploads can be verified and attached to training records", async () => {
+    await withR2Env(async () => {
+      const t = convexTest(schema, modules);
+      const club = await seedOrg(t, {
+        clerkOrg: "org_r2_cert_attach",
+        clerkUser: "user_r2_cert_attach",
+        role: "owner",
+      });
+      const memberId = await club.as.mutation(api.members.create, {
+        firstName: "Sam",
+        lastName: "Patel",
+      });
+      const certId = await club.as.mutation(api.certifications.create, {
+        memberId,
+        name: "First Aid",
+      });
+      const upload = await club.as.mutation(api.files.generateUploadUrl, {
+        ownerType: "certifications",
+        ownerId: certId,
+        purpose: "document",
+        fileName: "first-aid.pdf",
+        contentType: "application/pdf",
+        size: 8192,
+      });
+
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn(async (_url, init) => {
+        if (init?.method === "HEAD") {
+          return new Response(null, {
+            status: 200,
+            headers: {
+              "content-length": "8192",
+              "content-type": "application/pdf",
+            },
+          });
+        }
+        throw new Error("Unexpected fetch in certification document test.");
+      }) as typeof fetch;
+      try {
+        await club.as.action(api.files.completeUpload, {
+          storageId: upload.storageId,
+        });
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+
+      await club.as.mutation(api.certifications.update, {
+        certId,
+        documentStorageId: upload.storageId,
+        documentFileName: "first-aid.pdf",
+      });
+
+      const certRows = await club.as.query(api.certifications.list, {
+        memberId,
+      });
+      expect(certRows).toHaveLength(1);
+      const certRow = certRows[0]!;
+      expect(certRow.cert).toMatchObject({
+        documentStorageId: upload.storageId,
+        documentFileName: "first-aid.pdf",
+      });
+      expect(certRow.cert.documentUrl).toContain("X-Amz-Signature=");
+
+      const uploadRow = await t.run(async (ctx) => {
+        return await ctx.db
+          .query("uploadedFiles")
+          .withIndex("by_storage", (q) => q.eq("storageId", upload.storageId))
+          .first();
+      });
+      expect(uploadRow?.verifiedAt).toEqual(expect.any(Number));
+      expect(uploadRow?.attachedAt).toEqual(expect.any(Number));
     });
   });
 
@@ -408,6 +537,16 @@ describe("R2 image uploads", () => {
           size: 100,
         }),
       ).rejects.toThrow(/sponsors\.manage|permission/i);
+      await expect(
+        coach.as.mutation(api.files.generateUploadUrl, {
+          ownerType: "certifications",
+          ownerId: "cert-id",
+          purpose: "document",
+          fileName: "first-aid.pdf",
+          contentType: "application/pdf",
+          size: 100,
+        }),
+      ).rejects.toThrow(/training\.manage|permission/i);
     });
   });
 });

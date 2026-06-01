@@ -1,12 +1,14 @@
 import * as React from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
   AlertTriangle,
   Download,
+  FileText,
   GraduationCap,
   Pencil,
   Plus,
   Trash2,
+  X,
 } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { api } from "../../convex/_generated/api";
@@ -44,6 +46,11 @@ import { EmptyState, LoadingState, PageHeader } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { downloadCsv, formatDate, toCsv } from "@/lib/utils";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
+import {
+  DOCUMENT_UPLOAD_ACCEPT,
+  uploadDocumentFile,
+  type UploadedFile,
+} from "@/lib/uploads";
 
 type CertificationRow = NonNullable<
   ReturnType<typeof useQuery<typeof api.certifications.list>>
@@ -103,6 +110,7 @@ export default function TrainingCertificationsPage() {
         issuer: row.cert.issuer ?? "",
         issuedDate: row.cert.issuedDate ?? "",
         expiryDate: row.cert.expiryDate ?? "",
+        document: row.cert.documentFileName ?? "",
         notes: row.cert.notes ?? "",
       })),
       [
@@ -112,6 +120,7 @@ export default function TrainingCertificationsPage() {
         "issuer",
         "issuedDate",
         "expiryDate",
+        "document",
         "notes",
       ],
     );
@@ -177,6 +186,25 @@ export default function TrainingCertificationsPage() {
             </div>
           );
         },
+      },
+      {
+        id: "document",
+        header: "Document",
+        accessorFn: (row) => row.cert.documentFileName ?? "",
+        cell: ({ row }) =>
+          row.original.cert.documentUrl ? (
+            <a
+              href={row.original.cert.documentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              <FileText className="h-4 w-4" />
+              {row.original.cert.documentFileName ?? "View"}
+            </a>
+          ) : (
+            <span className="text-ink-quiet">—</span>
+          ),
       },
       ...(canEdit
         ? ([
@@ -292,6 +320,8 @@ export default function TrainingCertificationsPage() {
 function CertificationDialog({ existing }: { existing?: CertificationRow }) {
   const create = useMutation(api.certifications.create);
   const update = useMutation(api.certifications.update);
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const completeUpload = useAction(api.files.completeUpload);
   const members = useQuery(api.members.list, {});
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
@@ -307,6 +337,8 @@ function CertificationDialog({ existing }: { existing?: CertificationRow }) {
     existing?.cert.expiryDate ?? "",
   );
   const [notes, setNotes] = React.useState(existing?.cert.notes ?? "");
+  const [documentFile, setDocumentFile] = React.useState<File | null>(null);
+  const [removeDocument, setRemoveDocument] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -318,6 +350,8 @@ function CertificationDialog({ existing }: { existing?: CertificationRow }) {
     setIssuedDate(existing?.cert.issuedDate ?? "");
     setExpiryDate(existing?.cert.expiryDate ?? "");
     setNotes(existing?.cert.notes ?? "");
+    setDocumentFile(null);
+    setRemoveDocument(false);
     setError(null);
   }, [open, existing]);
 
@@ -331,6 +365,19 @@ function CertificationDialog({ existing }: { existing?: CertificationRow }) {
     setError(null);
     try {
       if (existing) {
+        let documentUpload: UploadedFile | undefined;
+        if (documentFile) {
+          documentUpload = await uploadDocumentFile(
+            generateUploadUrl,
+            completeUpload,
+            documentFile,
+            {
+              ownerType: "certifications",
+              ownerId: existing.cert._id,
+              purpose: "document",
+            },
+          );
+        }
         await update({
           certId: existing.cert._id,
           memberId: memberId as Id<"members">,
@@ -339,9 +386,17 @@ function CertificationDialog({ existing }: { existing?: CertificationRow }) {
           issuedDate: issuedDate || null,
           expiryDate: expiryDate || null,
           notes: notes.trim() || null,
+          ...(documentUpload
+            ? {
+                documentStorageId: documentUpload.storageId,
+                documentFileName: documentUpload.fileName,
+              }
+            : removeDocument
+              ? { documentStorageId: null }
+              : {}),
         });
       } else {
-        await create({
+        const certId = await create({
           memberId: memberId as Id<"members">,
           name,
           issuer: issuer.trim() || undefined,
@@ -349,6 +404,23 @@ function CertificationDialog({ existing }: { existing?: CertificationRow }) {
           expiryDate: expiryDate || undefined,
           notes: notes.trim() || undefined,
         });
+        if (documentFile) {
+          const documentUpload = await uploadDocumentFile(
+            generateUploadUrl,
+            completeUpload,
+            documentFile,
+            {
+              ownerType: "certifications",
+              ownerId: certId,
+              purpose: "document",
+            },
+          );
+          await update({
+            certId,
+            documentStorageId: documentUpload.storageId,
+            documentFileName: documentUpload.fileName,
+          });
+        }
       }
       setOpen(false);
       toastSuccess(
@@ -442,6 +514,43 @@ function CertificationDialog({ existing }: { existing?: CertificationRow }) {
                 onChange={(e) => setExpiryDate(e.target.value)}
               />
             </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="tc-document">Document</Label>
+            {existing?.cert.documentUrl && !documentFile && !removeDocument && (
+              <div className="flex items-center justify-between gap-3 rounded-sm border border-hairline bg-surface-sunk px-3 py-2">
+                <a
+                  href={existing.cert.documentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-w-0 items-center gap-2 text-body text-primary hover:underline"
+                >
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    {existing.cert.documentFileName ?? "View document"}
+                  </span>
+                </a>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setRemoveDocument(true)}
+                >
+                  <X className="h-4 w-4" />
+                  Remove
+                </Button>
+              </div>
+            )}
+            <Input
+              id="tc-document"
+              type="file"
+              accept={DOCUMENT_UPLOAD_ACCEPT}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setDocumentFile(file);
+                if (file) setRemoveDocument(false);
+              }}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="tc-notes">Notes</Label>

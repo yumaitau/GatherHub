@@ -1,7 +1,7 @@
 import * as React from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Plus, Trash2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import { PageHeader, LoadingState, RoleBadge } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatDate, humanise } from "@/lib/utils";
+import { DOCUMENT_UPLOAD_ACCEPT, uploadDocumentFile } from "@/lib/uploads";
 
 type MemberData = NonNullable<ReturnType<typeof useMemberData>>;
 
@@ -723,6 +724,19 @@ function CertificationsTab({
                       ? `Expires ${formatDate(c.expiryDate)}`
                       : "No expiry"}
                   </span>
+                  {c.documentUrl && (
+                    <a
+                      href={c.documentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-flex max-w-full items-center gap-1 text-primary hover:underline"
+                    >
+                      <FileText className="h-4 w-4 shrink-0" />
+                      <span className="truncate">
+                        {c.documentFileName ?? "View document"}
+                      </span>
+                    </a>
+                  )}
                 </span>
                 {canEdit && (
                   <Button
@@ -967,10 +981,14 @@ function AddEmergencyContactDialog({ memberId }: { memberId: Id<"members"> }) {
 function AddCertDialog({ memberId }: { memberId: Id<"members"> }) {
   const [open, setOpen] = React.useState(false);
   const add = useMutation(api.certifications.create);
+  const update = useMutation(api.certifications.update);
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const completeUpload = useAction(api.files.completeUpload);
   const [name, setName] = React.useState("");
   const [issuer, setIssuer] = React.useState("");
   const [issuedDate, setIssuedDate] = React.useState("");
   const [expiryDate, setExpiryDate] = React.useState("");
+  const [documentFile, setDocumentFile] = React.useState<File | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
@@ -979,6 +997,7 @@ function AddCertDialog({ memberId }: { memberId: Id<"members"> }) {
     setIssuer("");
     setIssuedDate("");
     setExpiryDate("");
+    setDocumentFile(null);
     setError(null);
   }
 
@@ -987,13 +1006,30 @@ function AddCertDialog({ memberId }: { memberId: Id<"members"> }) {
     setError(null);
     setSaving(true);
     try {
-      await add({
+      const certId = await add({
         memberId,
         name,
         issuer: issuer.trim() || undefined,
         issuedDate: issuedDate || undefined,
         expiryDate: expiryDate || undefined,
       });
+      if (documentFile) {
+        const uploaded = await uploadDocumentFile(
+          generateUploadUrl,
+          completeUpload,
+          documentFile,
+          {
+            ownerType: "certifications",
+            ownerId: certId,
+            purpose: "document",
+          },
+        );
+        await update({
+          certId,
+          documentStorageId: uploaded.storageId,
+          documentFileName: uploaded.fileName,
+        });
+      }
       reset();
       setOpen(false);
       toastSuccess("Certification added.");
@@ -1063,6 +1099,15 @@ function AddCertDialog({ memberId }: { memberId: Id<"members"> }) {
                   onChange={(e) => setExpiryDate(e.target.value)}
                 />
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="mc-document">Document</Label>
+              <Input
+                id="mc-document"
+                type="file"
+                accept={DOCUMENT_UPLOAD_ACCEPT}
+                onChange={(e) => setDocumentFile(e.target.files?.[0] ?? null)}
+              />
             </div>
             {error && <p className="text-caption text-danger">{error}</p>}
           </div>

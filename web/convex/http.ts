@@ -12,8 +12,13 @@ const corsHeaders = {
   "Access-Control-Max-Age": "86400",
 };
 
-const uploadOwnerTypes = ["news", "qrSettings", "sponsors"] as const;
-const uploadPurposes = ["coverImage", "logo", "qrLogo"] as const;
+const uploadOwnerTypes = [
+  "certifications",
+  "news",
+  "qrSettings",
+  "sponsors",
+] as const;
+const uploadPurposes = ["coverImage", "document", "logo", "qrLogo"] as const;
 
 type UploadOwnerType = (typeof uploadOwnerTypes)[number];
 type UploadPurpose = (typeof uploadPurposes)[number];

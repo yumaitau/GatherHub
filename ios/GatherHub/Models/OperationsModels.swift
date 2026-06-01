@@ -17,11 +17,15 @@ struct TrainingCertification: Codable, Identifiable, Hashable {
     let issuer: String?
     let issuedDate: String?
     let expiryDate: String?
+    let documentStorageId: String?
+    let documentFileName: String?
+    let documentUrl: String?
     let notes: String?
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case memberId, name, issuer, issuedDate, expiryDate, notes
+        case memberId, name, issuer, issuedDate, expiryDate
+        case documentStorageId, documentFileName, documentUrl, notes
     }
 }
 

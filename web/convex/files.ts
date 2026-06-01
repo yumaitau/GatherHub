@@ -13,19 +13,21 @@ import { requireCapability, type Capability } from "./lib/capabilities";
 import { deleteR2ObjectByKey, headR2Object } from "./lib/r2";
 import {
   createOrgImageUpload,
-  imageValidationError,
-  validateDeclaredImageMetadata,
+  uploadValidationError,
+  validateDeclaredUploadMetadata,
   type UploadOwnerType,
   type UploadPurpose,
 } from "./lib/uploads";
 
 const ownerType = v.union(
+  v.literal("certifications"),
   v.literal("news"),
   v.literal("qrSettings"),
   v.literal("sponsors"),
 );
 const purpose = v.union(
   v.literal("coverImage"),
+  v.literal("document"),
   v.literal("logo"),
   v.literal("qrLogo"),
 );
@@ -49,6 +51,9 @@ type GenerateUploadUrlArgs = {
 };
 
 function uploadCapabilityFor(ownerType: string, purpose: string): Capability {
+  if (ownerType === "certifications" && purpose === "document") {
+    return "training.manage";
+  }
   if (ownerType === "sponsors" && purpose === "logo") {
     return "sponsors.manage";
   }
@@ -104,7 +109,7 @@ async function issueOrgUploadUrl(
 }
 
 /**
- * Issue a short-lived R2 PUT URL for an org-scoped image upload. The returned
+ * Issue a short-lived R2 PUT URL for an org-scoped file upload. The returned
  * `storageId` is the R2 object key and remains compatible with existing
  * sponsor/news/QR mutation argument names.
  */
@@ -158,10 +163,10 @@ export const completeUpload = action({
       await ctx.runMutation(internal.files.markUploadDeleted, {
         storageId: args.storageId,
       });
-      throw new Error("Uploaded image was not found in R2.");
+      throw new Error("Uploaded file was not found in R2.");
     }
 
-    const validationError = imageValidationError(object);
+    const validationError = uploadValidationError(upload.purpose, object);
     if (validationError) {
       await ctx.runMutation(internal.files.markUploadDeleted, {
         storageId: args.storageId,
@@ -170,7 +175,7 @@ export const completeUpload = action({
       throw new Error(validationError);
     }
 
-    const metadata = validateDeclaredImageMetadata(object);
+    const metadata = validateDeclaredUploadMetadata(upload.purpose, object);
     await ctx.runMutation(internal.files.markUploadVerified, {
       storageId: args.storageId,
       contentType: metadata.contentType,
@@ -191,14 +196,15 @@ export const getUploadForVerification = internalQuery({
       .withIndex("by_storage", (q) => q.eq("storageId", args.storageId))
       .first();
     if (!upload || upload.orgId !== auth.org._id || upload.deletedAt) {
-      throw new Error("Uploaded image is not available to this organisation.");
+      throw new Error("Uploaded file is not available to this organisation.");
     }
     if (upload.uploadedBy !== auth.user._id) {
-      throw new Error("Uploaded image belongs to another user.");
+      throw new Error("Uploaded file belongs to another user.");
     }
     await requireUploadCapability(ctx, auth, upload.ownerType, upload.purpose);
     return {
       path: upload.path,
+      purpose: upload.purpose,
     };
   },
 });
@@ -215,9 +221,9 @@ export const markUploadVerified = internalMutation({
       .withIndex("by_storage", (q) => q.eq("storageId", args.storageId))
       .first();
     if (!upload || upload.deletedAt) {
-      throw new Error("Uploaded image is not available.");
+      throw new Error("Uploaded file is not available.");
     }
-    const metadata = validateDeclaredImageMetadata({
+    const metadata = validateDeclaredUploadMetadata(upload.purpose, {
       contentType: args.contentType,
       size: args.size,
     });

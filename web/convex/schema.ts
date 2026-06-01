@@ -653,6 +653,8 @@ export default defineSchema({
     issuer: v.optional(v.string()),
     issuedDate: v.optional(v.string()),
     expiryDate: v.optional(v.string()), // ISO yyyy-mm-dd
+    documentStorageId: v.optional(v.string()),
+    documentFileName: v.optional(v.string()),
     notes: v.optional(v.string()),
   })
     .index("by_org", ["orgId"])

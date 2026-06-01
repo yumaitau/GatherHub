@@ -237,7 +237,7 @@ resolution.
 - After upload, the client completes the upload. Convex performs a HEAD check
   against R2, records the verified content type/size, and only then allows the
   owning mutation to attach the object key to the sponsor, news, QR setting, or
-  future document row.
+  certification document row.
 - Uploaded objects also get an `uploadedFiles` metadata row with the canonical
   path, owner type/id, purpose, content type, size, uploader, and delete state.
 - **Validation on completion and attach:** the server enforces an allow-list per

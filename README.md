@@ -140,6 +140,10 @@ curl -X POST "$CONVEX_SITE_URL/files/upload-url" \
 The response includes `uploadUrl`, `storageId`, `objectKey`, required request
 `headers`, and `expiresInSeconds`.
 
+For training certificate documents, use the same flow with
+`ownerType: "certifications"`, `purpose: "document"`, a certification record id
+as `ownerId`, and either an allowed image content type or `application/pdf`.
+
 ### 4. Environment variables
 
 Copy and fill in the web env file:

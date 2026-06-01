@@ -254,6 +254,23 @@ private struct TrainingCertificationRowView: View {
                 }
                 .font(.gh.caption)
                 .foregroundStyle(Color.gh.inkQuiet)
+                if let documentUrl = row.cert.documentUrl,
+                   let url = URL(string: documentUrl) {
+                    Link(destination: url) {
+                        Label(
+                            row.cert.documentFileName ?? "Document",
+                            systemImage: "doc"
+                        )
+                            .font(.gh.caption)
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(Color.gh.accent)
+                } else if let documentFileName = row.cert.documentFileName {
+                    Label(documentFileName, systemImage: "doc")
+                        .font(.gh.caption)
+                        .foregroundStyle(Color.gh.inkQuiet)
+                        .lineLimit(1)
+                }
                 if let variant = expiryState, let expiry = row.cert.expiryDate {
                     GHBadge(text: expiry < ISODateString.string(from: .now) ? "Expired" : "Current", variant: variant)
                 }
@@ -432,6 +449,9 @@ private struct TrainingCertificationEditorSheet: View {
                 issuer: payload.issuer,
                 issuedDate: payload.issuedDate,
                 expiryDate: payload.expiryDate,
+                documentStorageId: row?.cert.documentStorageId,
+                documentFileName: row?.cert.documentFileName,
+                documentUrl: row?.cert.documentUrl,
                 notes: payload.notes
             ),
             member: members.first { $0.id == payload.memberId } ?? row?.member
