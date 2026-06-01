@@ -145,6 +145,7 @@ export const currentContext = query({
         soccerMode: Boolean(auth.org.soccerMode),
         kind: profile.kind,
         templateKey: profile.templateKey,
+        sportKey: profile.sportKey,
         terminology: profile.terminology,
         modules: profile.modules,
         defaultAddress: auth.org.defaultAddress,

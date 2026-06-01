@@ -30,6 +30,10 @@ import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { downloadCsv, humanise, toCsv } from "@/lib/utils";
+import {
+  legacySoccerSurfacesEnabled,
+  sportSectionLabel,
+} from "@/lib/verticals";
 
 type Row = NonNullable<
   ReturnType<typeof useQuery<typeof api.soccer.coachesAndManagers>>
@@ -56,13 +60,14 @@ export default function CoachesManagersPage() {
   const { org, hasCapability } = useGatherHub();
   const rows = useQuery(api.soccer.coachesAndManagers, {});
   const canEdit = hasCapability("soccer.manage");
+  const sportName = sportSectionLabel(org);
 
-  if (!org?.soccerMode) {
+  if (!legacySoccerSurfacesEnabled(org)) {
     return (
       <EmptyState
         icon={UserCog}
-        title="Soccer mode is off"
-        description="Enable Soccer club mode in Settings to track coaches and managers."
+        title={`${sportName} pack is off`}
+        description="Enable the sport pack in Settings to track coaches and managers."
         action={
           <Button asChild>
             <Link to="/settings">Open settings</Link>

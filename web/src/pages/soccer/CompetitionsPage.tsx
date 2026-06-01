@@ -21,6 +21,12 @@ import { DataTable } from "@/components/ui/data-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
+import {
+  legacySoccerSurfacesEnabled,
+  sportSectionLabel,
+  term,
+  titleCase,
+} from "@/lib/verticals";
 
 type Row = NonNullable<
   ReturnType<typeof useQuery<typeof api.soccer.listCompetitions>>
@@ -32,6 +38,8 @@ export default function CompetitionsPage() {
   const upsert = useMutation(api.soccer.upsertCompetition);
   const canEdit = hasCapability("soccer.manage");
   const count = rows?.length ?? 0;
+  const competitionPlural = titleCase(term(org, "competitionPlural"));
+  const sportName = sportSectionLabel(org);
 
   async function toggleCompetition(row: Row) {
     try {
@@ -49,12 +57,12 @@ export default function CompetitionsPage() {
     }
   }
 
-  if (!org?.soccerMode) {
+  if (!legacySoccerSurfacesEnabled(org)) {
     return (
       <EmptyState
         icon={Trophy}
-        title="Soccer mode is off"
-        description="Enable Soccer club mode in Settings to manage competitions."
+        title={`${sportName} pack is off`}
+        description="Enable the sport pack in Settings to manage competitions."
         action={
           <Button asChild>
             <Link to="/settings">Open settings</Link>
@@ -124,7 +132,7 @@ export default function CompetitionsPage() {
   return (
     <div>
       <PageHeader
-        title={`Competitions (${count})`}
+        title={`${competitionPlural} (${count})`}
         description="Leagues, cups, or season groupings used when registering players."
         actions={canEdit && <CompetitionDialog />}
       />

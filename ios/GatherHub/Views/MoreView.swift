@@ -18,9 +18,9 @@ struct MoreView: View {
                 if context.hasCapability("settings.admin") {
                     adminSection
                 }
-                if context.org.moduleEnabled("soccer") &&
+                if context.org.legacySoccerSurfacesEnabled &&
                     (context.hasCapability("soccer.manage") || context.hasCapability("soccer.grade")) {
-                    soccerSection
+                    sportSection
                 }
             }
             .listStyle(.insetGrouped)
@@ -50,7 +50,8 @@ struct MoreView: View {
                     TeamsListView(
                         canEdit: context.hasCapability("teams.write"),
                         canDelete: context.hasCapability("teams.delete"),
-                        soccerMode: context.org.moduleEnabled("soccer")
+                        soccerMode: context.org.legacySoccerSurfacesEnabled,
+                        sportLabel: context.org.sportLabel
                     )
                 }
             }
@@ -93,8 +94,8 @@ struct MoreView: View {
         }
     }
 
-    private var soccerSection: some View {
-        Section(context.org.term(\.sportSingular, fallback: "soccer").capitalized) {
+    private var sportSection: some View {
+        Section(context.org.sportLabel) {
             if context.hasCapability("soccer.manage") {
                 row(context.org.term(\.registrationPlural, fallback: "player registrations").capitalized, system: "list.clipboard") {
                     SoccerRegistrationsView(canEdit: true)

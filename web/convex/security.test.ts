@@ -538,6 +538,56 @@ describe("role-based permissions", () => {
     ).toBe(false);
   });
 
+  test("sport templates expose sport packs without enabling soccer storage", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", {
+        clerkUserId: "user_rugby_owner",
+        email: "rugby-owner@example.test",
+      });
+    });
+    const owner = t.withIdentity({ subject: "user_rugby_owner" });
+
+    await owner.mutation(api.organizations.create, {
+      name: "Harbour Rugby",
+      kind: "sports_club",
+      templateKey: "rugby_union_club",
+      sportKey: "rugby_union",
+    });
+
+    const context = await owner.query(api.sync.currentContext, {});
+    expect(context?.org.kind).toBe("sports_club");
+    expect(context?.org.templateKey).toBe("rugby_union_club");
+    expect(context?.org.sportKey).toBe("rugby_union");
+    expect(context?.org.soccerMode).toBe(false);
+    expect(context?.org.terminology.sportSingular).toBe("rugby union");
+    expect(
+      context?.org.modules.some((m) => m.key === "sport" && m.enabled),
+    ).toBe(true);
+    expect(
+      context?.org.modules.some((m) => m.key === "soccer" && m.enabled),
+    ).toBe(false);
+  });
+
+  test("legacy soccerMode organisations resolve to the soccer sport pack", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_legacy_soccer_pack",
+      clerkUser: "user_legacy_soccer_pack",
+      role: "owner",
+    });
+    await t.run(async (ctx) => {
+      await ctx.db.patch(club.orgId, { soccerMode: true });
+    });
+
+    const context = await club.as.query(api.sync.currentContext, {});
+    expect(context?.org.sportKey).toBe("soccer");
+    expect(context?.org.terminology.sportSingular).toBe("soccer");
+    expect(
+      context?.org.modules.some((m) => m.key === "soccer" && m.enabled),
+    ).toBe(true);
+  });
+
   test("missing legacy organisation profile rows are migratable", async () => {
     const t = convexTest(schema, modules);
     const club = await seedOrg(t, {

@@ -28,7 +28,14 @@ export const setSoccerMode = mutation({
   handler: async (ctx, args) => {
     const auth = await requireOrgMember(ctx);
     await requireCapability(ctx, auth, "soccer.manage");
-    await ctx.db.patch(auth.org._id, { soccerMode: args.enabled });
+    await ctx.db.patch(auth.org._id, {
+      soccerMode: args.enabled,
+      sportKey: args.enabled
+        ? "soccer"
+        : auth.org.sportKey === "soccer"
+          ? undefined
+          : auth.org.sportKey,
+    });
     for (const key of ["sport", "soccer"] as const) {
       const existing = await ctx.db
         .query("organizationModules")

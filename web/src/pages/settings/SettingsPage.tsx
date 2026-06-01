@@ -51,15 +51,19 @@ import { humanise, formatDateTime } from "@/lib/utils";
 import {
   DEFAULT_TERMINOLOGY,
   MODULE_LABELS,
+  moduleEnabled,
+  sportSectionLabel,
   type OrganizationKind,
   type OrganizationModuleKey,
   type OrganizationTerminology,
+  type SportKey,
 } from "@/lib/verticals";
 
 export default function SettingsPage() {
   const { org, hasCapability } = useGatherHub();
   const canManage = hasCapability("settings.admin");
-  const soccerMode = Boolean(org?.soccerMode);
+  const sportEnabled = moduleEnabled(org, "sport");
+  const sportName = sportSectionLabel(org);
   if (!canManage) {
     return (
       <EmptyState
@@ -88,7 +92,8 @@ export default function SettingsPage() {
           )}
           {hasCapability("soccer.manage") && (
             <TabsTrigger value="soccer">
-              Soccer{soccerMode ? "" : " (off)"}
+              {sportName}
+              {sportEnabled ? "" : " (off)"}
             </TabsTrigger>
           )}
           {hasCapability("settings.admin") && (
@@ -164,6 +169,9 @@ function ProfileSettingsTab() {
   const setModule = useMutation(api.organizations.setModule);
   const [templateKey, setTemplateKey] = React.useState("sports_club");
   const [kind, setKind] = React.useState<OrganizationKind>("sports_club");
+  const [sportKey, setSportKey] = React.useState<SportKey | undefined>(
+    "multi_sport",
+  );
   const [terms, setTerms] =
     React.useState<OrganizationTerminology>(DEFAULT_TERMINOLOGY);
   const [saving, setSaving] = React.useState(false);
@@ -173,6 +181,7 @@ function ProfileSettingsTab() {
     if (!profile) return;
     setTemplateKey(profile.templateKey);
     setKind(profile.kind);
+    setSportKey(profile.sportKey);
     setTerms({ ...DEFAULT_TERMINOLOGY, ...profile.terminology });
   }, [profile]);
 
@@ -182,7 +191,7 @@ function ProfileSettingsTab() {
     e.preventDefault();
     setSaving(true);
     try {
-      await updateProfile({ kind, templateKey, terminology: terms });
+      await updateProfile({ kind, templateKey, sportKey, terminology: terms });
       toastSuccess("Organisation profile saved.");
     } catch (err) {
       toastFailure(err, "Could not save organisation profile.");
@@ -221,7 +230,14 @@ function ProfileSettingsTab() {
                   onValueChange={(value) => {
                     const selected = templates.find((row) => row.key === value);
                     setTemplateKey(value);
-                    if (selected) setKind(selected.kind);
+                    if (selected) {
+                      setKind(selected.kind);
+                      setSportKey(selected.sportKey as SportKey | undefined);
+                      setTerms({
+                        ...DEFAULT_TERMINOLOGY,
+                        ...selected.terminology,
+                      });
+                    }
                   }}
                 >
                   <SelectTrigger>
@@ -240,6 +256,12 @@ function ProfileSettingsTab() {
                 <Label>Organisation type</Label>
                 <Input value={humanise(kind)} readOnly />
               </div>
+              {sportKey && (
+                <div className="grid gap-1.5">
+                  <Label>Sport pack</Label>
+                  <Input value={humanise(sportKey)} readOnly />
+                </div>
+              )}
             </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

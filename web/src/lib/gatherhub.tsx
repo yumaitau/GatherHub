@@ -8,6 +8,7 @@ import type {
   OrganizationKind,
   OrganizationModule,
   OrganizationTerminology,
+  SportKey,
 } from "./verticals";
 
 export interface GatherHubContextValue {
@@ -31,6 +32,7 @@ export interface GatherHubContextValue {
     soccerMode: boolean;
     kind: OrganizationKind;
     templateKey: string;
+    sportKey?: SportKey;
     terminology: OrganizationTerminology;
     modules: OrganizationModule[];
     defaultAddress?: string;
@@ -91,6 +93,7 @@ export function GatherHubProvider({ children }: { children: React.ReactNode }) {
             soccerMode: Boolean(context.org.soccerMode),
             kind: context.org.kind,
             templateKey: context.org.templateKey,
+            sportKey: context.org.sportKey,
             terminology: context.org.terminology,
             modules: context.org.modules,
             defaultAddress: context.org.defaultAddress ?? undefined,

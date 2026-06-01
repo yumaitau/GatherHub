@@ -29,6 +29,12 @@ import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { downloadCsv, toCsv } from "@/lib/utils";
+import {
+  legacySoccerSurfacesEnabled,
+  sportSectionLabel,
+  term,
+  titleCase,
+} from "@/lib/verticals";
 
 export default function RegistrationsPage() {
   const { org, hasCapability } = useGatherHub();
@@ -39,13 +45,15 @@ export default function RegistrationsPage() {
   const ageGroups = useQuery(api.taxonomies.list, { kind: "team_age_group" });
   const divisions = useQuery(api.soccer.listDivisions, {});
   const canEdit = hasCapability("soccer.manage");
+  const sportName = sportSectionLabel(org);
+  const registrationPlural = titleCase(term(org, "registrationPlural"));
 
-  if (!org?.soccerMode) {
+  if (!legacySoccerSurfacesEnabled(org)) {
     return (
       <EmptyState
         icon={ClipboardList}
-        title="Soccer mode is off"
-        description="Enable Soccer club mode in Settings to use registrations."
+        title={`${sportName} pack is off`}
+        description="Enable the sport pack in Settings to use registrations."
         action={
           <Button asChild>
             <Link to="/settings">Open settings</Link>
@@ -91,7 +99,7 @@ export default function RegistrationsPage() {
   return (
     <div>
       <PageHeader
-        title={`Player Registrations (${rows?.length ?? 0})`}
+        title={`${registrationPlural} (${rows?.length ?? 0})`}
         description="Track who's registered, paid, and assigned to a team or competition."
         actions={
           <>
@@ -223,7 +231,7 @@ export default function RegistrationsPage() {
                 header: "Skills",
                 cell: ({ row }) => (
                   <Link
-                    to={`/soccer/grading/${row.original.memberId}`}
+                    to={`/sport/grading/${row.original.memberId}`}
                     className="text-ink-soft hover:text-primary"
                   >
                     <span data-numeric>{row.original.scoredCount}</span>

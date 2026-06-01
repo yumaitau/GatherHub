@@ -101,10 +101,37 @@ function AuthedApp() {
                 element={<SponsorDetailPage />}
               />
               <Route path="/news" element={<NewsAdminPage />} />
+              {/* Sport module routes. Legacy /soccer paths remain usable. */}
+              <Route
+                path="/sport/players"
+                element={<Navigate to="/sport/registrations" replace />}
+              />
+              <Route
+                path="/sport/registrations"
+                element={<RegistrationsPage />}
+              />
+              <Route
+                path="/sport/divisions"
+                element={<SoccerDivisionsPage />}
+              />
+              <Route path="/sport/grading" element={<GradingPage />} />
+              <Route
+                path="/sport/grading/:memberId"
+                element={<PlayerEvaluationPage />}
+              />
+              <Route
+                path="/sport/coaches-managers"
+                element={<CoachesManagersPage />}
+              />
+              <Route
+                path="/sport/competitions"
+                element={<CompetitionsPage />}
+              />
+              <Route path="/sport/age-groups" element={<AgeGroupsPage />} />
               {/* /soccer/players merged into Player Registrations */}
               <Route
                 path="/soccer/players"
-                element={<Navigate to="/soccer/registrations" replace />}
+                element={<Navigate to="/sport/registrations" replace />}
               />
               <Route
                 path="/soccer/registrations"
@@ -136,15 +163,15 @@ function AuthedApp() {
               {/* Redirects from the pre-namespace routes. */}
               <Route
                 path="/registrations"
-                element={<Navigate to="/soccer/registrations" replace />}
+                element={<Navigate to="/sport/registrations" replace />}
               />
               <Route
                 path="/grading"
-                element={<Navigate to="/soccer/grading" replace />}
+                element={<Navigate to="/sport/grading" replace />}
               />
               <Route
                 path="/grading/:memberId"
-                element={<Navigate to="/soccer/grading" replace />}
+                element={<Navigate to="/sport/grading" replace />}
               />
               <Route path="/profile/*" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />

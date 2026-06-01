@@ -14,12 +14,14 @@ import {
   replaceOrganizationModules,
   seedOrganizationProfile,
   type OrganizationModuleKey,
+  type SportKey,
 } from "./lib/orgConfig";
 import { ensureOrganizationRoles, requireCapability } from "./lib/capabilities";
 import {
   organizationKindValidator,
   organizationModuleKeyValidator,
   organizationTerminologyValidator,
+  sportKeyValidator,
 } from "./schema";
 
 /**
@@ -40,6 +42,7 @@ export const create = mutation({
     slug: v.optional(v.string()),
     kind: v.optional(organizationKindValidator),
     templateKey: v.optional(v.string()),
+    sportKey: v.optional(sportKeyValidator),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -62,6 +65,7 @@ export const create = mutation({
     await seedOrganizationProfile(ctx, orgId, {
       kind: args.kind,
       templateKey: args.templateKey,
+      sportKey: args.sportKey,
     });
     const org = await ctx.db.get(orgId);
     if (org) await ensureOrganizationRoles(ctx, org);
@@ -244,15 +248,26 @@ export const updateProfile = mutation({
   args: {
     kind: v.optional(organizationKindValidator),
     templateKey: v.optional(v.string()),
+    sportKey: v.optional(sportKeyValidator),
     terminology: v.optional(organizationTerminologyValidator),
   },
   handler: async (ctx, args) => {
     const auth = await requireOrgMember(ctx);
     await requireCapability(ctx, auth, "settings.admin");
+    const templateChanged =
+      args.templateKey !== undefined &&
+      args.templateKey !== auth.org.templateKey;
     const profile = normalizedProfileInput({
       kind: args.kind ?? auth.org.kind,
       templateKey: args.templateKey ?? auth.org.templateKey,
-      terminology: args.terminology ?? auth.org.terminology,
+      sportKey:
+        args.sportKey ??
+        (templateChanged
+          ? undefined
+          : (auth.org.sportKey as SportKey | undefined)),
+      terminology:
+        args.terminology ??
+        (templateChanged ? undefined : auth.org.terminology),
     });
     const template = listVerticalTemplates().find(
       (row) => row.key === profile.templateKey,
@@ -265,6 +280,7 @@ export const updateProfile = mutation({
     await ctx.db.patch(auth.org._id, {
       kind: profile.kind,
       templateKey: profile.templateKey,
+      sportKey: profile.sportKey,
       terminology: profile.terminology,
       soccerMode: enabled.has("soccer"),
       profileUpdatedAt: Date.now(),
@@ -308,9 +324,28 @@ export const setModule = mutation({
         updatedAt: now,
       });
     }
+    if (args.key === "sport" && !args.enabled) {
+      await ctx.db.patch(auth.org._id, {
+        soccerMode: false,
+        sportKey: undefined,
+      });
+      const soccer = await ctx.db
+        .query("organizationModules")
+        .withIndex("by_org_key", (q) =>
+          q.eq("orgId", auth.org._id).eq("key", "soccer"),
+        )
+        .unique();
+      if (soccer) {
+        await ctx.db.patch(soccer._id, { enabled: false, updatedAt: now });
+      }
+    }
+    if (args.key === "sport" && args.enabled && !auth.org.sportKey) {
+      await ctx.db.patch(auth.org._id, { sportKey: "multi_sport" });
+    }
     if (args.key === "soccer") {
       await ctx.db.patch(auth.org._id, { soccerMode: args.enabled });
       if (args.enabled) {
+        await ctx.db.patch(auth.org._id, { sportKey: "soccer" });
         const sport = await ctx.db
           .query("organizationModules")
           .withIndex("by_org_key", (q) =>

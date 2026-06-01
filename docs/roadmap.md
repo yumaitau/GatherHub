@@ -5,6 +5,8 @@ MVP "operating system for community sports clubs". It is organised into 16 epics
 sequenced so each builds on the last.
 
 Detailed, per-issue breakdowns live under [`/docs/issues/`](./issues/).
+The sport-pack migration model is documented in
+[`/docs/sport-packs.md`](./sport-packs.md).
 
 ---
 

@@ -28,6 +28,17 @@ export type OrganizationModuleKey =
   | "waste"
   | "safety";
 
+export type SportKey =
+  | "multi_sport"
+  | "soccer"
+  | "rugby_union"
+  | "rugby_league"
+  | "cricket"
+  | "hockey"
+  | "netball"
+  | "basketball"
+  | "other";
+
 export interface OrganizationTerminology {
   orgSingular?: string;
   orgPlural?: string;
@@ -73,6 +84,7 @@ export interface VerticalOrgConfig {
   soccerMode?: boolean;
   kind?: OrganizationKind;
   templateKey?: string;
+  sportKey?: SportKey;
   terminology?: OrganizationTerminology;
   modules?: OrganizationModule[];
 }
@@ -96,6 +108,18 @@ export const MODULE_LABELS: Record<OrganizationModuleKey, string> = {
   logistics: "Logistics",
   waste: "Waste operations",
   safety: "Safety & compliance",
+};
+
+export const SPORT_LABELS: Record<SportKey, string> = {
+  multi_sport: "Multi-sport",
+  soccer: "Soccer",
+  rugby_union: "Rugby union",
+  rugby_league: "Rugby league",
+  cricket: "Cricket",
+  hockey: "Hockey",
+  netball: "Netball",
+  basketball: "Basketball",
+  other: "Other sport",
 };
 
 export const DEFAULT_TERMINOLOGY: Required<OrganizationTerminology> = {
@@ -178,6 +202,27 @@ export function moduleEnabled(
   }
   if (key === "soccer") return Boolean(org.soccerMode);
   if (key === "sport")
-    return Boolean(org.soccerMode) || org.kind === "sports_club";
+    return (
+      Boolean(org.soccerMode) ||
+      Boolean(org.sportKey) ||
+      org.kind === "sports_club"
+    );
   return DEFAULT_ENABLED_MODULES.includes(key);
+}
+
+export function sportLabel(org: VerticalOrgConfig | null | undefined): string {
+  const configured = org?.sportKey ? SPORT_LABELS[org.sportKey] : undefined;
+  return configured ?? titleCase(term(org, "sportSingular"));
+}
+
+export function sportSectionLabel(
+  org: VerticalOrgConfig | null | undefined,
+): string {
+  return titleCase(term(org, "sportSingular")) || sportLabel(org);
+}
+
+export function legacySoccerSurfacesEnabled(
+  org: VerticalOrgConfig | null | undefined,
+): boolean {
+  return moduleEnabled(org, "soccer") || org?.sportKey === "soccer";
 }

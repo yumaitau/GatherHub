@@ -92,7 +92,7 @@ final class AppDataPreloader {
                 try guardActive(shouldContinue)
                 let stats = try await convex.dashboardStats()
                 var soccer: SoccerDashboardStats?
-                if context.org.moduleEnabled("soccer") &&
+                if context.org.legacySoccerSurfacesEnabled &&
                     (context.hasCapability("soccer.manage") || context.hasCapability("soccer.grade")) {
                     soccer = try? await convex.soccerDashboardStats()
                 }
@@ -267,7 +267,7 @@ final class AppDataPreloader {
             }
         }
 
-        if context.org.moduleEnabled("soccer") &&
+        if context.org.legacySoccerSurfacesEnabled &&
             (context.hasCapability("soccer.manage") || context.hasCapability("soccer.grade")) {
             await preloadSoccerData(
                 convex: convex,

@@ -29,6 +29,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
+import { legacySoccerSurfacesEnabled } from "@/lib/verticals";
 
 export default function TeamsPage() {
   const { hasCapability } = useGatherHub();
@@ -132,7 +133,7 @@ export default function TeamsPage() {
 
 function NewTeamDialog() {
   const { org } = useGatherHub();
-  const soccerMode = Boolean(org?.soccerMode);
+  const soccerMode = legacySoccerSurfacesEnabled(org);
   const create = useMutation(api.teams.create);
   const ageGroups = useQuery(api.taxonomies.list, { kind: "team_age_group" });
   const competitions = useQuery(

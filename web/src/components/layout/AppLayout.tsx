@@ -42,6 +42,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import type { Role } from "@/lib/roles";
 import type { Capability } from "@/lib/capabilities";
 import {
+  legacySoccerSurfacesEnabled,
   moduleEnabled,
   term,
   titleCase,
@@ -175,53 +176,53 @@ function buildNav(org: VerticalOrgConfig | null): NavGroup[] {
       ],
     },
   ];
-  if (moduleEnabled(org, "soccer")) groups.push(buildSoccerNav(org));
+  if (legacySoccerSurfacesEnabled(org)) groups.push(buildSportNav(org));
   return groups;
 }
 
-function buildSoccerNav(org: VerticalOrgConfig | null): NavGroup {
+function buildSportNav(org: VerticalOrgConfig | null): NavGroup {
   return {
     label: titleCase(term(org, "sportSingular")),
     collapsible: true,
     defaultOpen: false,
     items: [
       {
-        to: "/soccer/registrations",
+        to: "/sport/registrations",
         label: titleCase(term(org, "registrationPlural")),
         icon: ClipboardList,
         module: "soccer",
         capability: "soccer.manage",
       },
       {
-        to: "/soccer/coaches-managers",
+        to: "/sport/coaches-managers",
         label: "Coaches & Managers",
         icon: UserCog,
         module: "soccer",
         capability: "soccer.manage",
       },
       {
-        to: "/soccer/competitions",
+        to: "/sport/competitions",
         label: titleCase(term(org, "competitionPlural")),
         icon: Trophy,
         module: "soccer",
         capability: "soccer.manage",
       },
       {
-        to: "/soccer/age-groups",
+        to: "/sport/age-groups",
         label: titleCase(term(org, "ageGroupPlural")),
         icon: Layers3,
         module: "soccer",
         capability: "soccer.manage",
       },
       {
-        to: "/soccer/divisions",
+        to: "/sport/divisions",
         label: titleCase(term(org, "divisionPlural")),
         icon: Layers,
         module: "soccer",
         capability: "soccer.manage",
       },
       {
-        to: "/soccer/grading",
+        to: "/sport/grading",
         label: titleCase(term(org, "gradingSingular")),
         icon: Gauge,
         module: "soccer",

@@ -174,7 +174,12 @@ function CreateClubAction({ onDone }: { onDone: () => void }) {
     setError(null);
     try {
       const template = templates?.find((row) => row.key === templateKey);
-      await create({ name, templateKey, kind: template?.kind });
+      await create({
+        name,
+        templateKey,
+        kind: template?.kind,
+        sportKey: template?.sportKey,
+      });
       setName("");
       setOpen(false);
       onDone();

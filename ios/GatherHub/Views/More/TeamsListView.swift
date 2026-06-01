@@ -5,6 +5,7 @@ struct TeamsListView: View {
     let canEdit: Bool
     let canDelete: Bool
     let soccerMode: Bool
+    let sportLabel: String
 
     @EnvironmentObject private var convex: ConvexService
     @EnvironmentObject private var sync: SyncEnvironment
@@ -18,10 +19,11 @@ struct TeamsListView: View {
     @State private var editingTeam: Team?
     @State private var deletingTeam: Team?
 
-    init(canEdit: Bool = false, canDelete: Bool = false, soccerMode: Bool = false) {
+    init(canEdit: Bool = false, canDelete: Bool = false, soccerMode: Bool = false, sportLabel: String = "Sport") {
         self.canEdit = canEdit
         self.canDelete = canDelete
         self.soccerMode = soccerMode
+        self.sportLabel = sportLabel
     }
 
     private var ageGroups: [String] {
@@ -68,7 +70,7 @@ struct TeamsListView: View {
             } else {
                 List(filtered) { team in
                     NavigationLink {
-                        TeamDetailView(team: team, canEdit: canEdit, canDelete: canDelete, soccerMode: soccerMode) { saved, shouldReload in
+                        TeamDetailView(team: team, canEdit: canEdit, canDelete: canDelete, soccerMode: soccerMode, sportLabel: sportLabel) { saved, shouldReload in
                             upsertLocal(saved)
                             if shouldReload {
                                 Task { await load() }
@@ -136,7 +138,7 @@ struct TeamsListView: View {
             prompt: "Search team or age group"
         )
         .sheet(isPresented: $creatingTeam) {
-            TeamEditorSheet(team: nil, soccerMode: soccerMode) { saved, shouldReload in
+            TeamEditorSheet(team: nil, soccerMode: soccerMode, sportLabel: sportLabel) { saved, shouldReload in
                 upsertLocal(saved)
                 if shouldReload {
                     Task { await load() }
@@ -144,7 +146,7 @@ struct TeamsListView: View {
             }
         }
         .sheet(item: $editingTeam) { team in
-            TeamEditorSheet(team: team, soccerMode: soccerMode) { saved, shouldReload in
+            TeamEditorSheet(team: team, soccerMode: soccerMode, sportLabel: sportLabel) { saved, shouldReload in
                 upsertLocal(saved)
                 if shouldReload {
                     Task { await load() }
@@ -274,6 +276,7 @@ struct TeamDetailView: View {
     let canEdit: Bool
     let canDelete: Bool
     let soccerMode: Bool
+    let sportLabel: String
     let onSaved: (_ saved: Team, _ shouldReload: Bool) -> Void
     let onDeleted: (_ deleted: Team, _ shouldReload: Bool) -> Void
     @EnvironmentObject private var sync: SyncEnvironment
@@ -287,6 +290,7 @@ struct TeamDetailView: View {
         canEdit: Bool = false,
         canDelete: Bool = false,
         soccerMode: Bool = false,
+        sportLabel: String = "Sport",
         onSaved: @escaping (_ saved: Team, _ shouldReload: Bool) -> Void = { _, _ in },
         onDeleted: @escaping (_ deleted: Team, _ shouldReload: Bool) -> Void = { _, _ in }
     ) {
@@ -294,6 +298,7 @@ struct TeamDetailView: View {
         self.canEdit = canEdit
         self.canDelete = canDelete
         self.soccerMode = soccerMode
+        self.sportLabel = sportLabel
         self.onSaved = onSaved
         self.onDeleted = onDeleted
     }
@@ -368,7 +373,7 @@ struct TeamDetailView: View {
             }
         }
         .sheet(isPresented: $editing) {
-            TeamEditorSheet(team: team, soccerMode: soccerMode) { saved, shouldReload in
+            TeamEditorSheet(team: team, soccerMode: soccerMode, sportLabel: sportLabel) { saved, shouldReload in
                 team = saved
                 onSaved(saved, shouldReload)
             }
@@ -427,6 +432,7 @@ struct TeamDetailView: View {
 private struct TeamEditorSheet: View {
     let team: Team?
     let soccerMode: Bool
+    let sportLabel: String
     let onSaved: (_ saved: Team, _ shouldReload: Bool) -> Void
 
     @EnvironmentObject private var convex: ConvexService
@@ -464,10 +470,12 @@ private struct TeamEditorSheet: View {
     init(
         team: Team?,
         soccerMode: Bool,
+        sportLabel: String,
         onSaved: @escaping (_ saved: Team, _ shouldReload: Bool) -> Void
     ) {
         self.team = team
         self.soccerMode = soccerMode
+        self.sportLabel = sportLabel
         self.onSaved = onSaved
         self._name = State(initialValue: team?.name ?? "")
         self._ageGroup = State(initialValue: team?.ageGroup ?? "")
@@ -519,7 +527,7 @@ private struct TeamEditorSheet: View {
                     }
                 }
                 if soccerMode {
-                    Section("Soccer") {
+                    Section(sportLabel) {
                         Picker("Competition", selection: $competitionId) {
                             Text("None").tag("")
                             ForEach(competitions.filter(\.active)) { competition in

@@ -155,6 +155,18 @@ export const organizationKindValidator = v.union(
   v.literal("other"),
 );
 
+export const sportKeyValidator = v.union(
+  v.literal("multi_sport"),
+  v.literal("soccer"),
+  v.literal("rugby_union"),
+  v.literal("rugby_league"),
+  v.literal("cricket"),
+  v.literal("hockey"),
+  v.literal("netball"),
+  v.literal("basketball"),
+  v.literal("other"),
+);
+
 export const organizationModuleKeyValidator = v.union(
   v.literal("core"),
   v.literal("people"),
@@ -258,10 +270,8 @@ export default defineSchema({
 
   // Organisations. Created and owned entirely in Convex. `inviteCode` is an opaque
   // short string used by `organizations.joinByCode`; null/absent disables it.
-  // `soccerMode` unlocks soccer-specific surfaces (Registrations, Grading,
-  // soccer settings, kit metadata on teams). New tenants use `kind`,
-  // `templateKey`, `terminology`, and `organizationModules`; `soccerMode`
-  // remains as the compatibility flag for older code and soccer templates.
+  // `sportKey` selects the configured sport pack. `soccerMode` remains as the
+  // compatibility flag for legacy soccer screens and existing soccer tenants.
   organizations: defineTable({
     name: v.string(),
     slug: v.optional(v.string()),
@@ -271,6 +281,7 @@ export default defineSchema({
     soccerMode: v.optional(v.boolean()),
     kind: v.optional(organizationKindValidator),
     templateKey: v.optional(v.string()),
+    sportKey: v.optional(sportKeyValidator),
     terminology: v.optional(organizationTerminologyValidator),
     profileUpdatedAt: v.optional(v.number()),
     defaultAddress: v.optional(v.string()),

@@ -27,6 +27,12 @@ import {
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
+import {
+  legacySoccerSurfacesEnabled,
+  sportSectionLabel,
+  term,
+  titleCase,
+} from "@/lib/verticals";
 
 export default function AgeGroupsPage() {
   const { org, hasCapability } = useGatherHub();
@@ -37,13 +43,15 @@ export default function AgeGroupsPage() {
   const reorder = useMutation(api.taxonomies.reorder);
   const setActive = useMutation(api.taxonomies.setActive);
   const canEdit = hasCapability("soccer.manage");
+  const ageGroupPlural = titleCase(term(org, "ageGroupPlural"));
+  const sportName = sportSectionLabel(org);
 
-  if (!org?.soccerMode) {
+  if (!legacySoccerSurfacesEnabled(org)) {
     return (
       <EmptyState
         icon={Layers3}
-        title="Soccer mode is off"
-        description="Enable Soccer club mode in Settings to manage age groups."
+        title={`${sportName} pack is off`}
+        description={`Enable the sport pack in Settings to manage ${ageGroupPlural.toLowerCase()}.`}
         action={
           <Button asChild>
             <Link to="/settings">Open settings</Link>
@@ -84,7 +92,7 @@ export default function AgeGroupsPage() {
   return (
     <div>
       <PageHeader
-        title={`Age Groups (${count})`}
+        title={`${ageGroupPlural} (${count})`}
         description="Age groups available when creating a team or registration."
         actions={canEdit && <AgeGroupDialog />}
       />

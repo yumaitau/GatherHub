@@ -17,6 +17,11 @@ import {
 import { LoadingState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
+import {
+  legacySoccerSurfacesEnabled,
+  moduleEnabled,
+  sportSectionLabel,
+} from "@/lib/verticals";
 
 const DEFAULT_DIVISION_COLOR = "#0891b2";
 
@@ -26,13 +31,19 @@ export function SoccerSettingsTab() {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const canToggle = hasCapability("soccer.manage");
+  const sportName = sportSectionLabel(org);
+  const isSoccerPack = org?.sportKey === "soccer" || org?.soccerMode;
+  const sportEnabled = moduleEnabled(org, "sport");
+  const soccerSurfacesEnabled = legacySoccerSurfacesEnabled(org);
 
   async function toggle(next: boolean) {
     setError(null);
     setBusy(true);
     try {
       await setMode({ enabled: next });
-      toastSuccess(next ? "Soccer mode enabled." : "Soccer mode disabled.");
+      toastSuccess(
+        next ? `${sportName} pack enabled.` : `${sportName} pack disabled.`,
+      );
     } catch (err) {
       setError(toastFailure(err, "Could not update soccer mode."));
     } finally {
@@ -44,35 +55,43 @@ export function SoccerSettingsTab() {
     <div className="grid gap-6">
       <section className="rounded-md border border-hairline bg-surface overflow-hidden">
         <header className="px-5 py-3 border-b border-hairline">
-          <h2 className="text-title text-ink-strong">Soccer club mode</h2>
+          <h2 className="text-title text-ink-strong">{sportName} setup</h2>
           <p className="text-caption text-ink-quiet mt-0.5">
-            Unlocks Registrations, Grading, kit metadata on teams, and the
-            soccer settings below.
+            Current pack:{" "}
+            <span className="font-medium text-ink-soft">
+              {org?.sportKey ? org.sportKey.replace(/_/g, " ") : "none"}
+            </span>
           </p>
         </header>
         <div className="flex flex-wrap items-center gap-3 px-5 py-4">
-          <label className="flex items-center gap-2 text-body text-ink">
-            <input
-              type="checkbox"
-              checked={Boolean(org?.soccerMode)}
-              onChange={(e) => toggle(e.target.checked)}
-              disabled={!canToggle || busy}
-              className="h-4 w-4 accent-primary"
-            />
-            <span className="font-semi">
-              {org?.soccerMode ? "Enabled" : "Disabled"}
+          {isSoccerPack ? (
+            <label className="flex items-center gap-2 text-body text-ink">
+              <input
+                type="checkbox"
+                checked={soccerSurfacesEnabled}
+                onChange={(e) => toggle(e.target.checked)}
+                disabled={!canToggle || busy}
+                className="h-4 w-4 accent-primary"
+              />
+              <span className="font-semi">
+                {soccerSurfacesEnabled ? "Enabled" : "Disabled"}
+              </span>
+            </label>
+          ) : (
+            <span className="rounded-sm bg-surface-sunk px-2 py-1 text-caption text-ink-soft">
+              {sportEnabled ? "Enabled" : "Disabled"}
             </span>
-          </label>
+          )}
           {!canToggle && (
             <p className="text-caption text-ink-quiet">
-              Committee members and above can toggle this.
+              Sport setup access is required to change this.
             </p>
           )}
           {error && <p className="text-caption text-danger">{error}</p>}
         </div>
       </section>
 
-      {org?.soccerMode && (
+      {soccerSurfacesEnabled && (
         <>
           <GradingExplainer />
           <SkillRubricEditor />

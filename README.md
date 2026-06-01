@@ -35,6 +35,10 @@ GatherHub answers the questions a committee actually has:
   Parent, Player) checked on the server, never trusted from the client.
 - **Public club website** generated from your data (home, about, teams,
   sponsors, news, contact).
+- **Configurable sport packs** — soccer remains backward compatible, while
+  rugby union, rugby league, cricket, hockey, netball, basketball, and
+  multi-sport clubs can use sport-specific terminology without enabling
+  soccer-only storage.
 - **iOS field-ops app** (SwiftUI) for scanning and checking kit in/out on the
   sideline.
 
@@ -157,6 +161,8 @@ See [`ios/README.md`](ios/README.md). In short: install XcodeGen, run
 fill in `ios/GatherHub/Config/Secrets.swift`, and build.
 
 ## Documentation
+
+- [Sport packs](docs/sport-packs.md)
 
 - [Architecture](docs/architecture.md)
 - [Data model](docs/data-model.md)

@@ -34,6 +34,7 @@ struct Org: Codable, Identifiable, Hashable {
     let soccerMode: Bool?
     let kind: String?
     let templateKey: String?
+    let sportKey: String?
     let terminology: OrganizationTerminology?
     let modules: [OrganizationModule]?
     let defaultAddress: String?
@@ -43,7 +44,7 @@ struct Org: Codable, Identifiable, Hashable {
             return modules.first { $0.key == key }?.enabled == true
         }
         if key == "soccer" { return soccerMode == true }
-        if key == "sport" { return soccerMode == true || kind == "sports_club" }
+        if key == "sport" { return soccerMode == true || sportKey != nil || kind == "sports_club" }
         return [
             "core", "people", "teams", "events", "announcements", "assets",
             "volunteers", "training", "tasks", "public_site", "sponsors",
@@ -53,6 +54,14 @@ struct Org: Codable, Identifiable, Hashable {
 
     func term(_ keyPath: KeyPath<OrganizationTerminology, String?>, fallback: String) -> String {
         terminology?[keyPath: keyPath] ?? fallback
+    }
+
+    var legacySoccerSurfacesEnabled: Bool {
+        moduleEnabled("soccer") || sportKey == "soccer"
+    }
+
+    var sportLabel: String {
+        term(\.sportSingular, fallback: sportKey?.replacingOccurrences(of: "_", with: " ") ?? "sport").capitalized
     }
 }
 

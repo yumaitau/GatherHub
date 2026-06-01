@@ -18,6 +18,12 @@ import { DataTable } from "@/components/ui/data-table";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
+import {
+  legacySoccerSurfacesEnabled,
+  sportSectionLabel,
+  term,
+  titleCase,
+} from "@/lib/verticals";
 
 type RosterRow = NonNullable<
   ReturnType<typeof useQuery<typeof api.soccer.playerRoster>>
@@ -26,13 +32,15 @@ type RosterRow = NonNullable<
 export default function GradingPage() {
   const { org } = useGatherHub();
   const roster = useQuery(api.soccer.playerRoster, {});
+  const gradingLabel = titleCase(term(org, "gradingSingular"));
+  const sportName = sportSectionLabel(org);
 
-  if (!org?.soccerMode) {
+  if (!legacySoccerSurfacesEnabled(org)) {
     return (
       <EmptyState
         icon={Gauge}
-        title="Soccer mode is off"
-        description="Enable Soccer club mode in Settings to use grading."
+        title={`${sportName} pack is off`}
+        description="Enable the sport pack in Settings to use grading."
         action={
           <Button asChild>
             <Link to="/settings">Open settings</Link>
@@ -102,7 +110,7 @@ export default function GradingPage() {
       enableSorting: false,
       cell: ({ row }) => (
         <Button asChild size="sm" variant="outline">
-          <Link to={`/soccer/grading/${row.original.memberId}`}>Evaluate</Link>
+          <Link to={`/sport/grading/${row.original.memberId}`}>Evaluate</Link>
         </Button>
       ),
     },
@@ -111,7 +119,7 @@ export default function GradingPage() {
   return (
     <div>
       <PageHeader
-        title={`Grading (${roster?.length ?? 0})`}
+        title={`${gradingLabel} (${roster?.length ?? 0})`}
         description="Score each player on the active rubric. Overall grade auto-computes and matches a division band."
         actions={
           <Button variant="outline" asChild>
@@ -133,7 +141,7 @@ export default function GradingPage() {
           </code>
           . Unscored skills are ignored. Rubric and division bands live in{" "}
           <Link to="/settings" className="text-primary hover:underline">
-            Settings → Soccer
+            Settings → {sportName}
           </Link>
           .
         </p>
@@ -160,8 +168,10 @@ export default function GradingPage() {
 }
 
 export function PlayerEvaluationPage() {
+  const { org } = useGatherHub();
   const { memberId } = useParams<{ memberId: string }>();
   const id = memberId as Id<"members">;
+  const gradingLabel = titleCase(term(org, "gradingSingular"));
   const skills = useQuery(api.soccer.listSkills, {});
   const evals = useQuery(api.soccer.playerEvaluations, { memberId: id });
   const grade = useQuery(api.soccer.playerGrade, { memberId: id });
@@ -183,8 +193,8 @@ export function PlayerEvaluationPage() {
   return (
     <div>
       <Button variant="ghost" size="sm" asChild className="mb-2">
-        <Link to="/soccer/grading">
-          <ArrowLeft className="h-4 w-4" /> Grading
+        <Link to="/sport/grading">
+          <ArrowLeft className="h-4 w-4" /> {gradingLabel}
         </Link>
       </Button>
       <PageHeader

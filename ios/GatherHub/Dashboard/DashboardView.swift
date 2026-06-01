@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Default landing surface for the iOS app once signed in: time-of-day
-/// greeting, attention banner, "At a glance" counters, optional soccer
+/// greeting, attention banner, "At a glance" counters, optional sport
 /// summary. Mirrors `web/src/pages/DashboardPage.tsx` for parity with the
 /// admin web client.
 struct DashboardView: View {
@@ -42,7 +42,7 @@ struct DashboardView: View {
                         attention(stats: stats)
                         glance(stats: stats)
                         if let s = model.soccer {
-                            soccerSection(stats: s)
+                            sportSection(stats: s)
                         }
                     }
                 }
@@ -167,12 +167,12 @@ struct DashboardView: View {
         return f
     }
 
-    // MARK: Soccer summary
+    // MARK: Sport summary
 
     @ViewBuilder
-    private func soccerSection(stats: SoccerDashboardStats) -> some View {
+    private func sportSection(stats: SoccerDashboardStats) -> some View {
         VStack(alignment: .leading, spacing: GHSpacing.lg) {
-            Text("Soccer club").ghLabelStyle()
+            Text(context.org.sportLabel).ghLabelStyle()
             LazyVGrid(columns: [GridItem(.flexible(), spacing: GHSpacing.lg), GridItem(.flexible(), spacing: GHSpacing.lg)], spacing: GHSpacing.lg) {
                 SoccerCardView(
                     system: "list.clipboard",

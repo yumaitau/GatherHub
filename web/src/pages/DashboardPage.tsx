@@ -31,6 +31,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Separator } from "@/components/ui/separator";
 import { QuickCreateMenu } from "@/components/layout/quick-create-menu";
 import { useGatherHub } from "@/lib/gatherhub";
+import {
+  legacySoccerSurfacesEnabled,
+  sportSectionLabel,
+} from "@/lib/verticals";
 import { formatCurrency, greeting, humanise, relativeTime } from "@/lib/utils";
 
 interface AttentionItem {
@@ -171,7 +175,7 @@ export default function DashboardPage() {
 
       <PendingInvitesBlock />
 
-      {org?.soccerMode && <SoccerSummary />}
+      {legacySoccerSurfacesEnabled(org) && <SportSummary />}
     </div>
   );
 }
@@ -452,7 +456,8 @@ function PendingInvitesBlock() {
   );
 }
 
-function SoccerSummary() {
+function SportSummary() {
+  const { org } = useGatherHub();
   const stats = useQuery(api.soccer.dashboardStats);
   if (stats === undefined) return null;
   if (stats === null) return null;
@@ -471,12 +476,12 @@ function SoccerSummary() {
       : 0;
 
   return (
-    <section aria-label="Soccer club summary" className="mb-8">
+    <section aria-label={`${sportSectionLabel(org)} summary`} className="mb-8">
       <div className="flex items-center gap-3 mb-3">
-        <h2 className="text-label text-ink-quiet">Soccer club</h2>
+        <h2 className="text-label text-ink-quiet">{sportSectionLabel(org)}</h2>
         <Separator className="flex-1" />
         <Link
-          to="/soccer/registrations"
+          to="/sport/registrations"
           className="text-caption text-ink-soft hover:text-ink inline-flex items-center gap-1"
         >
           View registrations
@@ -490,7 +495,7 @@ function SoccerSummary() {
           label="Registered"
           value={`${stats.registered} / ${stats.playerCount}`}
           subline={`${registrationRate}% of active members`}
-          to="/soccer/registrations"
+          to="/sport/registrations"
           progress={registrationRate}
         />
         <SoccerCard
@@ -507,7 +512,7 @@ function SoccerSummary() {
                 }`
               : `${paymentRate}% of active members`
           }
-          to="/soccer/registrations"
+          to="/sport/registrations"
           progress={paymentRate}
         />
         <SoccerCard
@@ -516,7 +521,7 @@ function SoccerSummary() {
           label="WWVP outstanding"
           value={String(stats.outstandingWwvp)}
           subline={`${stats.wwvpApproved} approved · ${stats.wwvpSighted} sighted · ${stats.wwvpPending} pending`}
-          to="/soccer/coaches-managers"
+          to="/sport/coaches-managers"
         />
         <SoccerCard
           icon={UserCog}
@@ -524,7 +529,7 @@ function SoccerSummary() {
           label="Coaches & managers"
           value={`${stats.coachCount + stats.managerCount}`}
           subline={`${stats.coachCount} coach${stats.coachCount === 1 ? "" : "es"} · ${stats.managerCount} manager${stats.managerCount === 1 ? "" : "s"}`}
-          to="/soccer/coaches-managers"
+          to="/sport/coaches-managers"
         />
         <SoccerCard
           icon={Gauge}
@@ -536,7 +541,7 @@ function SoccerSummary() {
               ? `${stats.evaluatedAny} started, fully scored against ${stats.activeSkillCount} skill${stats.activeSkillCount === 1 ? "" : "s"}`
               : "No active skills in rubric"
           }
-          to="/soccer/grading"
+          to="/sport/grading"
           progress={gradingRate}
         />
       </div>

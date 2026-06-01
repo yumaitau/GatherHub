@@ -19,6 +19,12 @@ import {
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
+import {
+  legacySoccerSurfacesEnabled,
+  sportSectionLabel,
+  term,
+  titleCase,
+} from "@/lib/verticals";
 
 const DEFAULT_DIVISION_COLOR = "#0891b2";
 
@@ -31,6 +37,8 @@ export default function SoccerDivisionsPage() {
   const divisions = useQuery(api.soccer.divisionRoster, {});
   const upsert = useMutation(api.soccer.upsertDivision);
   const canEdit = hasCapability("soccer.manage");
+  const divisionPlural = titleCase(term(org, "divisionPlural"));
+  const sportName = sportSectionLabel(org);
 
   async function setDivisionActive(division: DivisionRow, active: boolean) {
     try {
@@ -48,12 +56,12 @@ export default function SoccerDivisionsPage() {
     }
   }
 
-  if (!org?.soccerMode) {
+  if (!legacySoccerSurfacesEnabled(org)) {
     return (
       <EmptyState
         icon={Layers}
-        title="Soccer mode is off"
-        description="Enable Soccer club mode in Settings to use divisions."
+        title={`${sportName} pack is off`}
+        description={`Enable the sport pack in Settings to use ${divisionPlural.toLowerCase()}.`}
         action={
           <Button asChild>
             <Link to="/settings">Open settings</Link>
@@ -66,7 +74,7 @@ export default function SoccerDivisionsPage() {
   return (
     <div>
       <PageHeader
-        title="Divisions"
+        title={divisionPlural}
         description="Create and edit the grade bands used for registration and grading."
         actions={canEdit && <DivisionDialog />}
       />
