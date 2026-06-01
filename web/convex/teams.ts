@@ -1,8 +1,9 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
+import { requireOrgMember, assertSameOrg } from "./lib/auth";
 import { teamRoleValidator } from "./schema";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+import { requireCapability } from "./lib/capabilities";
 
 const nullableString = v.union(v.string(), v.null());
 
@@ -89,7 +90,8 @@ export const create = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "teams.write");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const teamId = ctx.db.normalizeId("teams", replay.resultId);
@@ -167,7 +169,8 @@ export const update = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "teams.write");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const team = await ctx.db.get(args.teamId);
@@ -203,7 +206,8 @@ export const remove = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "teams.delete");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const team = await ctx.db.get(args.teamId);
     assertSameOrg(auth, team);
@@ -230,7 +234,8 @@ export const assignMember = mutation({
     role: teamRoleValidator,
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "teams.write");
     const team = await ctx.db.get(args.teamId);
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, team);
@@ -258,7 +263,8 @@ export const assignMember = mutation({
 export const unassignMember = mutation({
   args: { linkId: v.id("teamMembers") },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "teams.write");
     const link = await ctx.db.get(args.linkId);
     assertSameOrg(auth, link);
     await ctx.db.delete(args.linkId);

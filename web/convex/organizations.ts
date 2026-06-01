@@ -1,7 +1,7 @@
 import { internalMutation, mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import { requireRole, requireUser } from "./lib/auth";
+import { requireOrgMember, requireUser } from "./lib/auth";
 import { generateSlug, generateTagId } from "./lib/ids";
 import { seedAllDefaultsForOrg } from "./taxonomies";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
@@ -15,6 +15,7 @@ import {
   seedOrganizationProfile,
   type OrganizationModuleKey,
 } from "./lib/orgConfig";
+import { ensureOrganizationRoles, requireCapability } from "./lib/capabilities";
 import {
   organizationKindValidator,
   organizationModuleKeyValidator,
@@ -62,10 +63,13 @@ export const create = mutation({
       kind: args.kind,
       templateKey: args.templateKey,
     });
+    const org = await ctx.db.get(orgId);
+    if (org) await ensureOrganizationRoles(ctx, org);
     await ctx.db.insert("memberships", {
       orgId,
       userId: user._id,
       role: "owner",
+      roleKey: "owner",
     });
     await ctx.db.patch(user._id, { activeOrgId: orgId });
     await seedAllDefaultsForOrg(ctx, orgId);
@@ -81,7 +85,7 @@ export const verticalTemplates = query({
 export const profile = query({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireRole(ctx, "player");
+    const auth = await requireOrgMember(ctx);
     return await effectiveOrgProfile(ctx, auth.org);
   },
 });
@@ -221,7 +225,8 @@ export const leave = mutation({
 export const getInviteCode = query({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "invitations.manage");
     return { code: auth.org.inviteCode ?? null };
   },
 });
@@ -230,7 +235,7 @@ export const getInviteCode = query({
 export const locationDefaults = query({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireRole(ctx, "player");
+    const auth = await requireOrgMember(ctx);
     return { defaultAddress: auth.org.defaultAddress ?? null };
   },
 });
@@ -242,7 +247,8 @@ export const updateProfile = mutation({
     terminology: v.optional(organizationTerminologyValidator),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "settings.admin");
     const profile = normalizedProfileInput({
       kind: args.kind ?? auth.org.kind,
       templateKey: args.templateKey ?? auth.org.templateKey,
@@ -275,7 +281,8 @@ export const setModule = mutation({
     enabled: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "settings.admin");
     if ((args.key === "core" || args.key === "people") && !args.enabled) {
       throw new ConvexError("Core and people modules cannot be disabled.");
     }
@@ -340,6 +347,8 @@ export const migrateMissingProfiles = internalMutation({
         await ensureOrganizationProfile(ctx, org);
         migrated += 1;
       }
+      const updated = await ctx.db.get(org._id);
+      if (updated) await ensureOrganizationRoles(ctx, updated);
     }
     return { migrated };
   },
@@ -349,7 +358,8 @@ export const migrateMissingProfiles = internalMutation({
 export const rotateInviteCode = mutation({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "invitations.manage");
     const code = newInviteCode();
     await ctx.db.patch(auth.org._id, { inviteCode: code });
     return { code };
@@ -363,7 +373,8 @@ export const updateLocationSettings = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "settings.admin");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const defaultAddress = args.defaultAddress?.trim();
     await ctx.db.patch(auth.org._id, {
@@ -386,7 +397,8 @@ export const update = mutation({
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "settings.admin");
     const patch: Record<string, string> = {};
     if (args.name !== undefined) {
       const name = args.name.trim();

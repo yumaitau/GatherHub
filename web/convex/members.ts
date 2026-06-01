@@ -1,13 +1,9 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import {
-  requireOrgMember,
-  requireRole,
-  assertSameOrg,
-  canViewRestricted,
-} from "./lib/auth";
+import { requireOrgMember, assertSameOrg, canViewRestricted } from "./lib/auth";
 import { memberStatusValidator } from "./schema";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+import { hasCapability, requireCapability } from "./lib/capabilities";
 
 const nullableString = v.union(v.string(), v.null());
 
@@ -86,7 +82,8 @@ export const setLifetimeMember = mutation({
     lifetimeMemberAddedBy: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "members.write");
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
     if (!member) return;
@@ -159,7 +156,9 @@ export const get = query({
 
     // Medical notes — restricted visibility.
     let medicalNotes: string | null = null;
-    const canSeeMedical = canViewRestricted(auth.role);
+    const canSeeMedical =
+      canViewRestricted(auth.role) ||
+      (await hasCapability(ctx, auth, "members.write"));
     if (canSeeMedical) {
       const note = await ctx.db
         .query("medicalNotes")
@@ -200,7 +199,8 @@ export const create = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "members.write");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const memberId = ctx.db.normalizeId("members", replay.resultId);
@@ -250,7 +250,8 @@ export const update = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "members.write");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const member = await ctx.db.get(args.memberId);
@@ -281,7 +282,8 @@ export const remove = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "members.delete");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
@@ -322,7 +324,8 @@ export const addGuardian = mutation({
     relationship: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "members.write");
     const member = await ctx.db.get(args.memberId);
     const guardian = await ctx.db.get(args.guardianMemberId);
     assertSameOrg(auth, member);
@@ -339,7 +342,8 @@ export const addGuardian = mutation({
 export const removeGuardian = mutation({
   args: { linkId: v.id("guardians") },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "members.write");
     const link = await ctx.db.get(args.linkId);
     assertSameOrg(auth, link);
     await ctx.db.delete(args.linkId);
@@ -357,7 +361,8 @@ export const addEmergencyContact = mutation({
     email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "members.write");
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
     return await ctx.db.insert("emergencyContacts", {
@@ -374,7 +379,8 @@ export const addEmergencyContact = mutation({
 export const removeEmergencyContact = mutation({
   args: { contactId: v.id("emergencyContacts") },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "members.write");
     const contact = await ctx.db.get(args.contactId);
     assertSameOrg(auth, contact);
     await ctx.db.delete(args.contactId);
@@ -386,10 +392,8 @@ export const removeEmergencyContact = mutation({
 export const setMedicalNotes = mutation({
   args: { memberId: v.id("members"), notes: v.string() },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
-    if (!canViewRestricted(auth.role)) {
-      throw new Error("Not permitted to edit medical notes.");
-    }
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "members.write");
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
     const existing = await ctx.db

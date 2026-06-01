@@ -1,9 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
+import { requireOrgMember, assertSameOrg } from "./lib/auth";
 import { generateSlug } from "./lib/ids";
 import { attachOrgImage, deleteOrgImage, orgImageUrl } from "./lib/uploads";
 import { requireModule } from "./lib/orgConfig";
+import { requireCapability } from "./lib/capabilities";
 
 /** Committee: list all news (published + drafts) for the org. */
 export const list = query({
@@ -58,7 +59,8 @@ export const create = mutation({
     published: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "news.manage");
     await requireModule(ctx, auth, "news");
     const published = args.published ?? false;
     const newsId = await ctx.db.insert("news", {
@@ -98,7 +100,8 @@ export const update = mutation({
     published: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "news.manage");
     await requireModule(ctx, auth, "news");
     const post = await ctx.db.get(args.newsId);
     assertSameOrg(auth, post);
@@ -143,7 +146,8 @@ export const update = mutation({
 export const remove = mutation({
   args: { newsId: v.id("news") },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "news.manage");
     await requireModule(ctx, auth, "news");
     const post = await ctx.db.get(args.newsId);
     assertSameOrg(auth, post);

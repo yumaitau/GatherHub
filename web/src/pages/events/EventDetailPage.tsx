@@ -50,9 +50,10 @@ type RsvpStatus = "going" | "not_going" | "maybe";
 
 export default function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
   const navigate = useNavigate();
-  const coach = can("coach");
+  const canEditEvents = hasCapability("events.write");
+  const canDeleteEvents = hasCapability("events.delete");
 
   const data = useQuery(
     api.events.get,
@@ -120,9 +121,11 @@ export default function EventDetailPage() {
               <Download className="h-4 w-4" />
               Export CSV
             </Button>
-            {coach && <SetRsvpDialog eventId={event._id} />}
-            {coach && <EditEventDialog event={event} teamName={teamName} />}
-            {can("coach") && (
+            {canEditEvents && <SetRsvpDialog eventId={event._id} />}
+            {canEditEvents && (
+              <EditEventDialog event={event} teamName={teamName} />
+            )}
+            {canDeleteEvents && (
               <Button variant="destructive" onClick={deleteEvent}>
                 <Trash2 className="h-4 w-4" />
                 Delete
@@ -167,7 +170,7 @@ export default function EventDetailPage() {
                 <TableRow>
                   <TableHead>Member</TableHead>
                   <TableHead>RSVP</TableHead>
-                  {coach && <TableHead>Attendance</TableHead>}
+                  {canEditEvents && <TableHead>Attendance</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -190,7 +193,7 @@ export default function EventDetailPage() {
                       <TableCell>
                         <RsvpBadge status={r.rsvp.status} />
                       </TableCell>
-                      {coach && (
+                      {canEditEvents && (
                         <TableCell>
                           <label className="flex items-center gap-2 text-sm">
                             <input

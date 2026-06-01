@@ -401,6 +401,116 @@ describe("role-based permissions", () => {
     expect(taskId).toBeDefined();
   });
 
+  test("configured capabilities drive access without trusting legacy role rank", async () => {
+    const t = convexTest(schema, modules);
+    const owner = await seedOrg(t, {
+      clerkOrg: "org_custom_roles",
+      clerkUser: "user_custom_role_owner",
+      role: "owner",
+    });
+
+    await owner.as.mutation(api.roles.upsertConfigured, {
+      key: "field_supervisor",
+      displayName: "Field supervisor",
+      description: "Can manage field tasks without committee rank.",
+      legacyRole: "volunteer",
+      capabilities: ["tasks.manage", "members.read", "mobile.offline_sync"],
+      active: true,
+    });
+
+    const targetMembershipId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", {
+        clerkUserId: "user_custom_field_supervisor",
+        email: "field-supervisor@example.test",
+        activeOrgId: owner.orgId,
+      });
+      return await ctx.db.insert("memberships", {
+        orgId: owner.orgId,
+        userId,
+        role: "volunteer",
+      });
+    });
+
+    await owner.as.mutation(api.roles.updateRole, {
+      membershipId: targetMembershipId,
+      role: "volunteer",
+      roleKey: "field_supervisor",
+    });
+
+    const fieldSupervisor = t.withIdentity({
+      subject: "user_custom_field_supervisor",
+    });
+    const context = await fieldSupervisor.query(api.sync.currentContext, {});
+    expect(context?.role).toBe("volunteer");
+    expect(context?.roleKey).toBe("field_supervisor");
+    expect(context?.capabilities).toContain("tasks.manage");
+
+    const taskId = await fieldSupervisor.mutation(api.tasks.create, {
+      title: "Queue field setup",
+    });
+    expect(taskId).toBeDefined();
+  });
+
+  test("configured role management remains owner-scoped and org-scoped", async () => {
+    const t = convexTest(schema, modules);
+    const ownerA = await seedOrg(t, {
+      clerkOrg: "org_role_scope_a",
+      clerkUser: "user_role_scope_owner_a",
+      role: "owner",
+    });
+    const committeeB = await seedOrg(t, {
+      clerkOrg: "org_role_scope_b",
+      clerkUser: "user_role_scope_committee_b",
+      role: "committee",
+    });
+
+    await expect(
+      committeeB.as.mutation(api.roles.upsertConfigured, {
+        key: "self_granted_admin",
+        displayName: "Self granted admin",
+        legacyRole: "admin",
+        capabilities: ["settings.admin"],
+        active: true,
+      }),
+    ).rejects.toThrow(/permission|requires owner/i);
+
+    await ownerA.as.mutation(api.roles.upsertConfigured, {
+      key: "org_a_only",
+      displayName: "Org A only",
+      legacyRole: "volunteer",
+      capabilities: ["tasks.manage"],
+      active: true,
+    });
+
+    const targetMembershipId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", {
+        clerkUserId: "user_role_scope_target_b",
+        email: "scope-target@example.test",
+        activeOrgId: committeeB.orgId,
+      });
+      return await ctx.db.insert("memberships", {
+        orgId: committeeB.orgId,
+        userId,
+        role: "player",
+      });
+    });
+
+    await expect(
+      committeeB.as.mutation(api.roles.updateRole, {
+        membershipId: targetMembershipId,
+        role: "volunteer",
+        roleKey: "org_a_only",
+      }),
+    ).rejects.toThrow(/configured/i);
+
+    await expect(
+      committeeB.as.mutation(api.roles.updateRole, {
+        membershipId: targetMembershipId,
+        role: "owner",
+      }),
+    ).rejects.toThrow(/owner/i);
+  });
+
   test("new organisations can choose a non-sport vertical template", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {

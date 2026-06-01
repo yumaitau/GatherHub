@@ -49,7 +49,8 @@ type Sponsor = {
 
 export default function SponsorDetailPage() {
   const { sponsorId } = useParams<{ sponsorId: string }>();
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
+  const canManageSponsors = hasCapability("sponsors.manage");
   const navigate = useNavigate();
 
   const data = useQuery(
@@ -106,7 +107,7 @@ export default function SponsorDetailPage() {
         description={formatCurrency(sponsor.sponsorshipValue)}
         actions={
           <>
-            {can("committee") && (
+            {canManageSponsors && (
               <>
                 <EditSponsorDialog sponsor={sponsor} logoUrl={logoUrl} />
                 <Button variant="outline" onClick={toggleVisible}>
@@ -116,7 +117,7 @@ export default function SponsorDetailPage() {
                 </Button>
               </>
             )}
-            {can("committee") && (
+            {canManageSponsors && (
               <Button variant="destructive" onClick={deleteSponsor}>
                 <Trash2 className="h-4 w-4" />
                 Delete

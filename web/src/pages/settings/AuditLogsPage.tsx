@@ -31,10 +31,10 @@ const ACTION_VARIANT: Record<
 };
 
 export default function AuditLogsPage() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
   const rows = useQuery(api.assets.allHistory, {});
 
-  if (!can("committee")) {
+  if (!hasCapability("audit.read")) {
     return (
       <EmptyState
         icon={ShieldOff}

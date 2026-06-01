@@ -16,6 +16,7 @@ final class SyncEnvironment: ObservableObject {
     @Published private(set) var preloadStatus: AppDataPreloader.Status = .idle
     private var currentScopeKey: String?
     private var currentClerkUserId: String?
+    private var currentContext: CurrentContext?
     private var preloadTask: Task<Void, Never>?
     private var lastPreloadScopeKey: String?
     private var lastPreloadCompletedAt: Date?
@@ -46,16 +47,23 @@ final class SyncEnvironment: ObservableObject {
 
     /// Bind the scope to a freshly synced context. Re-creates the
     /// LocalStore and SyncCoordinator against the new scopeKey.
-    func bind(clerkUserId: String, orgId: String, convex: ConvexService) {
+    func bind(
+        clerkUserId: String,
+        orgId: String,
+        convex: ConvexService,
+        context: CurrentContext? = nil
+    ) {
         let scopeKey = "\(clerkUserId)#\(orgId)"
         if currentScopeKey == scopeKey, store != nil, coordinator != nil {
+            if let context { currentContext = context }
             return
         }
         cancelPreload()
-        let context = modelContainer.mainContext
-        let store = LocalStore(context: context, scopeKey: scopeKey)
+        let modelContext = modelContainer.mainContext
+        let store = LocalStore(context: modelContext, scopeKey: scopeKey)
         self.currentScopeKey = scopeKey
         self.currentClerkUserId = clerkUserId
+        self.currentContext = context
         self.store = store
         let coordinator = SyncCoordinator(
             convex: convex,
@@ -122,6 +130,10 @@ final class SyncEnvironment: ObservableObject {
         clientId: String = UUID().uuidString
     ) throws -> PendingSyncOperation {
         guard let store else { throw SyncQueueError.unavailable }
+        if let capability = kind.requiredCapability,
+           currentContext?.hasCapability(capability) != true {
+            throw SyncQueueError.forbidden(kind.label)
+        }
         let data = try JSONEncoder().encode(payload)
         let op = try store.enqueue(kind: kind, title: title, payload: data, clientId: clientId)
         coordinator?.refreshUnsettledCount()
@@ -129,6 +141,7 @@ final class SyncEnvironment: ObservableObject {
     }
 
     func rememberContext(_ context: CurrentContext, clerkUserId: String) {
+        currentContext = context
         if let data = try? JSONEncoder().encode(context) {
             defaults.set(data, forKey: cachedContextKey(clerkUserId: clerkUserId))
         }
@@ -157,6 +170,7 @@ final class SyncEnvironment: ObservableObject {
         }
         currentScopeKey = nil
         currentClerkUserId = nil
+        currentContext = nil
         store = nil
         coordinator = nil
         lastPreloadScopeKey = nil
@@ -170,11 +184,14 @@ final class SyncEnvironment: ObservableObject {
 
 enum SyncQueueError: LocalizedError {
     case unavailable
+    case forbidden(String)
 
     var errorDescription: String? {
         switch self {
         case .unavailable:
             "Offline storage is not ready yet. Reopen the app and try again."
+        case .forbidden(let label):
+            "You do not have permission to queue \(label.lowercased())."
         }
     }
 }

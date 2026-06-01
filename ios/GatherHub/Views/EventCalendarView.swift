@@ -23,7 +23,7 @@ struct EventCalendarView: View {
     @State private var editingEvent: Event?
     @State private var deletingEvent: Event?
 
-    private var canEditEvents: Bool { context.role.canManageEvents }
+    private var canEditEvents: Bool { context.hasCapability("events.write") }
 
     var body: some View {
         NavigationStack {

@@ -91,7 +91,8 @@ struct RootView: View {
             syncEnv.bind(
                 clerkUserId: clerkUserId,
                 orgId: cached.org.id,
-                convex: convex
+                convex: convex,
+                context: cached
             )
             try? syncEnv.store?.replaceLocationDefaults(
                 LocationDefaults(defaultAddress: cached.org.defaultAddress)
@@ -123,7 +124,8 @@ struct RootView: View {
                 syncEnv.bind(
                     clerkUserId: clerkUserId,
                     orgId: ctx.org.id,
-                    convex: convex
+                    convex: convex,
+                    context: ctx
                 )
                 try? syncEnv.store?.replaceLocationDefaults(
                     LocationDefaults(defaultAddress: ctx.org.defaultAddress)

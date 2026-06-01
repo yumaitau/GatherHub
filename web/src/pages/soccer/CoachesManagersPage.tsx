@@ -53,9 +53,9 @@ const WWVP_LABEL: Record<string, string> = {
 };
 
 export default function CoachesManagersPage() {
-  const { org, can } = useGatherHub();
+  const { org, hasCapability } = useGatherHub();
   const rows = useQuery(api.soccer.coachesAndManagers, {});
-  const canEdit = can("committee");
+  const canEdit = hasCapability("soccer.manage");
 
   if (!org?.soccerMode) {
     return (

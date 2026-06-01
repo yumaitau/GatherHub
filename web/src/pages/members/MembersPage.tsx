@@ -38,6 +38,7 @@ import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { toCsv, downloadCsv, humanise, formatDateTime, cn } from "@/lib/utils";
 import type { Role } from "@/lib/roles";
+import type { Capability } from "@/lib/capabilities";
 
 type StatusFilter = "all" | "active" | "inactive";
 
@@ -53,7 +54,7 @@ interface MemberRow {
 }
 
 export default function MembersPage() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
   const [status, setStatus] = React.useState<StatusFilter>("all");
   const [lifetimeOnly, setLifetimeOnly] = React.useState(false);
 
@@ -163,13 +164,13 @@ export default function MembersPage() {
               <Download className="h-4 w-4" />
               Export CSV
             </Button>
-            {can("committee") && <InviteUserDialog />}
-            {can("coach") && <AddMemberDialog />}
+            {hasCapability("invitations.manage") && <InviteUserDialog />}
+            {hasCapability("members.write") && <AddMemberDialog />}
           </>
         }
       />
 
-      {can("committee") && <PendingInvitesPanel />}
+      {hasCapability("invitations.manage") && <PendingInvitesPanel />}
 
       {members === undefined ? (
         <LoadingState />
@@ -188,7 +189,9 @@ export default function MembersPage() {
                   ? "Try adjusting your filters."
                   : "Add your first member to get started."
               }
-              action={can("coach") ? <AddMemberDialog /> : undefined}
+              action={
+                hasCapability("members.write") ? <AddMemberDialog /> : undefined
+              }
             />
           }
           toolbar={
@@ -346,34 +349,58 @@ function AddMemberDialog() {
   );
 }
 
-const INVITE_ROLES: Role[] = [
-  "owner",
-  "admin",
-  "committee",
-  "coach",
-  "volunteer",
-  "parent",
-  "player",
-];
+type ConfiguredRole = {
+  key: string;
+  displayName: string;
+  legacyRole: Role;
+  capabilities: Capability[];
+};
+
+function defaultInviteRole(roles: ConfiguredRole[]): ConfiguredRole | null {
+  return (
+    roles.find((role) => role.key === "player") ??
+    roles.find((role) => role.legacyRole !== "owner") ??
+    roles[0] ??
+    null
+  );
+}
 
 function InviteUserDialog() {
   const send = useAction(api.invitations.send);
+  const configured = useQuery(api.roles.listConfigured);
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
-  const [role, setRole] = React.useState<Role>("player");
+  const [roleKey, setRoleKey] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const roles = React.useMemo(
+    () => (configured?.roles ?? []) as ConfiguredRole[],
+    [configured?.roles],
+  );
+  const selectedRole =
+    roles.find((role) => role.key === roleKey) ?? defaultInviteRole(roles);
+
+  React.useEffect(() => {
+    if (!roleKey && roles.length > 0) {
+      setRoleKey(defaultInviteRole(roles)?.key ?? "");
+    }
+  }, [roleKey, roles]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!selectedRole) return;
     setBusy(true);
     setError(null);
     try {
-      await send({ email: email.trim(), role });
+      await send({
+        email: email.trim(),
+        role: selectedRole.legacyRole,
+        roleKey: selectedRole.key,
+      });
       toastSuccess(`Invitation sent to ${email.trim()}.`);
       setEmail("");
-      setRole("player");
+      setRoleKey(defaultInviteRole(roles)?.key ?? "");
       setOpen(false);
     } catch (err) {
       setError(toastFailure(err, "Could not send invite."));
@@ -413,14 +440,14 @@ function InviteUserDialog() {
           </div>
           <div className="grid gap-1.5">
             <Label>Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+            <Select value={selectedRole?.key ?? ""} onValueChange={setRoleKey}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {INVITE_ROLES.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {humanise(r)}
+                {roles.map((role) => (
+                  <SelectItem key={role.key} value={role.key}>
+                    {role.displayName}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -429,7 +456,11 @@ function InviteUserDialog() {
           {error && <p className="text-caption text-danger">{error}</p>}
         </form>
         <DialogFooter>
-          <Button type="submit" form={formId} disabled={busy || !email.trim()}>
+          <Button
+            type="submit"
+            form={formId}
+            disabled={busy || !email.trim() || !selectedRole}
+          >
             {busy ? "Sending…" : "Send invitation"}
           </Button>
         </DialogFooter>
@@ -485,7 +516,9 @@ function PendingInvitesPanel() {
             <TableRow key={i.id}>
               <TableCell className="font-semi text-ink">{i.email}</TableCell>
               <TableCell>
-                <Badge variant="muted">{humanise(i.role)}</Badge>
+                <Badge variant="muted">
+                  {i.roleDisplayName ?? humanise(i.roleKey ?? i.role)}
+                </Badge>
               </TableCell>
               <TableCell className="text-ink-quiet">
                 <time>{formatDateTime(i.sentAt)}</time>

@@ -10,12 +10,12 @@ import { taskStatusValidator } from "./schema";
 import {
   assertSameOrg,
   requireOrgMember,
-  requireRole,
   type AuthContext,
   type Role,
 } from "./lib/auth";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 import { requireModule } from "./lib/orgConfig";
+import { requireCapability } from "./lib/capabilities";
 
 const nullableString = v.union(v.string(), v.null());
 const DEFAULT_REMINDER_EVERY_DAYS = 3;
@@ -184,7 +184,8 @@ export const create = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "tasks.manage");
     await requireModule(ctx, auth, "tasks");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
@@ -237,7 +238,8 @@ export const update = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "tasks.manage");
     await requireModule(ctx, auth, "tasks");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
@@ -290,7 +292,8 @@ export const move = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "tasks.manage");
     await requireModule(ctx, auth, "tasks");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
@@ -319,7 +322,8 @@ export const remove = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "tasks.manage");
     await requireModule(ctx, auth, "tasks");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const task = await ctx.db.get(args.taskId);

@@ -1,5 +1,6 @@
 import { mutation } from "./_generated/server";
-import { requireRole } from "./lib/auth";
+import { requireOrgMember } from "./lib/auth";
+import { hasCapability, requireCapability } from "./lib/capabilities";
 
 /**
  * Generate a short-lived upload URL for file storage (e.g. sponsor logos, news
@@ -14,8 +15,14 @@ import { requireRole } from "./lib/auth";
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
-    // Only committee+ may upload assets (logos/cover images).
-    await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    const canUpload =
+      (await hasCapability(ctx, auth, "sponsors.manage")) ||
+      (await hasCapability(ctx, auth, "news.manage")) ||
+      (await hasCapability(ctx, auth, "settings.admin"));
+    if (!canUpload) {
+      await requireCapability(ctx, auth, "assets.admin");
+    }
     return await ctx.storage.generateUploadUrl();
   },
 });

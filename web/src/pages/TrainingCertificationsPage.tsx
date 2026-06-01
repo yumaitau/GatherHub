@@ -70,11 +70,11 @@ function certificationStatus(expiryDate: string | undefined) {
 }
 
 export default function TrainingCertificationsPage() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
   const rows = useQuery(api.certifications.list, {});
   const expiring = useQuery(api.certifications.expiring, {});
   const remove = useMutation(api.certifications.remove);
-  const canEdit = can("committee");
+  const canEdit = hasCapability("training.manage");
   const [error, setError] = React.useState<string | null>(null);
 
   const removeCertification = React.useCallback(

@@ -21,11 +21,11 @@ import { toastFailure, toastSuccess } from "@/lib/feedback";
 const DEFAULT_DIVISION_COLOR = "#0891b2";
 
 export function SoccerSettingsTab() {
-  const { org, can } = useGatherHub();
+  const { org, hasCapability } = useGatherHub();
   const setMode = useMutation(api.soccer.setSoccerMode);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const canToggle = can("committee");
+  const canToggle = hasCapability("soccer.manage");
 
   async function toggle(next: boolean) {
     setError(null);

@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
+import { requireOrgMember, assertSameOrg } from "./lib/auth";
+import { requireCapability } from "./lib/capabilities";
 
 /** List members flagged as volunteers, with their certifications. */
 export const list = query({
@@ -69,7 +70,8 @@ export const addCertification = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "volunteers.manage");
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
     // Ensure the member is flagged as a volunteer.
@@ -91,7 +93,8 @@ export const addCertification = mutation({
 export const removeCertification = mutation({
   args: { certId: v.id("volunteerCertifications") },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "volunteers.manage");
     const cert = await ctx.db.get(args.certId);
     assertSameOrg(auth, cert);
     await ctx.db.delete(args.certId);

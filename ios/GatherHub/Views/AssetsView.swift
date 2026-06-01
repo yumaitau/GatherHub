@@ -31,11 +31,15 @@ struct AssetsView: View {
     }
 
     private var canManageAssets: Bool {
-        context?.role.canManageAssets ?? false
+        context?.hasCapability("assets.admin") ?? false
     }
 
     private var canDeleteAssets: Bool {
-        context?.role.canDeleteAdministrativeRecords ?? false
+        context?.hasCapability("assets.admin") ?? false
+    }
+
+    private var canOperateAssets: Bool {
+        context?.hasCapability("assets.operate") ?? false
     }
 
     var body: some View {
@@ -75,7 +79,8 @@ struct AssetsView: View {
                     AssetDetailView(
                         tagId: tagId,
                         canEdit: canManageAssets,
-                        canDelete: canDeleteAssets
+                        canDelete: canDeleteAssets,
+                        canOperate: canOperateAssets
                     )
                 }
             }

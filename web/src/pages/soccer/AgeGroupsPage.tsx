@@ -29,14 +29,14 @@ import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 
 export default function AgeGroupsPage() {
-  const { org, can } = useGatherHub();
+  const { org, hasCapability } = useGatherHub();
   const rows = useQuery(api.taxonomies.list, {
     kind: "team_age_group",
     includeInactive: true,
   });
   const reorder = useMutation(api.taxonomies.reorder);
   const setActive = useMutation(api.taxonomies.setActive);
-  const canEdit = can("committee");
+  const canEdit = hasCapability("soccer.manage");
 
   if (!org?.soccerMode) {
     return (

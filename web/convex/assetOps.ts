@@ -1,14 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import {
-  requireAnyRole,
-  assertSameOrg,
-  ASSET_MANAGER_ROLES,
-  AuthContext,
-} from "./lib/auth";
+import { requireOrgMember, assertSameOrg, AuthContext } from "./lib/auth";
 import { writeAudit } from "./lib/audit";
 import { Doc } from "./_generated/dataModel";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+import { requireCapability } from "./lib/capabilities";
 
 async function loadAsset(
   ctx: Parameters<typeof writeAudit>[0],
@@ -45,7 +41,8 @@ export const checkOut = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.operate");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
     if (asset.status === "checked_out" || asset.status === "in_use") {
@@ -96,7 +93,8 @@ export const checkIn = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.operate");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
     const location = resolvedLocation(
@@ -142,7 +140,8 @@ export const transfer = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.operate");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
     const newCustodian = await ctx.db.get(args.toCustodianMemberId);
@@ -187,7 +186,8 @@ export const reportLost = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.operate");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
     await ctx.db.patch(args.assetId, { status: "lost" });
@@ -216,7 +216,8 @@ export const setMaintenance = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.operate");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
     await ctx.db.patch(args.assetId, {
@@ -248,7 +249,8 @@ export const retire = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.operate");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await ctx.db.get(args.assetId);
     assertSameOrg(auth, asset);
@@ -279,7 +281,8 @@ export const retire = mutation({
 export const overdue = query({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.operate");
     const now = Date.now();
     const checkedOut = await ctx.db
       .query("assets")
@@ -319,7 +322,8 @@ export const recordScan = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.operate");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await loadAsset(ctx, auth, args.assetId);
     await writeAudit(ctx, {

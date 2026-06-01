@@ -443,7 +443,7 @@ function PendingInvitesBlock() {
               {i.email}
             </span>
             <span className="text-caption text-ink-quiet">
-              {humanise(i.role)}
+              {i.roleDisplayName ?? humanise(i.roleKey ?? i.role)}
             </span>
           </li>
         ))}

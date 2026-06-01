@@ -27,10 +27,10 @@ type DivisionRow = NonNullable<
 >[number];
 
 export default function SoccerDivisionsPage() {
-  const { org, can } = useGatherHub();
+  const { org, hasCapability } = useGatherHub();
   const divisions = useQuery(api.soccer.divisionRoster, {});
   const upsert = useMutation(api.soccer.upsertDivision);
-  const canEdit = can("committee");
+  const canEdit = hasCapability("soccer.manage");
 
   async function setDivisionActive(division: DivisionRow, active: boolean) {
     try {

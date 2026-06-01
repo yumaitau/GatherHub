@@ -46,7 +46,6 @@ import {
 import { QrCode, assetTagUrl } from "@/components/QrCode";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
-import { canManageAssets } from "@/lib/roles";
 import {
   humanise,
   formatCurrency,
@@ -57,10 +56,11 @@ import {
 export default function AssetDetailPage() {
   const { assetId } = useParams<{ assetId: string }>();
   const id = assetId as Id<"assets">;
-  const { role } = useGatherHub();
+  const { hasCapability } = useGatherHub();
   const data = useQuery(api.assets.get, { assetId: id });
   const history = useQuery(api.assets.history, { assetId: id });
-  const canManage = role ? canManageAssets(role) : false;
+  const canOperate = hasCapability("assets.operate");
+  const canAdminAssets = hasCapability("assets.admin");
 
   if (data === undefined) return <LoadingState />;
   const { asset, custodian, sponsor } = data;
@@ -79,12 +79,12 @@ export default function AssetDetailPage() {
         actions={
           <>
             <AssetStatusBadge status={asset.status} />
-            {canManage && <EditAssetDialog asset={asset} />}
+            {canAdminAssets && <EditAssetDialog asset={asset} />}
           </>
         }
       />
 
-      {canManage && asset.status !== "retired" && (
+      {canOperate && asset.status !== "retired" && (
         <div className="mb-6 flex flex-wrap items-center gap-2">
           {(asset.status === "available" || asset.status === "maintenance") && (
             <CheckOutDialog assetId={id} />
@@ -218,7 +218,7 @@ export default function AssetDetailPage() {
                     >
                       <Printer className="h-4 w-4" /> Print
                     </Button>
-                    {canManage && (
+                    {canAdminAssets && (
                       <div className="flex flex-wrap gap-2">
                         <ReassignTagDialog
                           tagId={asset.qrTagId}
@@ -249,7 +249,7 @@ export default function AssetDetailPage() {
                     No NFC tag registered.
                   </p>
                 )}
-                {canManage && (
+                {canAdminAssets && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     <RegisterNfcDialog assetId={id} />
                     {asset.nfcTagId && (

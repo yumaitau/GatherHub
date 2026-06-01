@@ -23,6 +23,40 @@ export const roleValidator = v.union(
   v.literal("player"),
 );
 
+export const capabilityValidator = v.union(
+  v.literal("settings.admin"),
+  v.literal("roles.manage"),
+  v.literal("invitations.manage"),
+  v.literal("members.read"),
+  v.literal("members.write"),
+  v.literal("members.delete"),
+  v.literal("teams.read"),
+  v.literal("teams.write"),
+  v.literal("teams.delete"),
+  v.literal("events.read"),
+  v.literal("events.write"),
+  v.literal("events.delete"),
+  v.literal("announcements.write"),
+  v.literal("assets.read"),
+  v.literal("assets.operate"),
+  v.literal("assets.admin"),
+  v.literal("volunteers.manage"),
+  v.literal("training.manage"),
+  v.literal("tasks.manage"),
+  v.literal("public_site.manage"),
+  v.literal("sponsors.manage"),
+  v.literal("news.manage"),
+  v.literal("soccer.manage"),
+  v.literal("soccer.grade"),
+  v.literal("audit.read"),
+  v.literal("reports.export"),
+  v.literal("mobile.offline_sync"),
+  v.literal("jobs.dispatch"),
+  v.literal("jobs.complete"),
+  v.literal("fleet.inspect"),
+  v.literal("safety.manage"),
+);
+
 export const memberStatusValidator = v.union(
   v.literal("active"),
   v.literal("inactive"),
@@ -255,11 +289,28 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_org_key", ["orgId", "key"]),
 
+  organizationRoles: defineTable({
+    orgId: v.id("organizations"),
+    key: v.string(),
+    displayName: v.string(),
+    description: v.optional(v.string()),
+    legacyRole: v.optional(roleValidator),
+    capabilities: v.array(capabilityValidator),
+    isSystem: v.optional(v.boolean()),
+    active: v.boolean(),
+    order: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_key", ["orgId", "key"])
+    .index("by_org_active", ["orgId", "active"]),
+
   // User ↔ organisation link with role. Convex-native; not synced from Clerk.
   memberships: defineTable({
     orgId: v.id("organizations"),
     userId: v.id("users"),
     role: roleValidator,
+    roleKey: v.optional(v.string()),
   })
     .index("by_org", ["orgId"])
     .index("by_user", ["userId"])
@@ -273,6 +324,7 @@ export default defineSchema({
     orgId: v.id("organizations"),
     email: v.string(), // lowercased
     role: roleValidator,
+    roleKey: v.optional(v.string()),
     code: v.string(),
     invitedByUserId: v.id("users"),
     expiresAt: v.number(),

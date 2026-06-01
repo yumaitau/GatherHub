@@ -31,14 +31,14 @@ import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { downloadCsv, toCsv } from "@/lib/utils";
 
 export default function RegistrationsPage() {
-  const { org, can } = useGatherHub();
+  const { org, hasCapability } = useGatherHub();
   const rows = useQuery(api.soccer.playerListing, {});
   const competitions = useQuery(api.soccer.listCompetitions, {});
   const teams = useQuery(api.teams.list, {});
   const members = useQuery(api.members.list, { status: "active" });
   const ageGroups = useQuery(api.taxonomies.list, { kind: "team_age_group" });
   const divisions = useQuery(api.soccer.listDivisions, {});
-  const canEdit = can("committee");
+  const canEdit = hasCapability("soccer.manage");
 
   if (!org?.soccerMode) {
     return (

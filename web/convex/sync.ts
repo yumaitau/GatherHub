@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { getAuthContext } from "./lib/auth";
 import { effectiveOrgProfile } from "./lib/orgConfig";
+import { effectiveRoleForMembership } from "./lib/capabilities";
 
 type IdentityClaims = {
   email?: string;
@@ -14,6 +15,7 @@ type IdentityClaims = {
   publicMetadata?: {
     pendingOrgId?: string;
     pendingRole?: string;
+    pendingRoleKey?: string;
     invitedBy?: string;
   };
 };
@@ -67,6 +69,7 @@ export const ensureFromClient = mutation({
     const meta = claims.publicMetadata;
     const pendingOrgIdStr = meta?.pendingOrgId;
     const pendingRole = meta?.pendingRole;
+    const pendingRoleKey = meta?.pendingRoleKey;
     // Mirrors `roleValidator` in schema.ts.
     const ALLOWED_ROLES = [
       "owner",
@@ -97,6 +100,7 @@ export const ensureFromClient = mutation({
             userId,
             orgId: pendingOrgId,
             role: pendingRole as AllowedRole,
+            roleKey: pendingRoleKey,
           });
         }
         const userRow = await ctx.db.get(userId);
@@ -121,6 +125,11 @@ export const currentContext = query({
     const auth = await getAuthContext(ctx);
     if (!auth) return null;
     const profile = await effectiveOrgProfile(ctx, auth.org);
+    const effectiveRole = await effectiveRoleForMembership(
+      ctx,
+      auth.org._id,
+      auth.membership,
+    );
     return {
       user: {
         id: auth.user._id,
@@ -141,6 +150,9 @@ export const currentContext = query({
         defaultAddress: auth.org.defaultAddress,
       },
       role: auth.role,
+      roleKey: effectiveRole.roleKey,
+      roleDisplayName: effectiveRole.displayName,
+      capabilities: effectiveRole.capabilities,
     };
   },
 });
@@ -170,6 +182,7 @@ export const myMemberships = query({
         return {
           membershipId: m._id,
           role: m.role,
+          roleKey: m.roleKey,
           isActive: user.activeOrgId === m.orgId,
           org: org
             ? {

@@ -23,6 +23,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import { useGatherHub } from "@/lib/gatherhub";
 import type { Role } from "@/lib/roles";
+import type { Capability } from "@/lib/capabilities";
 import {
   moduleEnabled,
   term,
@@ -41,6 +42,7 @@ interface PaletteEntry {
   group: "Jump to" | "Operations" | "Club" | "Account";
   to: string;
   minRole?: Role;
+  capability?: Capability;
   module?: OrganizationModuleKey;
   keywords?: string[];
 }
@@ -62,6 +64,7 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       group: "Operations",
       to: "/members",
       module: "people",
+      capability: "members.read",
       keywords: ["people", "players", "parents", term(org, "memberPlural")],
     },
     {
@@ -71,6 +74,7 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       group: "Operations",
       to: "/teams",
       module: "teams",
+      capability: "teams.read",
       keywords: ["squad", "roster", term(org, "teamPlural")],
     },
     {
@@ -80,6 +84,7 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       group: "Operations",
       to: "/events",
       module: "events",
+      capability: "events.read",
       keywords: ["training", "match", "calendar", term(org, "eventPlural")],
     },
     {
@@ -89,6 +94,7 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       group: "Operations",
       to: "/announcements",
       module: "announcements",
+      capability: "announcements.write",
       keywords: ["notice", "broadcast"],
     },
     {
@@ -98,6 +104,7 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       group: "Operations",
       to: "/assets",
       module: "assets",
+      capability: "assets.read",
       keywords: [
         "kit",
         "assets",
@@ -118,6 +125,7 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       group: "Operations",
       to: "/volunteers",
       module: "volunteers",
+      capability: "volunteers.manage",
       keywords: ["roster", "duty", "certifications"],
     },
     {
@@ -126,8 +134,8 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       icon: GraduationCap,
       group: "Operations",
       to: "/training-certifications",
-      minRole: "committee",
       module: "training",
+      capability: "training.manage",
       keywords: ["certifications", "checks", "licences", "qualifications"],
     },
     {
@@ -136,8 +144,8 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       icon: ClipboardCheck,
       group: "Operations",
       to: "/tasks",
-      minRole: "committee",
       module: "tasks",
+      capability: "tasks.manage",
       keywords: ["kanban", "tasks", "deadlines", "reminders"],
     },
     {
@@ -146,8 +154,8 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       icon: Building2,
       group: "Club",
       to: "/sponsors",
-      minRole: "committee",
       module: "sponsors",
+      capability: "sponsors.manage",
       keywords: ["partner", "donor"],
     },
     {
@@ -156,8 +164,8 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       icon: Newspaper,
       group: "Club",
       to: "/news",
-      minRole: "committee",
       module: "news",
+      capability: "news.manage",
       keywords: ["articles", "stories", "public site"],
     },
     {
@@ -166,7 +174,7 @@ function buildEntries(org: VerticalOrgConfig | null): PaletteEntry[] {
       icon: Settings,
       group: "Account",
       to: "/settings",
-      minRole: "committee",
+      capability: "settings.admin",
       keywords: ["preferences", "organisation settings", "permissions"],
     },
     {
@@ -244,7 +252,7 @@ function CommandPaletteDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const navigate = useNavigate();
-  const { can, org } = useGatherHub();
+  const { can, hasCapability, org } = useGatherHub();
   const [query, setQuery] = React.useState("");
   const [activeIndex, setActiveIndex] = React.useState(0);
   const listRef = React.useRef<HTMLDivElement | null>(null);
@@ -262,10 +270,11 @@ function CommandPaletteDialog({
       entries.filter(
         (e) =>
           (!e.minRole || can(e.minRole)) &&
+          (!e.capability || hasCapability(e.capability)) &&
           (!e.module || moduleEnabled(org, e.module)) &&
           matches(query, e),
       ),
-    [entries, query, can, org],
+    [entries, query, can, hasCapability, org],
   );
 
   React.useEffect(() => {

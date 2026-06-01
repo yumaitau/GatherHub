@@ -34,7 +34,7 @@ struct ProfileView: View {
                     if let slug = context.org.slug {
                         LabeledContent("Slug", value: slug)
                     }
-                    LabeledContent("Your role", value: context.role.displayName)
+                    LabeledContent("Your role", value: context.roleDisplayName ?? context.role.displayName)
                     Button {
                         isShowingOrgSwitcher = true
                     } label: {
@@ -45,11 +45,11 @@ struct ProfileView: View {
                 Section {
                     LabeledContent(
                         "Asset management",
-                        value: context.role.canManageAssets ? "Allowed" : "View only"
+                        value: context.hasCapability("assets.operate") ? "Allowed" : "View only"
                     )
                 } footer: {
-                    if !context.role.canManageAssets {
-                        Text("Check-out and check-in require a coach, committee, admin, or owner role.")
+                    if !context.hasCapability("assets.operate") {
+                        Text("Check-out and check-in require asset operation access.")
                     }
                 }
 

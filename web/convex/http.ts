@@ -47,6 +47,7 @@ const clerkWebhook = httpAction(async (ctx, request) => {
         imageUrl: d.image_url ?? undefined,
         pendingOrgId: pending?.pendingOrgId,
         pendingRole: pending?.pendingRole,
+        pendingRoleKey: pending?.pendingRoleKey,
       });
       break;
     }
@@ -87,9 +88,16 @@ type Role = (typeof ROLES)[number];
 
 function pendingMembershipFromMetadata(
   metadata: Record<string, unknown> | null | undefined,
-): { pendingOrgId: string; pendingRole: Role } | undefined {
+):
+  | {
+      pendingOrgId: string;
+      pendingRole: Role;
+      pendingRoleKey?: string;
+    }
+  | undefined {
   const pendingOrgId = metadata?.pendingOrgId;
   const pendingRole = metadata?.pendingRole;
+  const pendingRoleKey = metadata?.pendingRoleKey;
   if (
     typeof pendingOrgId !== "string" ||
     typeof pendingRole !== "string" ||
@@ -97,7 +105,12 @@ function pendingMembershipFromMetadata(
   ) {
     return undefined;
   }
-  return { pendingOrgId, pendingRole: pendingRole as Role };
+  return {
+    pendingOrgId,
+    pendingRole: pendingRole as Role,
+    pendingRoleKey:
+      typeof pendingRoleKey === "string" ? pendingRoleKey : undefined,
+  };
 }
 
 // --- Minimal typing for the Clerk webhook payloads we consume ----------------

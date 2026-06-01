@@ -1,19 +1,14 @@
 import { mutation, query, QueryCtx } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import {
-  requireOrgMember,
-  requireRole,
-  requireAnyRole,
-  assertSameOrg,
-  ASSET_MANAGER_ROLES,
-} from "./lib/auth";
+import { requireOrgMember, assertSameOrg } from "./lib/auth";
 import { writeAudit } from "./lib/audit";
 import { generateTagId } from "./lib/ids";
 import { assetStatusValidator } from "./schema";
 import { assertTaxonomyKey } from "./taxonomies";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 import { requireModule } from "./lib/orgConfig";
+import { requireCapability } from "./lib/capabilities";
 
 const nullableString = v.union(v.string(), v.null());
 
@@ -62,6 +57,7 @@ export const kitTrace = query({
   args: {},
   handler: async (ctx) => {
     const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.read");
     const [assets, history] = await Promise.all([
       ctx.db
         .query("assets")
@@ -93,6 +89,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.read");
 
     let assets;
     if (args.status) {
@@ -137,6 +134,7 @@ export const get = query({
   args: { assetId: v.id("assets") },
   handler: async (ctx, args) => {
     const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.read");
     const asset = await ctx.db.get(args.assetId);
     assertSameOrg(auth, asset);
     if (!asset) throw new Error("Not found.");
@@ -162,6 +160,7 @@ export const allHistory = query({
   args: {},
   handler: async (ctx) => {
     const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.read");
     const entries = await ctx.db
       .query("assetAuditLog")
       .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
@@ -178,6 +177,7 @@ export const history = query({
   args: { assetId: v.id("assets") },
   handler: async (ctx, args) => {
     const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.read");
     const asset = await ctx.db.get(args.assetId);
     assertSameOrg(auth, asset);
 
@@ -223,7 +223,8 @@ export const create = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.admin");
     await requireModule(ctx, auth, "assets");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
@@ -334,7 +335,8 @@ export const update = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.admin");
     await requireModule(ctx, auth, "assets");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
@@ -403,7 +405,8 @@ export const reassignTag = mutation({
     toAssetId: v.id("assets"),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.admin");
     await requireModule(ctx, auth, "assets");
     const target = await ctx.db.get(args.toAssetId);
     assertSameOrg(auth, target);
@@ -464,7 +467,8 @@ export const registerNfc = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAnyRole(ctx, ASSET_MANAGER_ROLES);
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.admin");
     await requireModule(ctx, auth, "assets");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const asset = await ctx.db.get(args.assetId);
@@ -520,8 +524,8 @@ export const remove = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Committee+ can fully manage asset records; audit history is retained.
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.admin");
     await requireModule(ctx, auth, "assets");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;

@@ -1,8 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertSameOrg, requireOrgMember, requireRole } from "./lib/auth";
+import { assertSameOrg, requireOrgMember } from "./lib/auth";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 import { requireModule } from "./lib/orgConfig";
+import { requireCapability } from "./lib/capabilities";
 
 const nullableString = v.union(v.string(), v.null());
 
@@ -85,7 +86,8 @@ export const create = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "training.manage");
     await requireModule(ctx, auth, "training");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
@@ -139,7 +141,8 @@ export const update = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "training.manage");
     await requireModule(ctx, auth, "training");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
@@ -187,7 +190,8 @@ export const remove = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "training.manage");
     await requireModule(ctx, auth, "training");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const cert = await ctx.db.get(args.certId);

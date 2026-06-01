@@ -3,6 +3,7 @@ import * as React from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { type Role, hasAtLeastRole } from "./roles";
+import type { Capability } from "./capabilities";
 import type {
   OrganizationKind,
   OrganizationModule,
@@ -13,6 +14,9 @@ export interface GatherHubContextValue {
   isLoading: boolean;
   isSignedInToOrg: boolean;
   role: Role | null;
+  roleKey: string | null;
+  roleDisplayName: string | null;
+  capabilities: Capability[];
   user: {
     id: string;
     firstName?: string;
@@ -33,6 +37,8 @@ export interface GatherHubContextValue {
   } | null;
   /** UI-only gate: does the caller hold at least `min`? (server re-checks). */
   can: (min: Role) => boolean;
+  /** UI-only capability gate; Convex mutations remain authoritative. */
+  hasCapability: (capability: Capability) => boolean;
 }
 
 const Ctx = React.createContext<GatherHubContextValue | null>(null);
@@ -58,10 +64,16 @@ export function GatherHubProvider({ children }: { children: React.ReactNode }) {
 
   const value = React.useMemo<GatherHubContextValue>(() => {
     const role = (context?.role ?? null) as Role | null;
+    const capabilities = ((context?.capabilities ?? []) as Capability[]).filter(
+      Boolean,
+    );
     return {
       isLoading: context === undefined,
       isSignedInToOrg: !!context,
       role,
+      roleKey: context?.roleKey ?? null,
+      roleDisplayName: context?.roleDisplayName ?? null,
+      capabilities,
       user: context?.user
         ? {
             id: context.user.id,
@@ -85,6 +97,8 @@ export function GatherHubProvider({ children }: { children: React.ReactNode }) {
           }
         : null,
       can: (min: Role) => (role ? hasAtLeastRole(role, min) : false),
+      hasCapability: (capability: Capability) =>
+        capabilities.includes(capability),
     };
   }, [context]);
 

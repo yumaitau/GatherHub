@@ -68,7 +68,8 @@ function loadView(): ViewMode {
 }
 
 export default function EventsPage() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
+  const canEditEvents = hasCapability("events.write");
   const [view, setView] = React.useState<ViewMode>(loadView);
   const [upcomingOnly, setUpcomingOnly] = React.useState(true);
   // Calendar always shows full history so users can navigate back. List view
@@ -109,7 +110,7 @@ export default function EventsPage() {
         actions={
           <div className="flex items-center gap-2">
             <ViewToggle view={view} onChange={setView} />
-            {can("coach") && <NewEventDialog />}
+            {canEditEvents && <NewEventDialog />}
           </div>
         }
       />
@@ -117,7 +118,7 @@ export default function EventsPage() {
       {events === undefined ? (
         <LoadingState />
       ) : view === "calendar" ? (
-        <EventsCalendar events={calendarEvents} canEdit={can("coach")} />
+        <EventsCalendar events={calendarEvents} canEdit={canEditEvents} />
       ) : (
         <section className="rounded-md border border-hairline bg-surface overflow-hidden">
           <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-hairline">
@@ -147,7 +148,7 @@ export default function EventsPage() {
                   ? "There are no upcoming events scheduled."
                   : "No events have been created yet."
               }
-              action={can("coach") ? <NewEventDialog /> : undefined}
+              action={canEditEvents ? <NewEventDialog /> : undefined}
             />
           ) : (
             <ul className="divide-y divide-hairline">

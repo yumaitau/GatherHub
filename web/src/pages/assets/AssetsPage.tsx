@@ -47,7 +47,6 @@ import {
 } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
-import { canManageAssets, hasAtLeastRole } from "@/lib/roles";
 import {
   humanise,
   formatCurrency,
@@ -90,7 +89,7 @@ const ACTION_VARIANT: Record<
 };
 
 export default function AssetsPage() {
-  const { role } = useGatherHub();
+  const { hasCapability } = useGatherHub();
   const [status, setStatus] = React.useState<string>("all");
   const [category, setCategory] = React.useState<string>("all");
   const kitTrace = useQuery(api.assets.kitTrace, {});
@@ -123,7 +122,7 @@ export default function AssetsPage() {
     [assets],
   );
 
-  const canManage = role ? canManageAssets(role) : false;
+  const canManage = hasCapability("assets.admin");
 
   function exportCsv() {
     if (!assets) return;
@@ -261,16 +260,13 @@ export default function AssetsPage() {
                 enableSorting: false,
                 meta: { className: "w-[108px]" },
                 cell: ({ row }) => (
-                  <AssetRowActions
-                    asset={row.original}
-                    canDelete={role ? hasAtLeastRole(role, "committee") : false}
-                  />
+                  <AssetRowActions asset={row.original} canDelete={canManage} />
                 ),
               } satisfies ColumnDef<AssetRow>,
             ]
           : []),
       ] as ColumnDef<AssetRow>[],
-    [canManage, categoryLabel, role],
+    [canManage, categoryLabel],
   );
 
   const checkedOutColumns = React.useMemo<ColumnDef<AssetRow>[]>(

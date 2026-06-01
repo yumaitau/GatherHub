@@ -78,11 +78,11 @@ function isAssignableTaskMember(member: MemberRow): boolean {
 }
 
 export default function TaskBoardPage() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
   const tasks = useQuery(api.tasks.list, {});
   const move = useMutation(api.tasks.move);
   const remove = useMutation(api.tasks.remove);
-  const canEdit = can("committee");
+  const canEdit = hasCapability("tasks.manage");
   const [draggingTaskId, setDraggingTaskId] = React.useState<string | null>(
     null,
   );

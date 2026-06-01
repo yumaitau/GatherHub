@@ -92,7 +92,8 @@ final class AppDataPreloader {
                 try guardActive(shouldContinue)
                 let stats = try await convex.dashboardStats()
                 var soccer: SoccerDashboardStats?
-                if context.org.moduleEnabled("soccer") {
+                if context.org.moduleEnabled("soccer") &&
+                    (context.hasCapability("soccer.manage") || context.hasCapability("soccer.grade")) {
                     soccer = try? await convex.soccerDashboardStats()
                 }
                 try guardActive(shouldContinue)
@@ -102,7 +103,7 @@ final class AppDataPreloader {
             failures: &failures
         )
 
-        if context.org.moduleEnabled("people") {
+        if context.org.moduleEnabled("people") && context.hasCapability("members.read") {
             record(
                 await run("Members") {
                     try guardActive(shouldContinue)
@@ -115,7 +116,7 @@ final class AppDataPreloader {
             )
         }
 
-        if context.org.moduleEnabled("teams") {
+        if context.org.moduleEnabled("teams") && context.hasCapability("teams.read") {
             record(
                 await run("Teams") {
                     try guardActive(shouldContinue)
@@ -128,7 +129,7 @@ final class AppDataPreloader {
             )
         }
 
-        if context.org.moduleEnabled("events") {
+        if context.org.moduleEnabled("events") && context.hasCapability("events.read") {
             record(
                 await run("Events") {
                     try guardActive(shouldContinue)
@@ -165,7 +166,7 @@ final class AppDataPreloader {
             )
         }
 
-        if context.org.moduleEnabled("training") {
+        if context.org.moduleEnabled("training") && context.hasCapability("training.manage") {
             record(
                 await run("Training certifications") {
                     try guardActive(shouldContinue)
@@ -178,7 +179,7 @@ final class AppDataPreloader {
             )
         }
 
-        if context.org.moduleEnabled("tasks") {
+        if context.org.moduleEnabled("tasks") && context.hasCapability("tasks.manage") {
             record(
                 await run("Tasks") {
                     try guardActive(shouldContinue)
@@ -224,7 +225,7 @@ final class AppDataPreloader {
             failures: &failures
         )
 
-        if context.org.moduleEnabled("assets") {
+        if context.org.moduleEnabled("assets") && context.hasCapability("assets.read") {
             var assetDetailCandidates: [AssetSummary] = []
             let assets = await runValue("Assets") {
                 try guardActive(shouldContinue)
@@ -266,7 +267,8 @@ final class AppDataPreloader {
             }
         }
 
-        if context.org.moduleEnabled("soccer") {
+        if context.org.moduleEnabled("soccer") &&
+            (context.hasCapability("soccer.manage") || context.hasCapability("soccer.grade")) {
             await preloadSoccerData(
                 convex: convex,
                 store: store,

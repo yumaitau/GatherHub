@@ -21,7 +21,7 @@ struct MainTabView: View {
                 }
                 .tabItem { Label("Home", systemImage: "house") }
 
-                if context.org.moduleEnabled("assets") {
+                if context.org.moduleEnabled("assets") && context.hasCapability("assets.read") {
                     AssetsView(context: context)
                         .tabItem {
                             Label(
@@ -31,7 +31,7 @@ struct MainTabView: View {
                         }
                 }
 
-                if context.org.moduleEnabled("events") {
+                if context.org.moduleEnabled("events") && context.hasCapability("events.read") {
                     EventCalendarView(context: context)
                         .tabItem {
                             Label(

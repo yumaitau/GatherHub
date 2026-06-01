@@ -8,6 +8,7 @@ struct AssetDetailView: View {
     let tagId: String
     let canEdit: Bool
     let canDelete: Bool
+    let canOperate: Bool
 
     @EnvironmentObject private var convex: ConvexService
     @EnvironmentObject private var sync: SyncEnvironment
@@ -21,10 +22,11 @@ struct AssetDetailView: View {
     @State private var retiringAsset: Asset?
     @State private var deletingAsset: Asset?
 
-    init(tagId: String, canEdit: Bool = false, canDelete: Bool = false) {
+    init(tagId: String, canEdit: Bool = false, canDelete: Bool = false, canOperate: Bool? = nil) {
         self.tagId = tagId
         self.canEdit = canEdit
         self.canDelete = canDelete
+        self.canOperate = canOperate ?? canEdit
     }
 
     var body: some View {
@@ -41,12 +43,12 @@ struct AssetDetailView: View {
                                 } label: {
                                     Label("Edit", systemImage: "pencil")
                                 }
-                                if asset.status != .retired {
-                                    Button {
-                                        retiringAsset = asset
-                                    } label: {
-                                        Label("Retire", systemImage: "archivebox")
-                                    }
+                            }
+                            if canOperate && asset.status != .retired {
+                                Button {
+                                    retiringAsset = asset
+                                } label: {
+                                    Label("Retire", systemImage: "archivebox")
                                 }
                             }
                             if canDelete {
@@ -160,15 +162,17 @@ struct AssetDetailView: View {
                     systemImage: "questionmark.circle",
                     message: "This tag isn't bound to a club asset yet. Register it now so future scans recognise it."
                 )
-                Button {
-                    showAssetPicker = true
-                } label: {
-                    Label("Register this tag", systemImage: "tag.fill")
-                        .frame(maxWidth: .infinity)
+                if canEdit {
+                    Button {
+                        showAssetPicker = true
+                    } label: {
+                        Label("Register this tag", systemImage: "tag.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .padding(.horizontal)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .padding(.horizontal)
             }
         case .failed(let message):
             OfflineStateView(
@@ -236,11 +240,13 @@ struct AssetDetailView: View {
                 }
             }
 
-            Section {
-                actions(for: asset)
-            } footer: {
-                if model.isBusy {
-                    ProgressView()
+            if canOperate {
+                Section {
+                    actions(for: asset)
+                } footer: {
+                    if model.isBusy {
+                        ProgressView()
+                    }
                 }
             }
         }

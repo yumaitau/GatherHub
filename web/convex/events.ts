@@ -1,15 +1,11 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import {
-  requireOrgMember,
-  requireRole,
-  assertSameOrg,
-  hasAtLeastRole,
-} from "./lib/auth";
+import { requireOrgMember, assertSameOrg } from "./lib/auth";
 import { ConvexError } from "convex/values";
 import { rsvpStatusValidator } from "./schema";
 import { assertTaxonomyKey } from "./taxonomies";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+import { hasCapability, requireCapability } from "./lib/capabilities";
 
 const nullableString = v.union(v.string(), v.null());
 
@@ -119,7 +115,8 @@ export const create = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "events.write");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const eventId = ctx.db.normalizeId("events", replay.resultId);
@@ -169,7 +166,8 @@ export const update = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "events.write");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const event = await ctx.db.get(args.eventId);
@@ -207,7 +205,8 @@ export const remove = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "events.delete");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const event = await ctx.db.get(args.eventId);
@@ -253,9 +252,9 @@ export const setRsvp = mutation({
     assertSameOrg(auth, member);
 
     const isSelf = member?.userId && member.userId === auth.user._id;
-    const isCoachPlus = hasAtLeastRole(auth.role, "coach");
+    const canManageEvents = await hasCapability(ctx, auth, "events.write");
     let isGuardian = false;
-    if (!isSelf && !isCoachPlus) {
+    if (!isSelf && !canManageEvents) {
       // Caller is a member of this org but doesn't own the target member
       // record. Check whether they are a registered guardian.
       const callerSelfMembers = (
@@ -276,11 +275,11 @@ export const setRsvp = mutation({
         }
       }
     }
-    if (!isSelf && !isGuardian && !isCoachPlus) {
+    if (!isSelf && !isGuardian && !canManageEvents) {
       throw new ConvexError({
         code: "forbidden",
         message:
-          "You can only RSVP for yourself, your dependants, or as a coach.",
+          "You can only RSVP for yourself, your dependants, or with event management access.",
       });
     }
 
@@ -332,7 +331,8 @@ export const setAttendance = mutation({
     present: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "events.write");
     const event = await ctx.db.get(args.eventId);
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, event);

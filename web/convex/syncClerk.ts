@@ -20,11 +20,13 @@ type Role = (typeof ROLES)[number];
 type PendingMembership = {
   pendingOrgId: string;
   pendingRole: Role;
+  pendingRoleKey?: string;
 };
 
 type ClerkPublicMetadata = {
   pendingOrgId?: unknown;
   pendingRole?: unknown;
+  pendingRoleKey?: unknown;
 };
 
 /**
@@ -72,6 +74,7 @@ export const ensureFromClerk = action({
       imageUrl,
       pendingOrgId: pending?.pendingOrgId,
       pendingRole: pending?.pendingRole,
+      pendingRoleKey: pending?.pendingRoleKey,
     });
   },
 });
@@ -81,6 +84,7 @@ function pendingMembershipFromMetadata(
 ): PendingMembership | undefined {
   const pendingOrgId = metadata?.pendingOrgId;
   const pendingRole = metadata?.pendingRole;
+  const pendingRoleKey = metadata?.pendingRoleKey;
   if (
     typeof pendingOrgId !== "string" ||
     typeof pendingRole !== "string" ||
@@ -88,5 +92,10 @@ function pendingMembershipFromMetadata(
   ) {
     return undefined;
   }
-  return { pendingOrgId, pendingRole: pendingRole as Role };
+  return {
+    pendingOrgId,
+    pendingRole: pendingRole as Role,
+    pendingRoleKey:
+      typeof pendingRoleKey === "string" ? pendingRoleKey : undefined,
+  };
 }

@@ -177,6 +177,45 @@ struct CurrentContext: Codable, Hashable {
     let user: AppUser
     let org: Org
     let role: Role
+    let roleKey: String?
+    let roleDisplayName: String?
+    let capabilities: [String]?
+
+    func hasCapability(_ capability: String) -> Bool {
+        if let capabilities {
+            return capabilities.contains(capability)
+        }
+        return role.defaultCapabilities.contains(capability)
+    }
+}
+
+private extension Role {
+    var defaultCapabilities: Set<String> {
+        let ownerAdmin: Set<String> = [
+            "settings.admin", "roles.manage", "invitations.manage",
+            "members.read", "members.write", "members.delete",
+            "teams.read", "teams.write", "teams.delete",
+            "events.read", "events.write", "events.delete",
+            "announcements.write", "assets.read", "assets.operate",
+            "assets.admin", "volunteers.manage", "training.manage",
+            "tasks.manage", "public_site.manage", "sponsors.manage",
+            "news.manage", "soccer.manage", "soccer.grade", "audit.read",
+            "reports.export", "mobile.offline_sync", "jobs.dispatch",
+            "jobs.complete", "fleet.inspect", "safety.manage",
+        ]
+        switch self {
+        case .owner, .admin:
+            return ownerAdmin
+        case .committee:
+            return ownerAdmin.subtracting(["jobs.dispatch", "jobs.complete", "fleet.inspect", "safety.manage"])
+        case .coach:
+            return ["members.read", "teams.read", "events.read", "events.write", "assets.read", "assets.operate", "soccer.grade", "mobile.offline_sync"]
+        case .volunteer:
+            return ["events.read", "assets.read", "assets.operate", "mobile.offline_sync"]
+        case .parent, .player:
+            return ["events.read", "mobile.offline_sync"]
+        }
+    }
 }
 
 struct LocationDefaults: Codable, Hashable {

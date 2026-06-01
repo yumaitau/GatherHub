@@ -15,10 +15,11 @@ struct MoreView: View {
         NavigationStack {
             List {
                 operationsSection
-                if context.role.canManageOrgSettings {
+                if context.hasCapability("settings.admin") {
                     adminSection
                 }
-                if context.org.moduleEnabled("soccer") {
+                if context.org.moduleEnabled("soccer") &&
+                    (context.hasCapability("soccer.manage") || context.hasCapability("soccer.grade")) {
                     soccerSection
                 }
             }
@@ -36,19 +37,19 @@ struct MoreView: View {
     /// the web admin — adding it here would dilute the field surface.
     private var operationsSection: some View {
         Section("Operations") {
-            if context.org.moduleEnabled("people") {
+            if context.org.moduleEnabled("people") && context.hasCapability("members.read") {
                 row(context.org.term(\.memberPlural, fallback: "members").capitalized, system: "person.2") {
                     MembersListView(
-                        canEdit: context.role.canManageMembers,
-                        canDelete: context.role.canDeleteAdministrativeRecords
+                        canEdit: context.hasCapability("members.write"),
+                        canDelete: context.hasCapability("members.delete")
                     )
                 }
             }
-            if context.org.moduleEnabled("teams") {
+            if context.org.moduleEnabled("teams") && context.hasCapability("teams.read") {
                 row(context.org.term(\.teamPlural, fallback: "teams").capitalized, system: "shield.lefthalf.filled") {
                     TeamsListView(
-                        canEdit: context.role.canManageTeams,
-                        canDelete: context.role.canDeleteAdministrativeRecords,
+                        canEdit: context.hasCapability("teams.write"),
+                        canDelete: context.hasCapability("teams.delete"),
                         soccerMode: context.org.moduleEnabled("soccer")
                     )
                 }
@@ -56,22 +57,22 @@ struct MoreView: View {
             if context.org.moduleEnabled("announcements") {
                 row("Announcements", system: "megaphone") {
                     AnnouncementsListView(
-                        canEdit: context.role.canManageEvents,
-                        canCreateOrgWide: context.role.canCreateOrgAnnouncements
+                        canEdit: context.hasCapability("announcements.write"),
+                        canCreateOrgWide: context.hasCapability("announcements.write")
                     )
                 }
             }
-            if context.org.moduleEnabled("training") {
+            if context.org.moduleEnabled("training") && context.hasCapability("training.manage") {
                 row("Training & \(context.org.term(\.certificationPlural, fallback: "certifications"))", system: "graduationcap") {
                     TrainingCertificationsListView(
-                        canEdit: context.role.canManageOperationsAdmin
+                        canEdit: context.hasCapability("training.manage")
                     )
                 }
             }
-            if context.org.moduleEnabled("tasks") {
+            if context.org.moduleEnabled("tasks") && context.hasCapability("tasks.manage") {
                 row(context.org.term(\.taskPlural, fallback: "tasks").capitalized, system: "rectangle.3.group") {
                     TaskBoardListView(
-                        canEdit: context.role.canManageOperationsAdmin
+                        canEdit: context.hasCapability("tasks.manage")
                     )
                 }
             }
@@ -94,26 +95,32 @@ struct MoreView: View {
 
     private var soccerSection: some View {
         Section(context.org.term(\.sportSingular, fallback: "soccer").capitalized) {
-            row(context.org.term(\.registrationPlural, fallback: "player registrations").capitalized, system: "list.clipboard") {
-                SoccerRegistrationsView(canEdit: context.role.canManageSoccerSetup)
+            if context.hasCapability("soccer.manage") {
+                row(context.org.term(\.registrationPlural, fallback: "player registrations").capitalized, system: "list.clipboard") {
+                    SoccerRegistrationsView(canEdit: true)
+                }
+                row("Coaches & managers", system: "person.crop.rectangle.stack") {
+                    CoachesManagersView()
+                }
             }
-            row("Coaches & managers", system: "person.crop.rectangle.stack") {
-                CoachesManagersView()
+            if context.hasCapability("soccer.grade") {
+                row(context.org.term(\.gradingSingular, fallback: "grading").capitalized, system: "gauge.with.dots.needle.67percent") {
+                    GradingListView()
+                }
             }
-            row(context.org.term(\.gradingSingular, fallback: "grading").capitalized, system: "gauge.with.dots.needle.67percent") {
-                GradingListView()
-            }
-            row(context.org.term(\.ageGroupPlural, fallback: "age groups").capitalized, system: "person.3.sequence") {
-                AgeGroupsListView(canEdit: context.role.canManageSoccerSetup)
-            }
-            row(context.org.term(\.competitionPlural, fallback: "competitions").capitalized, system: "trophy") {
-                SoccerCompetitionsListView(canEdit: context.role.canManageSoccerSetup)
-            }
-            row(context.org.term(\.divisionPlural, fallback: "divisions").capitalized, system: "square.3.layers.3d") {
-                SoccerDivisionsListView(canEdit: context.role.canManageSoccerSetup)
-            }
-            row("Grading skills", system: "slider.horizontal.3") {
-                SoccerSkillsListView(canEdit: context.role.canManageSoccerSetup)
+            if context.hasCapability("soccer.manage") {
+                row(context.org.term(\.ageGroupPlural, fallback: "age groups").capitalized, system: "person.3.sequence") {
+                    AgeGroupsListView(canEdit: true)
+                }
+                row(context.org.term(\.competitionPlural, fallback: "competitions").capitalized, system: "trophy") {
+                    SoccerCompetitionsListView(canEdit: true)
+                }
+                row(context.org.term(\.divisionPlural, fallback: "divisions").capitalized, system: "square.3.layers.3d") {
+                    SoccerDivisionsListView(canEdit: true)
+                }
+                row("Grading skills", system: "slider.horizontal.3") {
+                    SoccerSkillsListView(canEdit: true)
+                }
             }
         }
     }

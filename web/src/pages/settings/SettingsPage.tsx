@@ -46,6 +46,7 @@ import {
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { ALL_ROLES, type Role } from "@/lib/roles";
+import { CAPABILITY_LABELS, type Capability } from "@/lib/capabilities";
 import { humanise, formatDateTime } from "@/lib/utils";
 import {
   DEFAULT_TERMINOLOGY,
@@ -56,8 +57,8 @@ import {
 } from "@/lib/verticals";
 
 export default function SettingsPage() {
-  const { org, can } = useGatherHub();
-  const canManage = can("committee");
+  const { org, hasCapability } = useGatherHub();
+  const canManage = hasCapability("settings.admin");
   const soccerMode = Boolean(org?.soccerMode);
   if (!canManage) {
     return (
@@ -78,17 +79,21 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="profile">Organisation profile</TabsTrigger>
           <TabsTrigger value="roles">Members & roles</TabsTrigger>
-          <TabsTrigger value="invitations">Invitations</TabsTrigger>
+          {hasCapability("invitations.manage") && (
+            <TabsTrigger value="invitations">Invitations</TabsTrigger>
+          )}
           <TabsTrigger value="locations">Locations</TabsTrigger>
-          {can("committee") && (
+          {hasCapability("settings.admin") && (
             <TabsTrigger value="taxonomies">Lists & types</TabsTrigger>
           )}
-          {can("committee") && (
+          {hasCapability("soccer.manage") && (
             <TabsTrigger value="soccer">
               Soccer{soccerMode ? "" : " (off)"}
             </TabsTrigger>
           )}
-          {can("committee") && <TabsTrigger value="qr">QR codes</TabsTrigger>}
+          {hasCapability("settings.admin") && (
+            <TabsTrigger value="qr">QR codes</TabsTrigger>
+          )}
           <TabsTrigger value="public">Public website</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
@@ -97,23 +102,25 @@ export default function SettingsPage() {
         <TabsContent value="roles">
           <RolesTab />
         </TabsContent>
-        <TabsContent value="invitations">
-          <InvitationsTab />
-        </TabsContent>
+        {hasCapability("invitations.manage") && (
+          <TabsContent value="invitations">
+            <InvitationsTab />
+          </TabsContent>
+        )}
         <TabsContent value="locations">
           <LocationSettingsTab />
         </TabsContent>
-        {can("committee") && (
+        {hasCapability("settings.admin") && (
           <TabsContent value="taxonomies">
             <TaxonomiesTab />
           </TabsContent>
         )}
-        {can("committee") && (
+        {hasCapability("soccer.manage") && (
           <TabsContent value="soccer">
             <SoccerSettingsTab />
           </TabsContent>
         )}
-        {can("committee") && (
+        {hasCapability("settings.admin") && (
           <TabsContent value="qr">
             <QrSettingsTab />
           </TabsContent>
@@ -388,25 +395,64 @@ function InvitationsTab() {
   );
 }
 
+type ConfiguredRole = {
+  id: Id<"organizationRoles"> | null;
+  key: string;
+  displayName: string;
+  description?: string;
+  legacyRole: Role;
+  capabilities: Capability[];
+  isSystem: boolean;
+  active: boolean;
+  order: number;
+};
+
+function defaultInviteRole(roles: ConfiguredRole[]): ConfiguredRole | null {
+  return (
+    roles.find((role) => role.key === "player") ??
+    roles.find((role) => role.legacyRole !== "owner") ??
+    roles[0] ??
+    null
+  );
+}
+
 function SendInviteCard() {
   const send = useAction(api.invitations.send);
+  const configured = useQuery(api.roles.listConfigured);
   const [email, setEmail] = React.useState("");
-  const [role, setRole] = React.useState<Role>("player");
+  const [roleKey, setRoleKey] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const roles = React.useMemo(
+    () => (configured?.roles ?? []) as ConfiguredRole[],
+    [configured?.roles],
+  );
+  const selectedRole =
+    roles.find((role) => role.key === roleKey) ?? defaultInviteRole(roles);
+
+  React.useEffect(() => {
+    if (!roleKey && roles.length > 0) {
+      setRoleKey(defaultInviteRole(roles)?.key ?? "");
+    }
+  }, [roleKey, roles]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!selectedRole) return;
     setBusy(true);
     setError(null);
     setMessage(null);
     try {
-      await send({ email: email.trim(), role });
+      await send({
+        email: email.trim(),
+        role: selectedRole.legacyRole,
+        roleKey: selectedRole.key,
+      });
       setMessage(`Invitation sent to ${email.trim()}.`);
       toastSuccess(`Invitation sent to ${email.trim()}.`);
       setEmail("");
-      setRole("player");
+      setRoleKey(defaultInviteRole(roles)?.key ?? "");
     } catch (err) {
       setError(toastFailure(err, "Could not send invite."));
     } finally {
@@ -439,20 +485,23 @@ function SendInviteCard() {
           </div>
           <div className="grid gap-1.5">
             <Label>Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+            <Select value={selectedRole?.key ?? ""} onValueChange={setRoleKey}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ALL_ROLES.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {humanise(r)}
+                {roles.map((role) => (
+                  <SelectItem key={role.key} value={role.key}>
+                    {role.displayName}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit" disabled={busy || !email.trim()}>
+          <Button
+            type="submit"
+            disabled={busy || !email.trim() || !selectedRole}
+          >
             {busy ? "Sending…" : "Send invite"}
           </Button>
         </form>
@@ -559,7 +608,9 @@ function InvitationListCard() {
               <TableRow key={i.id}>
                 <TableCell>{i.email}</TableCell>
                 <TableCell>
-                  <Badge variant="secondary">{humanise(i.role)}</Badge>
+                  <Badge variant="secondary">
+                    {i.roleDisplayName ?? humanise(i.roleKey ?? i.role)}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <Badge
@@ -635,73 +686,245 @@ function InvitationListCard() {
 function RolesTab() {
   const { role: currentRole } = useGatherHub();
   const members = useQuery(api.roles.listMembers);
+  const configured = useQuery(api.roles.listConfigured);
   const updateRole = useMutation(api.roles.updateRole);
   const [error, setError] = React.useState<string | null>(null);
+  const roles = (configured?.roles ?? []) as ConfiguredRole[];
 
-  async function change(membershipId: Id<"memberships">, role: Role) {
+  async function change(membershipId: Id<"memberships">, roleKey: string) {
+    const role = roles.find((row) => row.key === roleKey);
+    if (!role) return;
     setError(null);
     try {
-      await updateRole({ membershipId, role });
+      await updateRole({
+        membershipId,
+        role: role.legacyRole,
+        roleKey: role.key,
+      });
       toastSuccess("Role updated.");
     } catch (e) {
       setError(toastFailure(e, "Could not update role."));
     }
   }
 
-  if (members === undefined) return <LoadingState />;
+  if (members === undefined || configured === undefined)
+    return <LoadingState />;
+
+  return (
+    <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Members & roles</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {error && <p className="mb-3 text-caption text-danger">{error}</p>}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Capabilities</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {members.map((m) => (
+                <TableRow key={m.membershipId}>
+                  <TableCell className="font-medium">{m.name}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {m.email ?? "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={m.roleKey ?? m.role}
+                      onValueChange={(value) => change(m.membershipId, value)}
+                      disabled={m.role === "owner" && currentRole !== "owner"}
+                    >
+                      <SelectTrigger className="w-52">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles.map((role) => (
+                          <SelectItem
+                            key={role.key}
+                            value={role.key}
+                            disabled={
+                              role.legacyRole === "owner" &&
+                              currentRole !== "owner"
+                            }
+                          >
+                            {role.displayName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {m.capabilities.length}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Roles control what members can do. All permissions are enforced
+            server-side.
+          </p>
+        </CardContent>
+      </Card>
+      {currentRole === "owner" && (
+        <RoleDesigner
+          roles={roles}
+          capabilities={configured.capabilities ?? []}
+        />
+      )}
+    </div>
+  );
+}
+
+function RoleDesigner({
+  roles,
+  capabilities,
+}: {
+  roles: ConfiguredRole[];
+  capabilities: readonly Capability[];
+}) {
+  const upsertRole = useMutation(api.roles.upsertConfigured);
+  const [selectedKey, setSelectedKey] = React.useState(roles[0]?.key ?? "");
+  const selected = roles.find((role) => role.key === selectedKey) ?? roles[0];
+  const [displayName, setDisplayName] = React.useState("");
+  const [description, setDescription] = React.useState("");
+  const [legacyRole, setLegacyRole] = React.useState<Role>("volunteer");
+  const [selectedCapabilities, setSelectedCapabilities] = React.useState<
+    Capability[]
+  >([]);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!selected) return;
+    setDisplayName(selected.displayName);
+    setDescription(selected.description ?? "");
+    setLegacyRole(selected.legacyRole);
+    setSelectedCapabilities(selected.capabilities);
+  }, [selected]);
+
+  function toggleCapability(capability: Capability, checked: boolean) {
+    setSelectedCapabilities((current) =>
+      checked
+        ? [...new Set([...current, capability])]
+        : current.filter((value) => value !== capability),
+    );
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await upsertRole({
+        key: selected.key,
+        displayName,
+        description: description.trim() || undefined,
+        legacyRole,
+        capabilities: selectedCapabilities,
+        active: true,
+      });
+      toastSuccess("Role saved.");
+    } catch (err) {
+      setError(toastFailure(err, "Could not save role."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!selected) return null;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Members & roles</CardTitle>
+        <CardTitle>Configured role templates</CardTitle>
       </CardHeader>
       <CardContent>
-        {error && <p className="mb-3 text-caption text-danger">{error}</p>}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {members.map((m) => (
-              <TableRow key={m.membershipId}>
-                <TableCell className="font-medium">{m.name}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {m.email ?? "—"}
-                </TableCell>
-                <TableCell>
-                  <Select
-                    value={m.role}
-                    onValueChange={(v) => change(m.membershipId, v as Role)}
-                    disabled={m.role === "owner" && currentRole !== "owner"}
-                  >
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ALL_ROLES.map((r) => (
-                        <SelectItem
-                          key={r}
-                          value={r}
-                          disabled={r === "owner" && currentRole !== "owner"}
-                        >
-                          {humanise(r)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-              </TableRow>
+        <form onSubmit={save} className="grid gap-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-1.5">
+              <Label>Role</Label>
+              <Select value={selected.key} onValueChange={setSelectedKey}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.key} value={role.key}>
+                      {role.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="role-display-name">Display name</Label>
+              <Input
+                id="role-display-name"
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Base role</Label>
+              <Select
+                value={legacyRole}
+                onValueChange={(value) => setLegacyRole(value as Role)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_ROLES.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {humanise(role)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="role-description">Description</Label>
+            <Textarea
+              id="role-description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              rows={2}
+            />
+          </div>
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {capabilities.map((capability) => (
+              <label
+                key={capability}
+                className="flex items-start gap-2 rounded-sm border border-hairline bg-surface px-3 py-2 text-body"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedCapabilities.includes(capability)}
+                  onChange={(event) =>
+                    toggleCapability(capability, event.target.checked)
+                  }
+                  className="mt-0.5 h-4 w-4 accent-primary"
+                />
+                <span>{CAPABILITY_LABELS[capability] ?? capability}</span>
+              </label>
             ))}
-          </TableBody>
-        </Table>
-        <p className="mt-4 text-xs text-muted-foreground">
-          Roles control what members can do. All permissions are enforced
-          server-side.
-        </p>
+          </div>
+          {error && <p className="text-caption text-danger">{error}</p>}
+          <div>
+            <Button type="submit" disabled={saving || !displayName.trim()}>
+              {saving ? "Saving..." : "Save role"}
+            </Button>
+          </div>
+        </form>
       </CardContent>
     </Card>
   );

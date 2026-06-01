@@ -40,6 +40,7 @@ import {
 } from "@/components/layout/command-palette";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import type { Role } from "@/lib/roles";
+import type { Capability } from "@/lib/capabilities";
 import {
   moduleEnabled,
   term,
@@ -56,6 +57,7 @@ interface NavItem {
   icon: IconType;
   shortcut?: string;
   minRole?: Role;
+  capability?: Capability;
   module?: OrganizationModuleKey;
   end?: boolean;
 }
@@ -90,6 +92,7 @@ function buildNav(org: VerticalOrgConfig | null): NavGroup[] {
           icon: Users,
           shortcut: "M",
           module: "people",
+          capability: "members.read",
         },
         {
           to: "/teams",
@@ -97,6 +100,7 @@ function buildNav(org: VerticalOrgConfig | null): NavGroup[] {
           icon: Shield,
           shortcut: "T",
           module: "teams",
+          capability: "teams.read",
         },
         {
           to: "/events",
@@ -104,12 +108,14 @@ function buildNav(org: VerticalOrgConfig | null): NavGroup[] {
           icon: CalendarDays,
           shortcut: "E",
           module: "events",
+          capability: "events.read",
         },
         {
           to: "/announcements",
           label: "Announcements",
           icon: Megaphone,
           module: "announcements",
+          capability: "announcements.write",
         },
         {
           to: "/assets",
@@ -117,26 +123,28 @@ function buildNav(org: VerticalOrgConfig | null): NavGroup[] {
           icon: Package,
           shortcut: "K",
           module: "assets",
+          capability: "assets.read",
         },
         {
           to: "/volunteers",
           label: titleCase(term(org, "volunteerPlural")),
           icon: HandHeart,
           module: "volunteers",
+          capability: "volunteers.manage",
         },
         {
           to: "/training-certifications",
           label: `Training & ${titleCase(term(org, "certificationPlural"))}`,
           icon: GraduationCap,
-          minRole: "committee",
           module: "training",
+          capability: "training.manage",
         },
         {
           to: "/tasks",
           label: titleCase(term(org, "taskPlural")),
           icon: ClipboardCheck,
-          minRole: "committee",
           module: "tasks",
+          capability: "tasks.manage",
         },
       ],
     },
@@ -148,20 +156,21 @@ function buildNav(org: VerticalOrgConfig | null): NavGroup[] {
           label: `Lifetime ${titleCase(term(org, "memberPlural"))}`,
           icon: Award,
           module: "people",
+          capability: "members.read",
         },
         {
           to: "/sponsors",
           label: titleCase(term(org, "sponsorPlural")),
           icon: Building2,
-          minRole: "committee",
           module: "sponsors",
+          capability: "sponsors.manage",
         },
         {
           to: "/news",
           label: titleCase(term(org, "newsPlural")),
           icon: Newspaper,
-          minRole: "committee",
           module: "news",
+          capability: "news.manage",
         },
       ],
     },
@@ -180,48 +189,55 @@ function buildSoccerNav(org: VerticalOrgConfig | null): NavGroup {
         to: "/soccer/registrations",
         label: titleCase(term(org, "registrationPlural")),
         icon: ClipboardList,
-        minRole: "committee",
         module: "soccer",
+        capability: "soccer.manage",
       },
       {
         to: "/soccer/coaches-managers",
         label: "Coaches & Managers",
         icon: UserCog,
         module: "soccer",
+        capability: "soccer.manage",
       },
       {
         to: "/soccer/competitions",
         label: titleCase(term(org, "competitionPlural")),
         icon: Trophy,
-        minRole: "committee",
         module: "soccer",
+        capability: "soccer.manage",
       },
       {
         to: "/soccer/age-groups",
         label: titleCase(term(org, "ageGroupPlural")),
         icon: Layers3,
-        minRole: "committee",
         module: "soccer",
+        capability: "soccer.manage",
       },
       {
         to: "/soccer/divisions",
         label: titleCase(term(org, "divisionPlural")),
         icon: Layers,
         module: "soccer",
+        capability: "soccer.manage",
       },
       {
         to: "/soccer/grading",
         label: titleCase(term(org, "gradingSingular")),
         icon: Gauge,
-        minRole: "coach",
         module: "soccer",
+        capability: "soccer.grade",
       },
     ],
   };
 }
 
 const SYSTEM_NAV: NavItem[] = [
-  { to: "/settings", label: "Settings", icon: Settings, minRole: "committee" },
+  {
+    to: "/settings",
+    label: "Settings",
+    icon: Settings,
+    capability: "settings.admin",
+  },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -233,7 +249,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
-  const { isLoading, isSignedInToOrg, org, role, can } = useGatherHub();
+  const { isLoading, isSignedInToOrg, org, role, can, hasCapability } =
+    useGatherHub();
   const groups = buildNav(org);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const location = useLocation();
@@ -316,15 +333,18 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
                   key={group.label}
                   group={group}
                   can={can}
+                  hasCapability={hasCapability}
                   org={org}
                 />
               ))}
               <div className="mt-auto pt-4">
-                {SYSTEM_NAV.filter((n) => !n.minRole || can(n.minRole)).map(
-                  (item) => (
-                    <NavRow key={item.to} item={item} />
-                  ),
-                )}
+                {SYSTEM_NAV.filter(
+                  (n) =>
+                    (!n.minRole || can(n.minRole)) &&
+                    (!n.capability || hasCapability(n.capability)),
+                ).map((item) => (
+                  <NavRow key={item.to} item={item} />
+                ))}
               </div>
             </div>
           </aside>
@@ -358,15 +378,18 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 function NavSection({
   group,
   can,
+  hasCapability,
   org,
 }: {
   group: NavGroup;
   can: (role: Role) => boolean;
+  hasCapability: (capability: Capability) => boolean;
   org: VerticalOrgConfig | null;
 }) {
   const items = group.items.filter(
     (n) =>
       (!n.minRole || can(n.minRole)) &&
+      (!n.capability || hasCapability(n.capability)) &&
       (!n.module || moduleEnabled(org, n.module)),
   );
   const location = useLocation();

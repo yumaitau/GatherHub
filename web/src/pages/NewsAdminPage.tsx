@@ -46,7 +46,8 @@ type NewsPost = {
 };
 
 export default function NewsAdminPage() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
+  const canManageNews = hasCapability("news.manage");
   const news = useQuery(api.news.list, {});
   const update = useMutation(api.news.update);
   const remove = useMutation(api.news.remove);
@@ -80,7 +81,7 @@ export default function NewsAdminPage() {
       <PageHeader
         title="News"
         description="Manage articles for your public site."
-        actions={can("committee") ? <NewsDialog mode="create" /> : undefined}
+        actions={canManageNews ? <NewsDialog mode="create" /> : undefined}
       />
 
       {error && <p className="mb-4 text-caption text-danger">{error}</p>}
@@ -92,7 +93,7 @@ export default function NewsAdminPage() {
           icon={Newspaper}
           title="No news articles"
           description="Write your first article to share organisation news."
-          action={can("committee") ? <NewsDialog mode="create" /> : undefined}
+          action={canManageNews ? <NewsDialog mode="create" /> : undefined}
         />
       ) : (
         <section className="rounded-md border border-hairline bg-surface overflow-hidden">
@@ -102,7 +103,7 @@ export default function NewsAdminPage() {
                 <TableHead>Title</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Published</TableHead>
-                {can("committee") && <TableHead className="w-40" />}
+                {canManageNews && <TableHead className="w-40" />}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -130,7 +131,7 @@ export default function NewsAdminPage() {
                   <TableCell className="text-ink-quiet">
                     {post.published ? formatDate(post.publishedAt) : "—"}
                   </TableCell>
-                  {can("committee") && (
+                  {canManageNews && (
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button

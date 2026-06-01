@@ -42,7 +42,10 @@ function useMemberData(memberId: string | undefined) {
 
 export default function MemberDetailPage() {
   const { memberId } = useParams<{ memberId: string }>();
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
+  const canEditMembers = hasCapability("members.write");
+  const canDeleteMembers = hasCapability("members.delete");
+  const canManageTraining = hasCapability("training.manage");
   const navigate = useNavigate();
   const data = useMemberData(memberId);
   const update = useMutation(api.members.update);
@@ -100,12 +103,12 @@ export default function MemberDetailPage() {
         description={member.email ?? undefined}
         actions={
           <>
-            {can("coach") && (
+            {canEditMembers && (
               <Button variant="outline" onClick={toggleStatus}>
                 {member.status === "active" ? "Set inactive" : "Set active"}
               </Button>
             )}
-            {can("committee") && (
+            {canDeleteMembers && (
               <Button variant="destructive" onClick={deleteMember}>
                 <Trash2 className="h-4 w-4" />
                 Delete
@@ -146,10 +149,10 @@ export default function MemberDetailPage() {
         </TabsList>
 
         <TabsContent value="profile">
-          <ProfileTab member={member} canEdit={can("coach")} />
+          <ProfileTab member={member} canEdit={canEditMembers} />
         </TabsContent>
         <TabsContent value="contacts">
-          <ContactsTab data={data} canEdit={can("coach")} />
+          <ContactsTab data={data} canEdit={canEditMembers} />
         </TabsContent>
         <TabsContent value="teams">
           <TeamsTab data={data} />
@@ -159,12 +162,12 @@ export default function MemberDetailPage() {
             <MedicalTab
               memberId={member._id}
               notes={data.medicalNotes}
-              canEdit={can("coach")}
+              canEdit={canEditMembers}
             />
           </TabsContent>
         )}
         <TabsContent value="certs">
-          <CertificationsTab data={data} canEdit={can("committee")} />
+          <CertificationsTab data={data} canEdit={canManageTraining} />
         </TabsContent>
       </Tabs>
     </div>

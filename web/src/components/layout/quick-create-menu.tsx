@@ -15,6 +15,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import { useGatherHub } from "@/lib/gatherhub";
 import type { Role } from "@/lib/roles";
+import type { Capability } from "@/lib/capabilities";
 
 type IconType = React.ComponentType<{ className?: string }>;
 
@@ -23,26 +24,51 @@ interface QuickItem {
   icon: IconType;
   to: string;
   minRole?: Role;
+  capability?: Capability;
   shortcut?: string;
 }
 
 const ITEMS: QuickItem[] = [
-  { label: "New event", icon: CalendarDays, to: "/events", minRole: "coach" },
-  { label: "New member", icon: Users, to: "/members", minRole: "coach" },
-  { label: "New team", icon: Shield, to: "/teams", minRole: "committee" },
-  { label: "Add asset", icon: Package, to: "/assets", minRole: "coach" },
+  {
+    label: "New event",
+    icon: CalendarDays,
+    to: "/events",
+    capability: "events.write",
+  },
+  {
+    label: "New member",
+    icon: Users,
+    to: "/members",
+    capability: "members.write",
+  },
+  {
+    label: "New team",
+    icon: Shield,
+    to: "/teams",
+    capability: "teams.write",
+  },
+  {
+    label: "Add asset",
+    icon: Package,
+    to: "/assets",
+    capability: "assets.admin",
+  },
   {
     label: "New announcement",
     icon: Megaphone,
     to: "/announcements",
-    minRole: "coach",
+    capability: "announcements.write",
   },
 ];
 
 export function QuickCreateMenu() {
-  const { can } = useGatherHub();
+  const { can, hasCapability } = useGatherHub();
   const navigate = useNavigate();
-  const visible = ITEMS.filter((i) => !i.minRole || can(i.minRole));
+  const visible = ITEMS.filter(
+    (i) =>
+      (!i.minRole || can(i.minRole)) &&
+      (!i.capability || hasCapability(i.capability)),
+  );
 
   if (visible.length === 0) return null;
 

@@ -23,7 +23,8 @@ import { formatCurrency } from "@/lib/utils";
 import { IMAGE_UPLOAD_ACCEPT, uploadImageFile } from "@/lib/uploads";
 
 export default function SponsorsPage() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
+  const canManageSponsors = hasCapability("sponsors.manage");
   const sponsors = useQuery(api.sponsors.list, {});
   const totalValue = useQuery(api.sponsors.totalValue, {});
 
@@ -36,7 +37,7 @@ export default function SponsorsPage() {
             ? `Sponsors and partners. Total value ${formatCurrency(totalValue)}.`
             : "Sponsors and partners."
         }
-        actions={can("committee") ? <NewSponsorDialog /> : undefined}
+        actions={canManageSponsors ? <NewSponsorDialog /> : undefined}
       />
 
       {sponsors === undefined ? (
@@ -46,7 +47,7 @@ export default function SponsorsPage() {
           icon={Building2}
           title="No sponsors yet"
           description="Add your first sponsor to track partnerships and value."
-          action={can("committee") ? <NewSponsorDialog /> : undefined}
+          action={canManageSponsors ? <NewSponsorDialog /> : undefined}
         />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

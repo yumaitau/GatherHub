@@ -1,9 +1,10 @@
 import { ConvexError, v } from "convex/values";
 import { MutationCtx, mutation, query, QueryCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
+import { requireOrgMember, assertSameOrg } from "./lib/auth";
 import { taxonomyKindValidator } from "./schema";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
+import { requireCapability } from "./lib/capabilities";
 
 /**
  * Per-org configurable taxonomies for event types, asset categories,
@@ -203,7 +204,8 @@ export const list = query({
 export const seedDefaultsIfEmpty = mutation({
   args: { kind: taxonomyKindValidator },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "settings.admin");
     await ensureKindDefaults(ctx, auth.org._id, args.kind);
   },
 });
@@ -217,7 +219,8 @@ export const create = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "settings.admin");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const taxonomyId = ctx.db.normalizeId("taxonomies", replay.resultId);
@@ -308,7 +311,8 @@ export const update = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "settings.admin");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const row = await ctx.db.get(args.id);
@@ -348,7 +352,8 @@ export const setActive = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "settings.admin");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     const row = await ctx.db.get(args.id);
@@ -372,7 +377,8 @@ export const setActive = mutation({
 export const setDefault = mutation({
   args: { id: v.id("taxonomies") },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "settings.admin");
     const row = await ctx.db.get(args.id);
     assertSameOrg(auth, row);
     if (!row) return;
@@ -398,7 +404,8 @@ export const reorder = mutation({
     orderedIds: v.array(v.id("taxonomies")),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "settings.admin");
     let order = 0;
     for (const id of args.orderedIds) {
       const row = await ctx.db.get(id);

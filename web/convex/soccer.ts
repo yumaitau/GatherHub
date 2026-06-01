@@ -7,9 +7,10 @@ import {
   QueryCtx,
 } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { requireOrgMember, requireRole, assertSameOrg } from "./lib/auth";
+import { requireOrgMember, assertSameOrg } from "./lib/auth";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 import { assertTaxonomyKey } from "./taxonomies";
+import { requireCapability } from "./lib/capabilities";
 
 const nullableString = v.union(v.string(), v.null());
 
@@ -25,7 +26,8 @@ const nullableString = v.union(v.string(), v.null());
 export const setSoccerMode = mutation({
   args: { enabled: v.boolean() },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.manage");
     await ctx.db.patch(auth.org._id, { soccerMode: args.enabled });
     for (const key of ["sport", "soccer"] as const) {
       const existing = await ctx.db
@@ -193,7 +195,8 @@ async function ensureDivisionDefaults(
 export const restoreGradingDefaults = mutation({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.manage");
     await assertSoccerMode(ctx, auth.org._id);
 
     const existingSkills = await ctx.db
@@ -378,7 +381,8 @@ export const createSkill = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.manage");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const skillId = ctx.db.normalizeId("soccerSkills", replay.resultId);
@@ -423,7 +427,8 @@ export const updateSkill = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.manage");
     if (await getClientMutation(ctx, auth, args.clientMutationId)) return;
     const row = await ctx.db.get(args.id);
     assertSameOrg(auth, row);
@@ -473,7 +478,8 @@ export const upsertDivision = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.manage");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const divisionId = ctx.db.normalizeId("soccerDivisions", replay.resultId);
@@ -557,7 +563,8 @@ export const upsertCompetition = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.manage");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const competitionId = ctx.db.normalizeId(
@@ -690,7 +697,8 @@ export const upsertRegistration = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.manage");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const registrationId = ctx.db.normalizeId(
@@ -810,7 +818,8 @@ export const removeRegistration = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.manage");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     await assertSoccerMode(ctx, auth.org._id);
@@ -871,7 +880,8 @@ export const createFieldRegistration = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.manage");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const memberId = ctx.db.normalizeId("members", replay.resultId);
@@ -1050,7 +1060,8 @@ export const upsertWwvp = mutation({
     registeredDate: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.manage");
     await assertSoccerMode(ctx, auth.org._id);
     const member = await ctx.db.get(args.memberId);
     assertSameOrg(auth, member);
@@ -1184,7 +1195,8 @@ export const upsertEvaluation = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.grade");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay?.resultId) {
       const evaluationId = ctx.db.normalizeId(
@@ -1259,7 +1271,8 @@ export const removeEvaluation = mutation({
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "coach");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "soccer.grade");
     const replay = await getClientMutation(ctx, auth, args.clientMutationId);
     if (replay) return;
     await assertSoccerMode(ctx, auth.org._id);

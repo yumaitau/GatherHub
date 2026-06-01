@@ -139,6 +139,45 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
         case .teamAgeGroupSetActive: return "Age group status"
         }
     }
+
+    var requiredCapability: String? {
+        switch self {
+        case .rsvp, .announcementRead:
+            return nil
+        case .eventCreate, .eventUpdate:
+            return "events.write"
+        case .eventDelete:
+            return "events.delete"
+        case .assetCheckOut, .assetCheckIn, .assetScan, .assetRetire:
+            return "assets.operate"
+        case .assetRegisterNfc, .assetCreate, .assetUpdate, .assetDelete:
+            return "assets.admin"
+        case .orgDefaultAddress:
+            return "settings.admin"
+        case .announcementCreate, .announcementUpdate, .announcementDelete:
+            return "announcements.write"
+        case .trainingCertificationCreate, .trainingCertificationUpdate, .trainingCertificationDelete:
+            return "training.manage"
+        case .taskCreate, .taskUpdate, .taskMove, .taskDelete:
+            return "tasks.manage"
+        case .memberCreate, .memberUpdate:
+            return "members.write"
+        case .memberDelete:
+            return "members.delete"
+        case .teamCreate, .teamUpdate:
+            return "teams.write"
+        case .teamDelete:
+            return "teams.delete"
+        case .soccerEvaluation, .soccerEvaluationDelete:
+            return "soccer.grade"
+        case .soccerAssignment, .soccerRegistration, .soccerRegistrationDelete,
+             .soccerFieldRegistration, .soccerDivision, .soccerCompetition,
+             .soccerSkillCreate, .soccerSkillUpdate:
+            return "soccer.manage"
+        case .teamAgeGroupCreate, .teamAgeGroupUpdate, .teamAgeGroupSetActive:
+            return "settings.admin"
+        }
+    }
 }
 
 /// Lifecycle state of a queued operation. Mirrors RangerOS's pattern:

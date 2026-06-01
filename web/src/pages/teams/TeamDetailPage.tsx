@@ -41,7 +41,9 @@ type TeamRole = "player" | "coach" | "manager";
 
 export default function TeamDetailPage() {
   const { teamId } = useParams<{ teamId: string }>();
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
+  const canEditTeams = hasCapability("teams.write");
+  const canDeleteTeams = hasCapability("teams.delete");
   const navigate = useNavigate();
   const data = useQuery(
     api.teams.get,
@@ -103,7 +105,7 @@ export default function TeamDetailPage() {
         }
         actions={
           <>
-            {can("committee") && (
+            {canEditTeams && (
               <>
                 <EditTeamDialog team={team} />
                 <Button variant="outline" onClick={toggleActive}>
@@ -111,8 +113,8 @@ export default function TeamDetailPage() {
                 </Button>
               </>
             )}
-            {can("committee") && <AssignMemberDialog teamId={team._id} />}
-            {can("committee") && (
+            {canEditTeams && <AssignMemberDialog teamId={team._id} />}
+            {canDeleteTeams && (
               <Button variant="destructive" onClick={deleteTeam}>
                 <Trash2 className="h-4 w-4" />
                 Delete
@@ -136,13 +138,13 @@ export default function TeamDetailPage() {
         <RosterTable
           title="Players"
           rows={players}
-          canManage={can("committee")}
+          canManage={canEditTeams}
           onUnassign={doUnassign}
         />
         <RosterTable
           title="Staff"
           rows={staff}
-          canManage={can("committee")}
+          canManage={canEditTeams}
           onUnassign={doUnassign}
         />
       </div>

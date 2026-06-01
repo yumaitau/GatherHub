@@ -1,8 +1,9 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireRole } from "./lib/auth";
+import { requireOrgMember } from "./lib/auth";
 import { publicImageUrlForOrg } from "./lib/uploads";
 import { requireModule } from "./lib/orgConfig";
+import { requireCapability } from "./lib/capabilities";
 
 /**
  * Read the public site settings for the caller's org. Committee+: matches the
@@ -13,7 +14,8 @@ import { requireModule } from "./lib/orgConfig";
 export const getSettings = query({
   args: {},
   handler: async (ctx) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "public_site.manage");
     return await ctx.db
       .query("publicSiteSettings")
       .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
@@ -35,7 +37,8 @@ export const upsertSettings = mutation({
     websiteUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "public_site.manage");
     await requireModule(ctx, auth, "public_site");
     const existing = await ctx.db
       .query("publicSiteSettings")

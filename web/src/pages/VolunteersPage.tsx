@@ -42,7 +42,8 @@ function isExpired(expiryDate: string | undefined): boolean {
 }
 
 export default function VolunteersPage() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
+  const canManageVolunteers = hasCapability("volunteers.manage");
   const expiring = useQuery(api.volunteers.expiringCertifications, {});
   const volunteers = useQuery(api.volunteers.list, {});
 
@@ -82,7 +83,7 @@ export default function VolunteersPage() {
               <Download className="h-4 w-4" />
               Export CSV
             </Button>
-            {can("committee") && <AddCertificationDialog />}
+            {canManageVolunteers && <AddCertificationDialog />}
           </>
         }
       />
@@ -168,7 +169,9 @@ export default function VolunteersPage() {
             icon={HandHeart}
             title="No volunteers yet"
             description="Flag a member as a volunteer or record a certification to start tracking."
-            action={can("committee") ? <AddCertificationDialog /> : undefined}
+            action={
+              canManageVolunteers ? <AddCertificationDialog /> : undefined
+            }
           />
         ) : (
           <Table>

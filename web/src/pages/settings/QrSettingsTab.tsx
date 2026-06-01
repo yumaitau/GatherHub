@@ -48,10 +48,10 @@ const LOGO_SIZES: { value: LogoSize; label: string }[] = [
 const PREVIEW_TAG = "tag_preview";
 
 export function QrSettingsTab() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
   const saved = useQuery(api.qrSettings.get, {});
   const upsert = useMutation(api.qrSettings.upsert);
-  const canEdit = can("committee");
+  const canEdit = hasCapability("settings.admin");
 
   const [s, setS] = React.useState<QRSettings>(DEFAULT_QR_SETTINGS);
   const [logoUrl, setLogoUrl] = React.useState<string>("");

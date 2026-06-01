@@ -31,7 +31,8 @@ import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 
 export default function TeamsPage() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
+  const canEditTeams = hasCapability("teams.write");
   const [includeInactive, setIncludeInactive] = React.useState(false);
   const teams = useQuery(api.teams.list, { includeInactive });
 
@@ -40,7 +41,7 @@ export default function TeamsPage() {
       <PageHeader
         title={`Teams (${teams?.length ?? 0})`}
         description="Squads, age groups and seasons."
-        actions={can("committee") ? <NewTeamDialog /> : undefined}
+        actions={canEditTeams ? <NewTeamDialog /> : undefined}
       />
 
       {teams === undefined ? (
@@ -109,7 +110,7 @@ export default function TeamsPage() {
               icon={Shield}
               title="No teams yet"
               description="Create your first team to start organising members."
-              action={can("committee") ? <NewTeamDialog /> : undefined}
+              action={canEditTeams ? <NewTeamDialog /> : undefined}
             />
           }
           toolbar={

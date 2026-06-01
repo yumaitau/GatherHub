@@ -27,10 +27,10 @@ type Row = NonNullable<
 >[number];
 
 export default function CompetitionsPage() {
-  const { org, can } = useGatherHub();
+  const { org, hasCapability } = useGatherHub();
   const rows = useQuery(api.soccer.listCompetitions, {});
   const upsert = useMutation(api.soccer.upsertCompetition);
-  const canEdit = can("committee");
+  const canEdit = hasCapability("soccer.manage");
   const count = rows?.length ?? 0;
 
   async function toggleCompetition(row: Row) {

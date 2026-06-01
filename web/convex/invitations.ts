@@ -10,7 +10,7 @@ import { roleValidator } from "./schema";
  * Clerk-native invitations. Committee sends → Clerk emails invite link →
  * /sign-up consumes Clerk's ticket and creates the account → on first sign-in
  * `syncClerk.ensureFromClerk` reads `publicMetadata.pendingOrgId` +
- * `pendingRole` from Clerk and creates the Convex membership.
+ * `pendingRole`/`pendingRoleKey` from Clerk and creates the Convex membership.
  *
  * Replaces the previous in-house invitations table + Resend wiring
  * (no separate code, no email delivery infra, no AcceptInvitePage).
@@ -24,16 +24,20 @@ const clerkClient = () =>
 
 /** Send an invitation via Clerk. Committee+ only. */
 export const send = action({
-  args: { email: v.string(), role: roleValidator },
+  args: {
+    email: v.string(),
+    role: roleValidator,
+    roleKey: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const auth = await ctx.runQuery(
       internal.invitationsAdmin.requireAdminContext,
-      {},
+      { role: args.role, roleKey: args.roleKey },
     );
     const email = args.email.trim().toLowerCase();
     if (!email.includes("@")) throw new ConvexError("Enter a valid email.");
 
-    if (args.role === "owner" && auth.role !== "owner") {
+    if (auth.resolvedRole === "owner" && auth.role !== "owner") {
       throw new ConvexError("Only an owner can invite another owner.");
     }
 
@@ -44,7 +48,9 @@ export const send = action({
         emailAddress: email,
         publicMetadata: {
           pendingOrgId: auth.orgId,
-          pendingRole: args.role,
+          pendingRole: auth.resolvedRole,
+          pendingRoleKey: auth.resolvedRoleKey,
+          pendingRoleDisplayName: auth.resolvedRoleDisplayName,
           invitedBy: auth.userId,
         },
         // Point at /sign-up — Clerk's hosted /v1/tickets/accept endpoint
@@ -68,6 +74,8 @@ export type InvitationRow = {
   id: string;
   email: string;
   role: string;
+  roleKey: string | null;
+  roleDisplayName: string | null;
   status: "pending" | "accepted" | "revoked" | "expired";
   sentAt: number;
   acceptedAt: number | null;
@@ -95,6 +103,8 @@ export const list = action({
           id: inv.id,
           email: inv.emailAddress,
           role: (meta.pendingRole as string) ?? "player",
+          roleKey: (meta.pendingRoleKey as string) ?? null,
+          roleDisplayName: (meta.pendingRoleDisplayName as string) ?? null,
           status: inv.status as "pending" | "accepted" | "revoked" | "expired",
           sentAt: inv.createdAt,
           acceptedAt: inv.status === "accepted" ? inv.updatedAt : null,

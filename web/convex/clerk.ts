@@ -21,6 +21,7 @@ export const upsertUser = internalMutation({
     imageUrl: v.optional(v.string()),
     pendingOrgId: v.optional(v.string()),
     pendingRole: v.optional(roleValidator),
+    pendingRoleKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -52,6 +53,7 @@ export const upsertUser = internalMutation({
       userId,
       args.pendingOrgId,
       args.pendingRole,
+      args.pendingRoleKey,
     );
     return userId;
   },
@@ -81,6 +83,7 @@ async function claimPendingMembership(
   userId: Id<"users">,
   pendingOrgId: string | undefined,
   pendingRole: Role | undefined,
+  pendingRoleKey: string | undefined,
 ) {
   if (!pendingOrgId || !pendingRole) return;
 
@@ -102,6 +105,7 @@ async function claimPendingMembership(
       userId,
       orgId,
       role: pendingRole,
+      roleKey: pendingRoleKey,
     });
   }
 

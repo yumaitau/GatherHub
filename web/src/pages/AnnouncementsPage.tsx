@@ -40,7 +40,8 @@ type Announcement = {
 };
 
 export default function AnnouncementsPage() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
+  const canManageAnnouncements = hasCapability("announcements.write");
   const announcements = useQuery(api.announcements.list, {});
 
   return (
@@ -48,7 +49,7 @@ export default function AnnouncementsPage() {
       <PageHeader
         title="Announcements"
         description="Organisation and team updates."
-        actions={can("coach") ? <NewAnnouncementDialog /> : undefined}
+        actions={canManageAnnouncements ? <NewAnnouncementDialog /> : undefined}
       />
 
       {announcements === undefined ? (
@@ -58,7 +59,9 @@ export default function AnnouncementsPage() {
           icon={Megaphone}
           title="No announcements"
           description="Nothing has been posted yet."
-          action={can("coach") ? <NewAnnouncementDialog /> : undefined}
+          action={
+            canManageAnnouncements ? <NewAnnouncementDialog /> : undefined
+          }
         />
       ) : (
         <section className="rounded-md border border-hairline bg-surface overflow-hidden">
@@ -76,7 +79,8 @@ export default function AnnouncementsPage() {
 }
 
 function AnnouncementRow({ announcement }: { announcement: Announcement }) {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
+  const canManageAnnouncements = hasCapability("announcements.write");
   const markRead = useMutation(api.announcements.markRead);
   const setPinned = useMutation(api.announcements.setPinned);
   const remove = useMutation(api.announcements.remove);
@@ -173,7 +177,7 @@ function AnnouncementRow({ announcement }: { announcement: Announcement }) {
           <Badge variant={announcement.teamName ? "muted" : "default"}>
             {announcement.teamName ?? "Org-wide"}
           </Badge>
-          {can("committee") && (
+          {canManageAnnouncements && (
             <Button
               variant="ghost"
               size="icon"
@@ -187,7 +191,7 @@ function AnnouncementRow({ announcement }: { announcement: Announcement }) {
               )}
             </Button>
           )}
-          {can("coach") && (
+          {canManageAnnouncements && (
             <Button
               variant="ghost"
               size="icon"
@@ -212,10 +216,10 @@ function AnnouncementRow({ announcement }: { announcement: Announcement }) {
 }
 
 function NewAnnouncementDialog() {
-  const { can } = useGatherHub();
+  const { hasCapability } = useGatherHub();
   const create = useMutation(api.announcements.create);
   const teams = useQuery(api.teams.list, {});
-  const canOrgWide = can("committee");
+  const canOrgWide = hasCapability("announcements.write");
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [title, setTitle] = React.useState("");

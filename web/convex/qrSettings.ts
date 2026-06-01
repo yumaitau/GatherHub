@@ -1,7 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireOrgMember, requireRole } from "./lib/auth";
+import { requireOrgMember } from "./lib/auth";
 import { attachOrgImage, deleteOrgImage, orgImageUrl } from "./lib/uploads";
+import { requireCapability } from "./lib/capabilities";
 
 /**
  * Read the active org's QR render settings. Returns `null` when the
@@ -61,7 +62,8 @@ export const upsert = mutation({
     borderRadius: v.number(),
   },
   handler: async (ctx, args) => {
-    const auth = await requireRole(ctx, "committee");
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "settings.admin");
     const existing = await ctx.db
       .query("qrSettings")
       .withIndex("by_org", (q) => q.eq("orgId", auth.org._id))
