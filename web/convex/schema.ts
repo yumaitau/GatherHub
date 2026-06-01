@@ -707,7 +707,7 @@ export default defineSchema({
     contactEmail: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     website: v.optional(v.string()),
-    logoStorageId: v.optional(v.id("_storage")),
+    logoStorageId: v.optional(v.string()),
     sponsorshipValue: v.optional(v.number()),
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
@@ -723,7 +723,7 @@ export default defineSchema({
     slug: v.string(),
     body: v.string(),
     excerpt: v.optional(v.string()),
-    coverImageStorageId: v.optional(v.id("_storage")),
+    coverImageStorageId: v.optional(v.string()),
     published: v.boolean(),
     publishedAt: v.optional(v.number()),
     authorUserId: v.id("users"),
@@ -734,7 +734,7 @@ export default defineSchema({
 
   uploadedFiles: defineTable({
     orgId: v.id("organizations"),
-    storageId: v.id("_storage"),
+    storageId: v.string(),
     path: v.string(),
     ownerType: v.string(),
     ownerId: v.string(),
@@ -743,6 +743,8 @@ export default defineSchema({
     contentType: v.string(),
     size: v.number(),
     uploadedBy: v.id("users"),
+    verifiedAt: v.optional(v.number()),
+    attachedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
@@ -1090,7 +1092,7 @@ export default defineSchema({
     // Logo overlay size.
     logoSize: v.string(), // small | medium | large
     // Optional uploaded logo storage id.
-    logoStorageId: v.optional(v.id("_storage")),
+    logoStorageId: v.optional(v.string()),
     // Optional rectangular border outside the QR.
     borderEnabled: v.boolean(),
     borderColor: v.string(),

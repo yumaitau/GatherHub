@@ -72,7 +72,7 @@ This epic delivers each organisation's public-facing website: a public profile, 
   - [ ] Shows logo, name, and website link.
   - [ ] No private sponsor data exposed.
   - [ ] Renders without authentication.
-- **Technical notes:** Consumes the public sponsors query (Epic 10 #9). Logos served from Convex storage URLs.
+- **Technical notes:** Consumes the public sponsors query (Epic 10 #9). Logos are served from org-scoped R2 objects through the public-site resolver.
 - **Dependencies:** Epic 11 #1 Public organisation profile, Epic 10 #9 Public website visibility
 - **Labels:** `area:web`, `type:feature`, `epic:public-site`, `good-first-issue`
 - **Estimated effort:** S (2-4h)

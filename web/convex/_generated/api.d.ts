@@ -27,6 +27,7 @@ import type * as lib_capabilities from "../lib/capabilities.js";
 import type * as lib_idempotency from "../lib/idempotency.js";
 import type * as lib_ids from "../lib/ids.js";
 import type * as lib_orgConfig from "../lib/orgConfig.js";
+import type * as lib_r2 from "../lib/r2.js";
 import type * as lib_sportRosterTemplates from "../lib/sportRosterTemplates.js";
 import type * as lib_uploads from "../lib/uploads.js";
 import type * as matchRosters from "../matchRosters.js";
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   "lib/idempotency": typeof lib_idempotency;
   "lib/ids": typeof lib_ids;
   "lib/orgConfig": typeof lib_orgConfig;
+  "lib/r2": typeof lib_r2;
   "lib/sportRosterTemplates": typeof lib_sportRosterTemplates;
   "lib/uploads": typeof lib_uploads;
   matchRosters: typeof matchRosters;

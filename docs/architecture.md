@@ -18,7 +18,7 @@ authoritative backend:
 | Surface | Path | Stack | Talks to |
 | --- | --- | --- | --- |
 | Web app | `/web` | Vite + React 18 + TypeScript + React Router v6 + Tailwind CSS + shadcn-style components on Radix | Convex (directly) + Clerk (identity only) |
-| Backend | `/web/convex` | Convex (DB + serverless functions + file storage) | — (it *is* the backend, and owns club/membership state) |
+| Backend | `/web/convex` | Convex (DB + serverless functions) + Cloudflare R2 object storage | — (it *is* the backend, and owns club/membership state) |
 | iOS app | `/ios` | SwiftUI + Clerk iOS SDK + Convex Swift client | Convex (directly) + Clerk (identity only) |
 
 The core architectural decision: **both clients talk directly to Convex** using a
@@ -160,7 +160,8 @@ becomes its first `owner`; admins promote/demote others via `roles.updateRole`.
 | --- | --- |
 | **Vite + React 18 + TS** | Fast dev server / HMR, first-class TypeScript, simplest path to a SPA that talks directly to Convex. No SSR complexity needed for an admin console. |
 | **Tailwind + shadcn/Radix** | Accessible-by-default primitives (Radix), unstyled and ownable components (shadcn pattern), rapid consistent UI without a heavyweight component library. |
-| **Convex** | One backend for DB + serverless functions + file storage + realtime subscriptions. End-to-end TypeScript types from schema to client. Reactive queries remove most state-sync glue. Server functions are the natural place to enforce org-scoping and RBAC. |
+| **Convex** | One backend for DB + serverless functions + realtime subscriptions. End-to-end TypeScript types from schema to client. Reactive queries remove most state-sync glue. Server functions are the natural place to enforce org-scoping and RBAC. |
+| **Cloudflare R2** | S3-compatible object storage for uploaded files. Convex issues scoped object paths, records metadata, validates ownership, and resolves URLs. |
 | **Clerk** | Drop-in auth with native React + iOS SDKs and JWT templates that integrate cleanly with Convex. Used purely for identity — clubs and memberships are owned by Convex so tenancy stays under our control and is enforceable in tests. |
 | **Direct client → Convex** | Removes an entire REST/API-gateway tier. Fewer moving parts, fewer auth boundaries to secure, less code for an MVP. |
 
@@ -283,8 +284,9 @@ graph LR
   / CDN.
 - Convex deploys via `npx convex deploy`; functions and schema ship together and
   Convex enforces the schema on write.
-- Convex file storage holds uploaded files (member photos, asset photos, sponsor
-  logos, news images). Uploads are validated server-side (content-type/size) —
-  see `security-model.md`.
+- Cloudflare R2 holds uploaded files (member photos, asset photos, sponsor
+  logos, news images, and future documents). Convex owns object metadata,
+  validation, org-scoped path issuance, and URL resolution — see
+  `security-model.md`.
 - iOS ships through TestFlight/App Store; it targets the production Convex URL
   and Clerk production instance.

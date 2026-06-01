@@ -54,7 +54,7 @@ export const upsert = mutation({
     cornerSquareStyle: v.string(),
     margin: v.number(),
     logoSize: v.string(),
-    logoStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+    logoStorageId: v.optional(v.union(v.string(), v.null())),
     logoFileName: v.optional(v.string()),
     borderEnabled: v.boolean(),
     borderColor: v.string(),

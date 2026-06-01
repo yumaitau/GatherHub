@@ -1,34 +1,187 @@
-import { mutation } from "./_generated/server";
-import { requireOrgMember } from "./lib/auth";
-import { hasCapability, requireCapability } from "./lib/capabilities";
+import { v } from "convex/values";
+import { internal } from "./_generated/api";
+import {
+  action,
+  internalMutation,
+  internalQuery,
+  mutation,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
+import { requireOrgMember, type AuthContext } from "./lib/auth";
+import { requireCapability, type Capability } from "./lib/capabilities";
+import { deleteR2ObjectByKey, headR2Object } from "./lib/r2";
+import {
+  createOrgImageUpload,
+  imageValidationError,
+  validateDeclaredImageMetadata,
+  type UploadOwnerType,
+  type UploadPurpose,
+} from "./lib/uploads";
+
+const ownerType = v.union(
+  v.literal("news"),
+  v.literal("qrSettings"),
+  v.literal("sponsors"),
+);
+const purpose = v.union(
+  v.literal("coverImage"),
+  v.literal("logo"),
+  v.literal("qrLogo"),
+);
+
+function uploadCapabilityFor(ownerType: string, purpose: string): Capability {
+  if (ownerType === "sponsors" && purpose === "logo") {
+    return "sponsors.manage";
+  }
+  if (ownerType === "news" && purpose === "coverImage") {
+    return "news.manage";
+  }
+  if (ownerType === "qrSettings" && purpose === "qrLogo") {
+    return "assets.admin";
+  }
+  throw new Error("Unsupported upload destination.");
+}
+
+async function requireUploadCapability(
+  ctx: QueryCtx | MutationCtx,
+  auth: AuthContext,
+  ownerType: string,
+  purpose: string,
+) {
+  await requireCapability(ctx, auth, uploadCapabilityFor(ownerType, purpose));
+}
 
 /**
- * Generate a short-lived upload URL for file storage (e.g. sponsor logos, news
- * cover images). The client POSTs the file directly to this URL and receives a
- * storageId back, which it then attaches via the relevant mutation.
- *
- * Validation note: Convex enforces auth here; the consuming mutation validates
- * that the resulting storageId is attached only to records in the caller's org.
- * Size/content-type limits are enforced client-side and re-checked on display.
- * See /docs/security-model.md (secure file upload validation).
+ * Issue a short-lived R2 PUT URL for an org-scoped image upload. The returned
+ * `storageId` is the R2 object key and remains compatible with existing
+ * sponsor/news/QR mutation argument names.
  */
 export const generateUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    ownerType,
+    ownerId: v.string(),
+    purpose,
+    fileName: v.optional(v.string()),
+    contentType: v.string(),
+    size: v.number(),
+  },
+  handler: async (ctx, args) => {
     const auth = await requireOrgMember(ctx);
-    const canUpload =
-      (await hasCapability(ctx, auth, "sponsors.manage")) ||
-      (await hasCapability(ctx, auth, "news.manage")) ||
-      (await hasCapability(ctx, auth, "settings.admin"));
-    if (!canUpload) {
-      await requireCapability(ctx, auth, "assets.admin");
-    }
-    return await ctx.storage.generateUploadUrl();
+    await requireUploadCapability(ctx, auth, args.ownerType, args.purpose);
+    return await createOrgImageUpload(ctx, auth, {
+      ownerType: args.ownerType as UploadOwnerType,
+      ownerId: args.ownerId,
+      purpose: args.purpose as UploadPurpose,
+      fileName: args.fileName,
+      contentType: args.contentType,
+      size: args.size,
+    });
   },
 });
 
-// Note: there is no public storageId → URL resolver. Callers that need a
-// served URL for an attached file (sponsor logo, news cover image) get it
-// back from the owning record's query, which performs the org check.
-// Exposing a generic resolver would oracle every storageId in the deployment
-// to any client. See security review (Critical #1) for context.
+/**
+ * Verify that the object was actually written to R2 before an owning mutation
+ * can attach the returned key to an org record.
+ */
+export const completeUpload = action({
+  args: {
+    storageId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const upload = await ctx.runQuery(internal.files.getUploadForVerification, {
+      storageId: args.storageId,
+    });
+    const object = await headR2Object(upload.path);
+    if (!object) {
+      await ctx.runMutation(internal.files.markUploadDeleted, {
+        storageId: args.storageId,
+      });
+      throw new Error("Uploaded image was not found in R2.");
+    }
+
+    const validationError = imageValidationError(object);
+    if (validationError) {
+      await ctx.runMutation(internal.files.markUploadDeleted, {
+        storageId: args.storageId,
+      });
+      await deleteR2ObjectByKey(upload.path).catch(() => undefined);
+      throw new Error(validationError);
+    }
+
+    const metadata = validateDeclaredImageMetadata(object);
+    await ctx.runMutation(internal.files.markUploadVerified, {
+      storageId: args.storageId,
+      contentType: metadata.contentType,
+      size: metadata.size,
+    });
+    return { storageId: args.storageId };
+  },
+});
+
+export const getUploadForVerification = internalQuery({
+  args: {
+    storageId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const auth = await requireOrgMember(ctx);
+    const upload = await ctx.db
+      .query("uploadedFiles")
+      .withIndex("by_storage", (q) => q.eq("storageId", args.storageId))
+      .first();
+    if (!upload || upload.orgId !== auth.org._id || upload.deletedAt) {
+      throw new Error("Uploaded image is not available to this organisation.");
+    }
+    if (upload.uploadedBy !== auth.user._id) {
+      throw new Error("Uploaded image belongs to another user.");
+    }
+    await requireUploadCapability(ctx, auth, upload.ownerType, upload.purpose);
+    return {
+      path: upload.path,
+    };
+  },
+});
+
+export const markUploadVerified = internalMutation({
+  args: {
+    storageId: v.string(),
+    contentType: v.string(),
+    size: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const upload = await ctx.db
+      .query("uploadedFiles")
+      .withIndex("by_storage", (q) => q.eq("storageId", args.storageId))
+      .first();
+    if (!upload || upload.deletedAt) {
+      throw new Error("Uploaded image is not available.");
+    }
+    const metadata = validateDeclaredImageMetadata({
+      contentType: args.contentType,
+      size: args.size,
+    });
+    await ctx.db.patch(upload._id, {
+      contentType: metadata.contentType,
+      size: metadata.size,
+      verifiedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const markUploadDeleted = internalMutation({
+  args: {
+    storageId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const upload = await ctx.db
+      .query("uploadedFiles")
+      .withIndex("by_storage", (q) => q.eq("storageId", args.storageId))
+      .first();
+    if (!upload || upload.deletedAt) return;
+    await ctx.db.patch(upload._id, {
+      deletedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});

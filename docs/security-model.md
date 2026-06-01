@@ -226,25 +226,31 @@ Rules:
 
 ## 5. Secure file upload validation
 
-All uploads go to **Convex file storage** via a server-issued upload URL.
+Uploads go to **Cloudflare R2** through server-issued, short-lived object URLs.
+Convex remains the authority for ownership, metadata, validation, and URL
+resolution.
 
-- Mutations issue a short-lived upload URL (`ctx.storage.generateUploadUrl()`)
-  only to authenticated, authorised callers.
-- After upload, a mutation records the resulting `storageId` against a document,
-  re-checking `orgId` and role. Uploaded objects also get an
-  `uploadedFiles` metadata row with a canonical nested path:
-  `organizations/<orgId>/<ownerType>/<ownerId>/<purpose>/<file>`.
-- **Validation on confirm:** the server checks the stored file's
-  `contentType` against an allow-list per use-case (e.g. images:
-  `image/png`, `image/jpeg`, `image/webp`, `image/gif`; certificate docs additionally
-  `application/pdf`) and rejects/deletes anything outside the limit.
-- **Size limits** are enforced per use-case (e.g. logos/photos ≤ 5 MB, documents
-  ≤ 15 MB); oversized files are rejected and the storage object deleted.
-- File `storageId`s are only ever surfaced through org-scoped, role-checked
-  queries that return signed URLs — raw storage ids are not public.
-- Replacing or deleting an uploaded image marks the metadata row deleted and
-  deletes the underlying Convex storage object. Public-site image URLs are
-  exposed only from records already marked public for that organisation.
+- Upload URLs are issued only to authenticated, authorised callers. The object
+  key uses the canonical nested path convention:
+  `orgs/<orgId>/<ownerType>/<ownerId>/<purpose>/<file>`. The `orgId` path
+  segment is treated as an authorisation boundary, not as client input.
+- After upload, the client completes the upload. Convex performs a HEAD check
+  against R2, records the verified content type/size, and only then allows the
+  owning mutation to attach the object key to the sponsor, news, QR setting, or
+  future document row.
+- Uploaded objects also get an `uploadedFiles` metadata row with the canonical
+  path, owner type/id, purpose, content type, size, uploader, and delete state.
+- **Validation on completion and attach:** the server enforces an allow-list per
+  use-case (e.g. images: `image/png`, `image/jpeg`, `image/webp`, `image/gif`;
+  certificate documents additionally `application/pdf`) and rejects objects
+  outside the allowed type/size profile.
+- **Size limits** are enforced per use-case (e.g. logos/photos <= 5 MB,
+  documents <= 15 MB). Rejected or replaced objects are deleted from R2 on a
+  best-effort basis and marked deleted in metadata.
+- Raw object keys are not public API. Private/admin surfaces get files through
+  org-scoped, role-checked resolvers. Public-site images are exposed only from
+  records already marked public for that organisation and are served through
+  short-lived signed GET URLs.
 
 ---
 

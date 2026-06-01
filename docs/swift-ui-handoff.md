@@ -52,9 +52,9 @@ Clerk-authenticated session — there is no REST API tier in between.
 
 - **Identity:** Clerk (iOS SDK). JWT carries subject, email, name, picture
   only.
-- **Backend:** Convex (queries, mutations, file storage, websocket
-  subscriptions). Verifies the Clerk JWT on every call; identity available
-  via `ctx.auth.getUserIdentity()`.
+- **Backend:** Convex (queries, mutations, websocket subscriptions) plus
+  Cloudflare R2 object storage for uploaded files. Convex verifies the Clerk JWT
+  on every call; identity is available via `ctx.auth.getUserIdentity()`.
 - **Multi-tenancy:** clubs (`organizations`) and `memberships` are
   Convex-native; Clerk Organizations are not used. The active org lives on
   `users.activeOrgId` and is switched via `organizations.setActive`. The
@@ -394,11 +394,12 @@ the full set; the auth model only needs the `by_org*` indexes anyway.
 - **volunteerCertifications** — `orgId`, `memberId`, `name`, `issuer?`,
   `issuedDate?`, `expiryDate?` (ISO; drives expiry queries), `notes?`.
 - **sponsors** — `orgId`, `name`, `contactName?`, `contactEmail?`,
-  `contactPhone?`, `website?`, `logoStorageId?`, `sponsorshipValue?`,
+  `contactPhone?`, `website?`, `logoStorageId?` (R2 object key),
+  `sponsorshipValue?`,
   `startDate?`, `endDate?`, `visibleOnPublicSite`, `notes?`.
 - **news** — `orgId`, `title`, `slug` (unique within org), `body` (raw —
-  no markdown processing, see § 11), `excerpt?`, `coverImageStorageId?`,
-  `published`, `publishedAt?`, `authorUserId`.
+  no markdown processing, see § 11), `excerpt?`, `coverImageStorageId?` (R2
+  object key), `published`, `publishedAt?`, `authorUserId`.
 - **publicSiteSettings** — one per org. `orgId`, `enabled`, `tagline?`,
   `about?`, `primaryColor?`, `contactEmail?`, `contactPhone?`, `address?`,
   `facebookUrl?`, `instagramUrl?`, `websiteUrl?`.
@@ -586,7 +587,8 @@ unless noted.
 ### 7.10 Sponsors — `web/convex/sponsors.ts`
 
 - **`sponsors.list`** / **`get`** — queries, `requireOrgMember`. Resolves
-  `logoUrl` via `ctx.storage.getUrl`.
+  `logoUrl` through the org-scoped upload helper, which signs or exposes the
+  underlying R2 object only after the owner record is authorised.
 - **`sponsors.create`** / **`update`** — mutations,
   `requireRole("committee")`.
 - **`sponsors.remove`** — mutation, `requireRole("admin")`. Unlinks
@@ -678,11 +680,14 @@ All mutations call `assertSoccerMode`; on `soccerMode !== true` throw
 
 ### 7.18 Files — `web/convex/files.ts`
 
-- **`files.generateUploadUrl`** — mutation, `requireRole("committee")`.
-  Short-lived upload URL; client `PUT`s the file, then attaches the
-  resulting storageId via the owning mutation. No generic storageId → URL
-  resolver — URLs come back through org-scoped queries (e.g.
-  `sponsors.list`, `publicSite.*`).
+- **`files.generateUploadUrl`** — mutation, matching capability per upload
+  destination (`sponsors.manage`, `news.manage`, or `assets.admin`).
+  Short-lived R2 upload URL; client `PUT`s the file.
+- **`files.completeUpload`** — action. Runs an R2 HEAD check, verifies MIME type
+  and byte size, and marks the upload metadata verified. Only verified object
+  keys can be attached by the owning mutation. No generic object-key → URL
+  resolver — URLs come back through org-scoped queries (e.g. `sponsors.list`,
+  `publicSite.*`).
 
 ### 7.19 HTTP — `web/convex/http.ts`
 
@@ -801,10 +806,12 @@ Defer these — match (do not exceed) the web behaviour.
   ambiguous asset state is unacceptable (see
   `docs/mobile-architecture.md` § 10). Show a banner; block destructive
   mutations until recovery.
-- **File-upload validation.** `files.generateUploadUrl` does not validate
-  content-type or size server-side at confirm. Validate locally before
-  upload (image/png, image/jpeg, image/webp ≤ 5MB for logos/photos; PDF ≤
-  15MB for certificates).
+- **File-upload validation.** Uploads use server-issued R2 object keys under an
+  org-scoped path. Validate locally before upload, call `files.completeUpload`
+  after the PUT succeeds, and rely on the owning mutation to re-check verified
+  content type, size, owner, and purpose before the object key is attached
+  (image/png, image/jpeg, image/webp <= 5MB for logos/photos; PDF <= 15MB for
+  certificates).
 
 Security-review items (all server-enforced; iOS must not try to bypass):
 

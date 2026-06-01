@@ -12,7 +12,7 @@ This epic manages club sponsors: a sponsor data model, list/detail/form, logo up
   - [ ] Indexed by org id.
   - [ ] Supports active/expired derivation from dates.
   - [ ] Schema validates required fields.
-- **Technical notes:** Logo stored via Convex file storage (Issue 5). Value as minor units/currency (consistent with Epic 6 #13). Visibility flag drives public site (Issue 9).
+- **Technical notes:** Logo stored in Cloudflare R2 behind Convex-issued org-scoped upload paths (Issue 5). Value as minor units/currency (consistent with Epic 6 #13). Visibility flag drives public site (Issue 9).
 - **Dependencies:** Epic 2 #7 Add organisation-scoped queries
 - **Labels:** `area:backend`, `type:feature`, `epic:sponsors`
 - **Estimated effort:** S (2-4h)
@@ -65,14 +65,14 @@ This epic manages club sponsors: a sponsor data model, list/detail/form, logo up
 ## Issue 5: Sponsor logo upload
 
 - **Title:** Sponsor logo upload
-- **Description:** Allow uploading and displaying a sponsor logo via Convex file storage.
+- **Description:** Allow uploading and displaying a sponsor logo via R2 object storage with Convex-owned metadata and validation.
 - **Goal:** Sponsors can have a logo image stored and rendered.
 - **Acceptance criteria:**
   - [ ] Upload accepts common image types with size limits.
-  - [ ] File stored in Convex storage; reference saved on the sponsor.
+  - [ ] File stored in R2 under the org-scoped path convention; reference saved on the sponsor.
   - [ ] Logo rendered on detail/list and public site.
   - [ ] Upload validates type/size and rejects others.
-- **Technical notes:** Use Convex storage upload URLs. Validate MIME/size server-side (Epic 14 #6). Serve via stored file URL; consider image dimension constraints.
+- **Technical notes:** Use server-issued R2 upload URLs. Validate MIME/size server-side (Epic 14 #6). Serve via org-scoped URL resolver; consider image dimension constraints.
 - **Dependencies:** Epic 10 #1 Sponsor schema, Epic 1 #6 Configure Convex
 - **Labels:** `area:backend`, `area:web`, `type:feature`, `epic:sponsors`
 - **Estimated effort:** M (4-8h)

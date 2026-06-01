@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Link } from "react-router-dom";
 import { Building2, Plus } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
@@ -95,7 +95,9 @@ export default function SponsorsPage() {
 
 function NewSponsorDialog() {
   const create = useMutation(api.sponsors.create);
+  const update = useMutation(api.sponsors.update);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const completeUpload = useAction(api.files.completeUpload);
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
@@ -126,14 +128,10 @@ function NewSponsorDialog() {
     setError(null);
     setSaving(true);
     try {
-      let logoUpload: Awaited<ReturnType<typeof uploadImageFile>> | undefined;
-      if (logoFile) {
-        logoUpload = await uploadImageFile(generateUploadUrl, logoFile);
-      }
       const valueNum = sponsorshipValue.trim()
         ? Number(sponsorshipValue)
         : undefined;
-      await create({
+      const sponsorId = await create({
         name,
         contactName: contactName.trim() || undefined,
         contactEmail: contactEmail.trim() || undefined,
@@ -144,9 +142,24 @@ function NewSponsorDialog() {
             : undefined,
         visibleOnPublicSite,
         notes: notes.trim() || undefined,
-        logoStorageId: logoUpload?.storageId,
-        logoFileName: logoUpload?.fileName,
       });
+      if (logoFile) {
+        const logoUpload = await uploadImageFile(
+          generateUploadUrl,
+          completeUpload,
+          logoFile,
+          {
+            ownerType: "sponsors",
+            ownerId: sponsorId,
+            purpose: "logo",
+          },
+        );
+        await update({
+          sponsorId,
+          logoStorageId: logoUpload.storageId,
+          logoFileName: logoUpload.fileName,
+        });
+      }
       reset();
       setOpen(false);
       toastSuccess("Sponsor created.");

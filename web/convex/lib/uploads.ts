@@ -1,23 +1,37 @@
-import { MutationCtx, QueryCtx } from "../_generated/server";
+import { makeFunctionReference } from "convex/server";
+import { v } from "convex/values";
+import { internalAction, MutationCtx, QueryCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { AuthContext } from "./auth";
+import {
+  deleteR2ObjectByKey,
+  hasR2Config,
+  presignR2ReadUrl,
+  presignR2Url,
+} from "./r2";
 
-const IMAGE_CONTENT_TYPES = new Set([
+export const IMAGE_CONTENT_TYPES = new Set([
   "image/png",
   "image/jpeg",
   "image/webp",
   "image/gif",
 ]);
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
-type UploadOwnerType = "news" | "qrSettings" | "sponsors";
-type UploadPurpose = "coverImage" | "logo" | "qrLogo";
+export type UploadOwnerType = "news" | "qrSettings" | "sponsors";
+export type UploadPurpose = "coverImage" | "logo" | "qrLogo";
 
 type StorageMetadata = {
   size: number;
   contentType?: string;
 };
+
+const deleteR2ObjectRef = makeFunctionReference<
+  "action",
+  { key: string },
+  null
+>("lib/uploads:deleteR2Object");
 
 function extensionForContentType(contentType: string): string {
   switch (contentType) {
@@ -34,7 +48,7 @@ function extensionForContentType(contentType: string): string {
   }
 }
 
-function safePathSegment(value: string, fallback: string): string {
+export function safePathSegment(value: string, fallback: string): string {
   const cleaned = value
     .trim()
     .toLowerCase()
@@ -46,40 +60,42 @@ function safePathSegment(value: string, fallback: string): string {
 
 function safeFileName(
   fileName: string | undefined,
-  storageId: Id<"_storage">,
+  uploadId: string,
   contentType: string,
 ): string {
-  const fallback = `${storageId}.${extensionForContentType(contentType)}`;
+  const fallback = `${uploadId}.${extensionForContentType(contentType)}`;
   if (!fileName) return fallback;
   const nameOnly = fileName.split(/[\\/]/).pop();
   return safePathSegment(nameOnly ?? "", fallback);
 }
 
-function orgStoragePath(args: {
+export function orgStoragePath(args: {
   orgId: Id<"organizations">;
   ownerType: UploadOwnerType;
   ownerId: string;
   purpose: UploadPurpose;
   fileName: string | undefined;
-  storageId: Id<"_storage">;
+  uploadId: string;
   contentType: string;
 }): string {
-  const file = safeFileName(args.fileName, args.storageId, args.contentType);
+  const file = safeFileName(args.fileName, args.uploadId, args.contentType);
+  const upload = safePathSegment(args.uploadId, "upload");
   const ownerType = safePathSegment(args.ownerType, "file");
   const ownerId = safePathSegment(args.ownerId, "unassigned");
   const purpose = safePathSegment(args.purpose, "asset");
-  const storage = safePathSegment(args.storageId, "storage");
   return [
-    "organizations",
+    "orgs",
     args.orgId,
     ownerType,
     ownerId,
     purpose,
-    `${Date.now()}-${storage}-${file}`,
+    `${upload}-${file}`,
   ].join("/");
 }
 
-function imageValidationError(metadata: StorageMetadata | null): string | null {
+export function imageValidationError(
+  metadata: StorageMetadata | null,
+): string | null {
   if (!metadata) return "Uploaded image was not found.";
   const contentType = metadata.contentType ?? "";
   if (!IMAGE_CONTENT_TYPES.has(contentType)) {
@@ -91,90 +107,57 @@ function imageValidationError(metadata: StorageMetadata | null): string | null {
   return null;
 }
 
-async function imageMetadata(
-  ctx: QueryCtx | MutationCtx,
-  storageId: Id<"_storage">,
-) {
-  return await ctx.db.system.get("_storage", storageId);
+export function validateDeclaredImageMetadata(metadata: StorageMetadata): {
+  contentType: string;
+  size: number;
+} {
+  const error = imageValidationError(metadata);
+  if (error) throw new Error(error);
+  return {
+    contentType: metadata.contentType!,
+    size: metadata.size,
+  };
 }
 
-async function validatedImageMetadata(
-  ctx: MutationCtx,
-  storageId: Id<"_storage">,
-) {
-  const metadata = await imageMetadata(ctx, storageId);
-  async function reject(message: string): Promise<never> {
-    try {
-      await ctx.storage.delete(storageId);
-    } catch {
-      // Best-effort cleanup; keep the validation error as the caller signal.
-    }
-    throw new Error(message);
-  }
-  if (!metadata) return await reject("Uploaded image was not found.");
-  const contentType = metadata.contentType ?? "";
-  if (!IMAGE_CONTENT_TYPES.has(contentType)) {
-    return await reject("Upload must be a PNG, JPEG, WebP, or GIF image.");
-  }
-  if (metadata.size > MAX_IMAGE_BYTES) {
-    return await reject("Image uploads must be 5 MB or smaller.");
-  }
-  return { size: metadata.size, contentType };
-}
-
-export async function attachOrgImage(
+export async function createOrgImageUpload(
   ctx: MutationCtx,
   auth: AuthContext,
   args: {
-    storageId: Id<"_storage">;
     ownerType: UploadOwnerType;
     ownerId: string;
     purpose: UploadPurpose;
     fileName?: string;
+    contentType: string;
+    size: number;
   },
-): Promise<string> {
-  const metadata = await validatedImageMetadata(ctx, args.storageId);
-  const existing = await ctx.db
-    .query("uploadedFiles")
-    .withIndex("by_storage", (q) => q.eq("storageId", args.storageId))
-    .first();
-  if (existing) {
-    if (existing.orgId !== auth.org._id) {
-      throw new Error("Uploaded image is not available to this organisation.");
-    }
-    if (existing.deletedAt) {
-      throw new Error("Uploaded image has already been deleted.");
-    }
-    if (
-      existing.ownerType !== args.ownerType ||
-      existing.ownerId !== args.ownerId ||
-      existing.purpose !== args.purpose
-    ) {
-      throw new Error("Uploaded image is already attached to another record.");
-    }
-    await ctx.db.patch(existing._id, {
-      fileName: args.fileName,
-      contentType: metadata.contentType,
-      size: metadata.size,
-      updatedAt: Date.now(),
-    });
-    return existing.path;
-  }
-
-  const path = orgStoragePath({
+) {
+  const metadata = validateDeclaredImageMetadata({
+    contentType: args.contentType,
+    size: args.size,
+  });
+  const uploadId = crypto.randomUUID();
+  const key = orgStoragePath({
     orgId: auth.org._id,
     ownerType: args.ownerType,
     ownerId: args.ownerId,
     purpose: args.purpose,
     fileName: args.fileName,
-    storageId: args.storageId,
+    uploadId,
     contentType: metadata.contentType,
+  });
+  const signed = await presignR2Url({
+    method: "PUT",
+    key,
+    headers: {
+      "content-type": metadata.contentType,
+      "x-amz-meta-declared-size": String(metadata.size),
+    },
   });
   const now = Date.now();
   await ctx.db.insert("uploadedFiles", {
     orgId: auth.org._id,
-    storageId: args.storageId,
-    path,
+    storageId: key,
+    path: key,
     ownerType: args.ownerType,
     ownerId: args.ownerId,
     purpose: args.purpose,
@@ -185,63 +168,116 @@ export async function attachOrgImage(
     createdAt: now,
     updatedAt: now,
   });
-  return path;
+  return {
+    uploadUrl: signed.url,
+    storageId: key,
+    objectKey: key,
+    headers: signed.headers,
+    expiresInSeconds: 5 * 60,
+  };
+}
+
+export async function attachOrgImage(
+  ctx: MutationCtx,
+  auth: AuthContext,
+  args: {
+    storageId: string;
+    ownerType: UploadOwnerType;
+    ownerId: string;
+    purpose: UploadPurpose;
+    fileName?: string;
+  },
+): Promise<string> {
+  const existing = await ctx.db
+    .query("uploadedFiles")
+    .withIndex("by_storage", (q) => q.eq("storageId", args.storageId))
+    .first();
+  if (!existing) {
+    throw new Error("Uploaded image was not issued by this application.");
+  }
+  if (existing.orgId !== auth.org._id) {
+    throw new Error("Uploaded image is not available to this organisation.");
+  }
+  if (existing.deletedAt) {
+    throw new Error("Uploaded image has already been deleted.");
+  }
+  if (!existing.verifiedAt) {
+    throw new Error("Uploaded image has not been verified.");
+  }
+  if (
+    existing.ownerType !== args.ownerType ||
+    existing.ownerId !== args.ownerId ||
+    existing.purpose !== args.purpose
+  ) {
+    throw new Error("Uploaded image is already attached to another record.");
+  }
+  const metadata = validateDeclaredImageMetadata({
+    contentType: existing.contentType,
+    size: existing.size,
+  });
+  await ctx.db.patch(existing._id, {
+    fileName: args.fileName ?? existing.fileName,
+    contentType: metadata.contentType,
+    size: metadata.size,
+    attachedAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  return existing.path;
 }
 
 export async function deleteOrgImage(
   ctx: MutationCtx,
   auth: AuthContext,
-  storageId: Id<"_storage"> | undefined,
+  storageId: string | undefined,
 ): Promise<void> {
   if (!storageId) return;
   const existing = await ctx.db
     .query("uploadedFiles")
     .withIndex("by_storage", (q) => q.eq("storageId", storageId))
     .first();
-  if (existing) {
-    if (existing.orgId !== auth.org._id) {
-      throw new Error("Uploaded image is not available to this organisation.");
-    }
-    if (!existing.deletedAt) {
-      await ctx.db.patch(existing._id, {
-        deletedAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-    }
+  if (!existing) return;
+  if (existing.orgId !== auth.org._id) {
+    throw new Error("Uploaded image is not available to this organisation.");
   }
-  try {
-    await ctx.storage.delete(storageId);
-  } catch {
-    // Legacy attachments may point at a missing storage object. The owner row
-    // has still been detached, so deletion stays best-effort.
+  if (!existing.deletedAt) {
+    await ctx.db.patch(existing._id, {
+      deletedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  }
+  if (hasR2Config()) {
+    await ctx.scheduler.runAfter(0, deleteR2ObjectRef, {
+      key: existing.path,
+    });
   }
 }
 
 async function imageUrlForOrg(
   ctx: QueryCtx | MutationCtx,
   orgId: Id<"organizations">,
-  storageId: Id<"_storage">,
+  storageId: string,
 ): Promise<string | null> {
   const existing = await ctx.db
     .query("uploadedFiles")
     .withIndex("by_storage", (q) => q.eq("storageId", storageId))
     .first();
-  if (existing) {
-    if (existing.orgId !== orgId || existing.deletedAt) return null;
-    return await ctx.storage.getUrl(storageId);
+  if (!existing) return null;
+  if (existing.orgId !== orgId || existing.deletedAt) return null;
+  if (
+    imageValidationError({
+      contentType: existing.contentType,
+      size: existing.size,
+    })
+  ) {
+    return null;
   }
-
-  // Legacy rows from before org-scoped upload metadata still only resolve
-  // through the owning record's org-checked query.
-  const metadata = await imageMetadata(ctx, storageId);
-  if (imageValidationError(metadata)) return null;
-  return await ctx.storage.getUrl(storageId);
+  return await presignR2ReadUrl(existing.path);
 }
 
 export async function orgImageUrl(
   ctx: QueryCtx | MutationCtx,
   auth: AuthContext,
-  storageId: Id<"_storage">,
+  storageId: string,
 ): Promise<string | null> {
   return await imageUrlForOrg(ctx, auth.org._id, storageId);
 }
@@ -249,7 +285,15 @@ export async function orgImageUrl(
 export async function publicImageUrlForOrg(
   ctx: QueryCtx | MutationCtx,
   orgId: Id<"organizations">,
-  storageId: Id<"_storage">,
+  storageId: string,
 ): Promise<string | null> {
   return await imageUrlForOrg(ctx, orgId, storageId);
 }
+
+export const deleteR2Object = internalAction({
+  args: { key: v.string() },
+  handler: async (_ctx, args) => {
+    await deleteR2ObjectByKey(args.key);
+    return null;
+  },
+});

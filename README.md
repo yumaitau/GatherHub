@@ -39,8 +39,12 @@ GatherHub answers the questions a committee actually has:
   rugby union, rugby league, cricket, hockey, netball, basketball, and
   multi-sport clubs can use sport-specific terminology without enabling
   soccer-only storage.
+- **Multi-sport fixtures and match day** — shared seasons, competitions,
+  divisions, venues, fixtures, standings, team sheets, position templates,
+  bench/interchange tracking, and participation logs for common team sports.
 - **iOS field-ops app** (SwiftUI) for scanning and checking kit in/out on the
-  sideline.
+  sideline, browsing offline-cached fixtures, and queueing match-day attendance
+  and participation updates while offline.
 
 ## Tech stack
 
@@ -48,7 +52,8 @@ GatherHub answers the questions a committee actually has:
 | ----------- | ------------------------------------------------------------- |
 | Frontend    | React + TypeScript + Vite + Tailwind + shadcn-style (Radix)   |
 | Routing     | React Router v6                                               |
-| Backend     | Convex (database, serverless functions, file storage)        |
+| Backend     | Convex (database and serverless functions)                    |
+| Files       | Cloudflare R2 using org-scoped object paths                   |
 | Auth        | Clerk (identity only — clubs live in Convex)                  |
 | Mobile      | SwiftUI + Clerk iOS SDK + Convex Swift client                 |
 | QR / NFC    | `qrcode` (web), AVFoundation + Core NFC (iOS)                 |
@@ -110,6 +115,11 @@ In the Convex dashboard (or via `npx convex env set`), set:
   `http://localhost:5173` locally or your deployed app URL.
 - `CLERK_WEBHOOK_SECRET` — optional signing secret if you wire up the Clerk
   webhook at `<CONVEX_SITE_URL>/clerk-webhook`.
+- `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` —
+  Cloudflare R2 bucket credentials for uploaded images/documents.
+
+The R2 bucket CORS policy must allow browser `PUT` requests from the web app
+origin with `content-type` and `x-amz-meta-declared-size` request headers.
 
 ### 4. Environment variables
 
@@ -163,7 +173,6 @@ fill in `ios/GatherHub/Config/Secrets.swift`, and build.
 ## Documentation
 
 - [Sport packs](docs/sport-packs.md)
-
 - [Architecture](docs/architecture.md)
 - [Data model](docs/data-model.md)
 - [Security model](docs/security-model.md)

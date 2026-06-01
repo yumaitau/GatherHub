@@ -13,19 +13,21 @@ usually for free, on top of a day job. They are not novice computer users,
 but they are not power users of any one app either — they switch between
 spreadsheets, email, and whichever banking portal they were given.
 
-Secondary users sit around that core: **coaches** marking attendance from
-a phone at training, **volunteers** scanning kit pitch-side via the iOS
-app, and **players or parents** consuming public information (team pages,
-the public club site, "return to owner" QR landing pages). Roles are
-enforced server-side (Owner, Admin, Committee, Coach, Volunteer, Parent,
-Player) and the UI must respect that hierarchy without making it noisy.
+Secondary users sit around that core: **coaches** marking attendance and
+match-day participation from a phone, **volunteers** scanning kit
+pitch-side via the iOS app, and **players or parents** consuming public
+information (team pages, the public club site, "return to owner" QR
+landing pages). Roles are enforced server-side (Owner, Admin,
+Committee, Coach, Volunteer, Parent, Player) and the UI must respect
+that hierarchy without making it noisy.
 
 The job to be done: run the operational side of a community sports club
 or volunteer-run organisation without losing track of people, kit, money,
 or accountability. The user opens GatherHub to **answer a specific
 question fast** (who has the U13 keeper jersey, who hasn't paid subs, who
-is rostered Saturday) and to **log an action** so the audit trail stays
-honest. Sessions are short, frequent, and often interrupted.
+is rostered Saturday, who has arrived for the match, who is on the
+bench) and to **log an action** so the audit trail stays honest.
+Sessions are short, frequent, and often interrupted.
 
 ## Product Purpose
 
@@ -38,12 +40,13 @@ either over-index on chat (Spond, TeamSnap) or on elite-sport performance
 data, leaving committee operations as a second-class concern.
 
 Success looks like: a committee runs an entire season inside GatherHub
-without exporting to a spreadsheet to do "the real work", every kit
-movement is traceable from issue to return, every permission decision is
-defensible, and a new committee member can pick up the tool mid-season
-without a handover document. The product is multi-tenant by club,
-authoritative in Convex, and treats audit as a feature, not a compliance
-afterthought.
+without exporting to a spreadsheet to do "the real work", every fixture
+and match-day team sheet is available before the sideline loses
+reception, every kit movement is traceable from issue to return, every
+permission decision is defensible, and a new committee member can pick
+up the tool mid-season without a handover document. The product is
+multi-tenant by organisation, authoritative in Convex, and treats audit
+as a feature, not a compliance afterthought.
 
 ## Brand Personality
 
@@ -113,6 +116,47 @@ language must not drift toward them:
    bulk actions, and exports are the home page of most sections.
    Resist the urge to put hero charts where a sortable list does the
    real job.
+5. **Offline is an operating mode, not an error state.** Field workflows
+   must assume poor reception. Once signed in while online, the iOS app
+   eagerly caches the data needed for fixtures, teams, people, assets,
+   announcements, tasks, training, and sport operations. Mutations that
+   happen offline are queued visibly and remain user-controlled until
+   connectivity is back.
+
+## Sport And Vertical Expansion
+
+GatherHub started with soccer-club operations, but the product direction
+is broader: a configurable operating system for sports clubs and other
+field-heavy organisations. Soccer remains a supported sport pack, not
+the product boundary.
+
+Sport packs now cover soccer, rugby union, rugby league, cricket,
+hockey, netball, basketball, multi-sport clubs, and other sports. Each
+pack supplies terminology, season and competition defaults, fixture
+structure, position templates, squad-size guidance, bench/interchange
+mode, jersey or bib terminology, and captaincy roles. These templates
+should guide the product without pretending to enforce every official
+rule in every competition.
+
+The shared sport model is:
+
+- **Setup:** seasons, competitions, divisions, venues, and teams.
+- **Fixtures:** match schedule, teams, status, results metadata,
+  standings, officials, CSV import/export, and rescheduling.
+- **Match day:** planned squad, actual participation, arrival and
+  availability state, positions, jersey/bib numbers, captain and vice
+  captain, bench/interchange/substitution events, and audit history.
+- **Mobile:** read-through cache first, then queued writes for the
+  field. A coach should be able to open the app at the ground, see the
+  team sheet, mark arrivals or injuries, change positions, and sync when
+  connectivity returns.
+
+The same vertical-expansion mindset applies outside sport. Logistics,
+waste removal, field service, schools, community organisations, and
+event companies need the same core primitives: people, groups, jobs or
+events, assets, training, tasks, public communication, evidence, and an
+audit trail. Product language must adapt to the organisation without
+forking the core architecture.
 
 ## Accessibility & Inclusion
 

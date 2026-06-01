@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { Role } from "./lib/auth";
@@ -63,6 +63,307 @@ describe("organisation isolation", () => {
     await expect(b.as.query(api.members.get, { memberId })).rejects.toThrow(
       /not found/i,
     );
+  });
+});
+
+describe("R2 image uploads", () => {
+  function withR2Env(fn: () => Promise<void>) {
+    const previous = {
+      R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+      R2_BUCKET: process.env.R2_BUCKET,
+      R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+      R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+      R2_ENDPOINT: process.env.R2_ENDPOINT,
+    };
+    process.env.R2_ACCOUNT_ID = "test-account";
+    process.env.R2_BUCKET = "gatherhub-test";
+    process.env.R2_ACCESS_KEY_ID = "test-access-key";
+    process.env.R2_SECRET_ACCESS_KEY = "test-secret-key";
+    delete process.env.R2_ENDPOINT;
+    return fn().finally(() => {
+      for (const [key, value] of Object.entries(previous)) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    });
+  }
+
+  function escapeRegExp(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function safePathSegmentForTest(value: string) {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 96);
+  }
+
+  test("issued upload URLs use org-scoped canonical R2 keys", async () => {
+    await withR2Env(async () => {
+      const t = convexTest(schema, modules);
+      const club = await seedOrg(t, {
+        clerkOrg: "org_r2_paths",
+        clerkUser: "user_r2_paths",
+        role: "owner",
+      });
+      const sponsorId = await club.as.mutation(api.sponsors.create, {
+        name: "Path Sponsor",
+      });
+
+      const upload = await club.as.mutation(api.files.generateUploadUrl, {
+        ownerType: "sponsors",
+        ownerId: sponsorId,
+        purpose: "logo",
+        fileName: "Main Logo.PNG",
+        contentType: "image/png",
+        size: 1234,
+      });
+
+      expect(upload.storageId).toMatch(
+        new RegExp(
+          `^orgs/${escapeRegExp(club.orgId)}/sponsors/${safePathSegmentForTest(sponsorId)}/logo/[a-f0-9-]+-main-logo\\.png$`,
+        ),
+      );
+      expect(upload.uploadUrl).toContain("X-Amz-Signature=");
+      expect(upload.headers).toMatchObject({
+        "content-type": "image/png",
+        "x-amz-meta-declared-size": "1234",
+      });
+
+      const row = await t.run(async (ctx) => {
+        return await ctx.db
+          .query("uploadedFiles")
+          .withIndex("by_storage", (q) => q.eq("storageId", upload.storageId))
+          .first();
+      });
+      expect(row).toMatchObject({
+        orgId: club.orgId,
+        ownerType: "sponsors",
+        ownerId: sponsorId,
+        purpose: "logo",
+        contentType: "image/png",
+        size: 1234,
+      });
+    });
+  });
+
+  test("an org cannot attach another org's R2 key", async () => {
+    const t = convexTest(schema, modules);
+    const a = await seedOrg(t, {
+      clerkOrg: "org_r2_a",
+      clerkUser: "user_r2_a",
+      role: "owner",
+    });
+    const b = await seedOrg(t, {
+      clerkOrg: "org_r2_b",
+      clerkUser: "user_r2_b",
+      role: "owner",
+    });
+    const sponsorA = await a.as.mutation(api.sponsors.create, {
+      name: "A Sponsor",
+    });
+    const sponsorB = await b.as.mutation(api.sponsors.create, {
+      name: "B Sponsor",
+    });
+    const key = `orgs/${a.orgId}/sponsors/${sponsorA}/logo/logo.png`;
+    await t.run(async (ctx) => {
+      await ctx.db.insert("uploadedFiles", {
+        orgId: a.orgId,
+        storageId: key,
+        path: key,
+        ownerType: "sponsors",
+        ownerId: sponsorA,
+        purpose: "logo",
+        fileName: "logo.png",
+        contentType: "image/png",
+        size: 100,
+        uploadedBy: a.userId,
+        verifiedAt: Date.now(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    await expect(
+      b.as.mutation(api.sponsors.update, {
+        sponsorId: sponsorB,
+        logoStorageId: key,
+        logoFileName: "logo.png",
+      }),
+    ).rejects.toThrow(/organisation/i);
+  });
+
+  test("attach rejects invalid declared R2 image metadata", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_r2_validation",
+      clerkUser: "user_r2_validation",
+      role: "owner",
+    });
+    const sponsorId = await club.as.mutation(api.sponsors.create, {
+      name: "Validation Sponsor",
+    });
+    const key = `orgs/${club.orgId}/sponsors/${sponsorId}/logo/logo.txt`;
+    await t.run(async (ctx) => {
+      await ctx.db.insert("uploadedFiles", {
+        orgId: club.orgId,
+        storageId: key,
+        path: key,
+        ownerType: "sponsors",
+        ownerId: sponsorId,
+        purpose: "logo",
+        fileName: "logo.txt",
+        contentType: "text/plain",
+        size: 100,
+        uploadedBy: club.userId,
+        verifiedAt: Date.now(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    await expect(
+      club.as.mutation(api.sponsors.update, {
+        sponsorId,
+        logoStorageId: key,
+        logoFileName: "logo.txt",
+      }),
+    ).rejects.toThrow(/png, jpeg, webp, or gif/i);
+  });
+
+  test("attach rejects R2 keys before upload completion verifies the object", async () => {
+    const t = convexTest(schema, modules);
+    const club = await seedOrg(t, {
+      clerkOrg: "org_r2_unverified",
+      clerkUser: "user_r2_unverified",
+      role: "owner",
+    });
+    const sponsorId = await club.as.mutation(api.sponsors.create, {
+      name: "Unverified Sponsor",
+    });
+    const key = `orgs/${club.orgId}/sponsors/${sponsorId}/logo/logo.png`;
+    await t.run(async (ctx) => {
+      await ctx.db.insert("uploadedFiles", {
+        orgId: club.orgId,
+        storageId: key,
+        path: key,
+        ownerType: "sponsors",
+        ownerId: sponsorId,
+        purpose: "logo",
+        fileName: "logo.png",
+        contentType: "image/png",
+        size: 100,
+        uploadedBy: club.userId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    await expect(
+      club.as.mutation(api.sponsors.update, {
+        sponsorId,
+        logoStorageId: key,
+        logoFileName: "logo.png",
+      }),
+    ).rejects.toThrow(/not been verified/i);
+  });
+
+  test("upload completion HEAD-verifies R2 before attachment", async () => {
+    await withR2Env(async () => {
+      const t = convexTest(schema, modules);
+      const club = await seedOrg(t, {
+        clerkOrg: "org_r2_complete",
+        clerkUser: "user_r2_complete",
+        role: "owner",
+      });
+      const sponsorId = await club.as.mutation(api.sponsors.create, {
+        name: "Complete Sponsor",
+      });
+      const upload = await club.as.mutation(api.files.generateUploadUrl, {
+        ownerType: "sponsors",
+        ownerId: sponsorId,
+        purpose: "logo",
+        fileName: "logo.png",
+        contentType: "image/png",
+        size: 100,
+      });
+
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn(async (_url, init) => {
+        expect(init?.method).toBe("HEAD");
+        return new Response(null, {
+          status: 200,
+          headers: {
+            "content-length": "100",
+            "content-type": "image/png",
+          },
+        });
+      }) as typeof fetch;
+      try {
+        await club.as.action(api.files.completeUpload, {
+          storageId: upload.storageId,
+        });
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+
+      await club.as.mutation(api.sponsors.update, {
+        sponsorId,
+        logoStorageId: upload.storageId,
+        logoFileName: "logo.png",
+      });
+      const row = await t.run(async (ctx) => {
+        return await ctx.db
+          .query("uploadedFiles")
+          .withIndex("by_storage", (q) => q.eq("storageId", upload.storageId))
+          .first();
+      });
+      expect(row?.verifiedAt).toEqual(expect.any(Number));
+      expect(row?.attachedAt).toEqual(expect.any(Number));
+    });
+  });
+
+  test("upload URL issuance requires the matching owner and purpose permission", async () => {
+    await withR2Env(async () => {
+      const t = convexTest(schema, modules);
+      const owner = await seedOrg(t, {
+        clerkOrg: "org_r2_cap_owner",
+        clerkUser: "user_r2_cap_owner",
+        role: "owner",
+      });
+      await expect(
+        owner.as.mutation(api.files.generateUploadUrl, {
+          ownerType: "sponsors",
+          ownerId: "sponsor-id",
+          purpose: "coverImage",
+          fileName: "bad.png",
+          contentType: "image/png",
+          size: 100,
+        }),
+      ).rejects.toThrow(/unsupported upload destination/i);
+
+      const coach = await seedOrg(t, {
+        clerkOrg: "org_r2_cap_coach",
+        clerkUser: "user_r2_cap_coach",
+        role: "coach",
+      });
+      await expect(
+        coach.as.mutation(api.files.generateUploadUrl, {
+          ownerType: "sponsors",
+          ownerId: "sponsor-id",
+          purpose: "logo",
+          fileName: "logo.png",
+          contentType: "image/png",
+          size: 100,
+        }),
+      ).rejects.toThrow(/sponsors\.manage|permission/i);
+    });
   });
 });
 

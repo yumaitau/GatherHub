@@ -209,7 +209,7 @@ A person in a club. May or may not be a `user`.
 | `dateOfBirth` | `v.optional(v.string())` | ISO date; used for minor detection. |
 | `email` | `v.optional(v.string())` | |
 | `phone` | `v.optional(v.string())` | |
-| `photoStorageId` | `v.optional(v.id("_storage"))` | |
+| `photoStorageId` | `v.optional(v.string())` | Compatibility field name; stores an R2 object key for uploaded photo. |
 | `medicalNotes` | `v.optional(v.string())` | **Restricted visibility** (see security-model). |
 | `isMinor` | `v.optional(v.boolean())` | Derived/cached from DOB. |
 | `status` | `v.union(v.literal("active"), v.literal("inactive"))` | |
@@ -368,7 +368,7 @@ A trackable club asset. Full field list — see `kittrace.md`.
 | `purchaseDate` | `v.optional(v.string())` | ISO date. |
 | `purchaseCost` | `v.optional(v.number())` | Minor currency units (cents). |
 | `condition` | `v.optional(v.union(v.literal("new"), v.literal("good"), v.literal("fair"), v.literal("poor")))` | |
-| `photoStorageId` | `v.optional(v.id("_storage"))` | |
+| `photoStorageId` | `v.optional(v.string())` | Compatibility field name; stores an R2 object key for uploaded photo. |
 | `homeLocation` | `v.optional(v.string())` | Default storage location. |
 | `currentLocation` | `v.optional(v.string())` | Where it is now. |
 | `custodianMemberId` | `v.optional(v.id("members"))` | Current holder (when checked out / in use). |
@@ -430,7 +430,7 @@ Children Check, First Aid, Coaching accreditation).
 | `referenceNumber` | `v.optional(v.string())` | |
 | `issuedAt` | `v.optional(v.string())` | ISO date. |
 | `expiresAt` | `v.optional(v.string())` | ISO date — drives expiry reminders. |
-| `documentStorageId` | `v.optional(v.id("_storage"))` | Scanned certificate. |
+| `documentStorageId` | `v.optional(v.string())` | Compatibility field name; stores an R2 object key for scanned certificate. |
 | `verifiedByUserId` | `v.optional(v.id("users"))` | |
 
 **Org-scoping field:** `orgId`.
@@ -444,7 +444,7 @@ A club sponsor.
 | `orgId` | `v.id("organisations")` | |
 | `name` | `v.string()` | |
 | `tier` | `v.optional(v.string())` | "Gold", "Silver". |
-| `logoStorageId` | `v.optional(v.id("_storage"))` | |
+| `logoStorageId` | `v.optional(v.string())` | Compatibility field name; stores an R2 object key for uploaded logo. |
 | `websiteUrl` | `v.optional(v.string())` | |
 | `contactName` | `v.optional(v.string())` | |
 | `contactEmail` | `v.optional(v.string())` | |
@@ -477,13 +477,37 @@ Public-site news/blog posts.
 | `title` | `v.string()` | |
 | `slug` | `v.string()` | Unique within org. |
 | `body` | `v.string()` | Markdown/HTML. |
-| `coverImageStorageId` | `v.optional(v.id("_storage"))` | |
+| `coverImageStorageId` | `v.optional(v.string())` | Compatibility field name; stores an R2 object key for uploaded cover image. |
 | `authorUserId` | `v.id("users")` | |
 | `published` | `v.boolean()` | |
 | `publishedAt` | `v.optional(v.number())` | Epoch ms. |
 
 **Org-scoping field:** `orgId`.
 **Indexes:** `by_org` `["orgId"]`, `by_org_slug` `["orgId","slug"]`, `by_org_published` `["orgId","published"]`.
+
+### uploadedFiles
+Metadata for files stored in Cloudflare R2. The object itself lives in R2; the
+Convex row owns org scoping, attachment state, validation metadata, and URL
+resolution.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `orgId` | `v.id("organisations")` | |
+| `storageId` | `v.string()` | Compatibility field name; stores the R2 object key. |
+| `path` | `v.string()` | Canonical nested object path, currently the same value as `storageId`. |
+| `ownerType` | `v.string()` | e.g. `sponsors`, `news`, `qrSettings`. |
+| `ownerId` | `v.string()` | Owning record id as a string. |
+| `purpose` | `v.string()` | e.g. `logo`, `coverImage`, `qrLogo`. |
+| `fileName` | `v.optional(v.string())` | Original display filename. |
+| `contentType` | `v.string()` | Verified MIME type after R2 HEAD check. |
+| `size` | `v.number()` | Verified byte size after R2 HEAD check. |
+| `uploadedBy` | `v.id("users")` | |
+| `verifiedAt` | `v.optional(v.number())` | Set only after R2 confirms the object exists and passes validation. |
+| `attachedAt` | `v.optional(v.number())` | Set when an owning mutation attaches the object key. |
+| `deletedAt` | `v.optional(v.number())` | Soft delete marker; R2 deletion is best-effort. |
+
+**Org-scoping field:** `orgId`.
+**Indexes:** `by_org` `["orgId"]`, `by_storage` `["storageId"]`, `by_org_path` `["orgId","path"]`, `by_org_owner` `["orgId","ownerType","ownerId"]`.
 
 ### publicSiteSettings
 Per-org configuration for the public website. One row per org.
@@ -495,7 +519,7 @@ Per-org configuration for the public website. One row per org.
 | `tagline` | `v.optional(v.string())` | |
 | `aboutHtml` | `v.optional(v.string())` | |
 | `primaryColor` | `v.optional(v.string())` | Hex. |
-| `heroImageStorageId` | `v.optional(v.id("_storage"))` | |
+| `heroImageStorageId` | `v.optional(v.string())` | Compatibility field name; stores an R2 object key for uploaded hero image. |
 | `contactEmail` | `v.optional(v.string())` | |
 | `socialLinks` | `v.optional(v.any())` | `{ facebook, instagram, x }`. |
 | `showSponsors` | `v.boolean()` | Surface sponsors publicly. |

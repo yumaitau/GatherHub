@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Newspaper, Pencil, Plus, Trash2 } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -171,6 +171,7 @@ function NewsDialog(
   const create = useMutation(api.news.create);
   const update = useMutation(api.news.update);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const completeUpload = useAction(api.files.completeUpload);
   const isEdit = props.mode === "edit";
   const post = props.post;
 
@@ -200,10 +201,19 @@ function NewsDialog(
     setSaving(true);
     try {
       let coverUpload: UploadedImage | undefined;
-      if (coverImageFile) {
-        coverUpload = await uploadImageFile(generateUploadUrl, coverImageFile);
-      }
       if (isEdit && post) {
+        if (coverImageFile) {
+          coverUpload = await uploadImageFile(
+            generateUploadUrl,
+            completeUpload,
+            coverImageFile,
+            {
+              ownerType: "news",
+              ownerId: post._id,
+              purpose: "coverImage",
+            },
+          );
+        }
         await update({
           newsId: post._id,
           title,
@@ -220,14 +230,29 @@ function NewsDialog(
               : {}),
         });
       } else {
-        await create({
+        const newsId = await create({
           title,
           excerpt: excerpt.trim() || undefined,
           body,
           published,
-          coverImageStorageId: coverUpload?.storageId,
-          coverImageFileName: coverUpload?.fileName,
         });
+        if (coverImageFile) {
+          coverUpload = await uploadImageFile(
+            generateUploadUrl,
+            completeUpload,
+            coverImageFile,
+            {
+              ownerType: "news",
+              ownerId: newsId,
+              purpose: "coverImage",
+            },
+          );
+          await update({
+            newsId,
+            coverImageStorageId: coverUpload.storageId,
+            coverImageFileName: coverUpload.fileName,
+          });
+        }
       }
       reset();
       setOpen(false);

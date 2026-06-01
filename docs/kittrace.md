@@ -27,7 +27,7 @@ The `assets` table (full definition in `data-model.md`):
 | `purchaseDate` | ISO date? | When acquired. |
 | `purchaseCost` | number? | Cost in minor units (cents). |
 | `condition` | enum? | new / good / fair / poor. |
-| `photoStorageId` | `Id<"_storage">?` | Photo (validated upload). |
+| `photoStorageId` | `string?` | Compatibility field name; stores an R2 object key for photo uploads. |
 | `homeLocation` | string? | Default storage location. |
 | `currentLocation` | string? | Where it is now. |
 | `custodianMemberId` | `Id<"members">?` | Who currently holds it. |

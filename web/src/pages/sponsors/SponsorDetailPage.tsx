@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Building2, Package, Trash2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
@@ -227,6 +227,7 @@ function EditSponsorDialog({
 }) {
   const update = useMutation(api.sponsors.update);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const completeUpload = useAction(api.files.completeUpload);
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState(sponsor.name);
   const [contactName, setContactName] = React.useState(
@@ -262,7 +263,16 @@ function EditSponsorDialog({
     try {
       let logoUpload: UploadedImage | undefined;
       if (logoFile) {
-        logoUpload = await uploadImageFile(generateUploadUrl, logoFile);
+        logoUpload = await uploadImageFile(
+          generateUploadUrl,
+          completeUpload,
+          logoFile,
+          {
+            ownerType: "sponsors",
+            ownerId: sponsor._id,
+            purpose: "logo",
+          },
+        );
       }
       const valueNum = sponsorshipValue.trim()
         ? Number(sponsorshipValue)

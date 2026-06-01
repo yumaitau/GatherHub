@@ -1,5 +1,3 @@
-import { Id } from "../../convex/_generated/dataModel";
-
 export const IMAGE_UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp,image/gif";
 
 const IMAGE_CONTENT_TYPES = new Set([
@@ -11,10 +9,38 @@ const IMAGE_CONTENT_TYPES = new Set([
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
+export type UploadOwnerType = "news" | "qrSettings" | "sponsors";
+export type UploadPurpose = "coverImage" | "logo" | "qrLogo";
+
 export type UploadedImage = {
-  storageId: Id<"_storage">;
+  storageId: string;
   fileName: string;
 };
+
+type UploadDestination = {
+  ownerType: UploadOwnerType;
+  ownerId: string;
+  purpose: UploadPurpose;
+};
+
+type GeneratedUpload = {
+  uploadUrl: string;
+  storageId: string;
+  headers?: Record<string, string>;
+};
+
+type GenerateUploadUrl = (args: {
+  ownerType: UploadOwnerType;
+  ownerId: string;
+  purpose: UploadPurpose;
+  fileName?: string;
+  contentType: string;
+  size: number;
+}) => Promise<GeneratedUpload>;
+
+type CompleteUpload = (args: { storageId: string }) => Promise<{
+  storageId: string;
+}>;
 
 function validateImage(file: File) {
   if (!IMAGE_CONTENT_TYPES.has(file.type)) {
@@ -26,17 +52,24 @@ function validateImage(file: File) {
 }
 
 export async function uploadImageFile(
-  generateUploadUrl: () => Promise<string>,
+  generateUploadUrl: GenerateUploadUrl,
+  completeUpload: CompleteUpload,
   file: File,
+  destination: UploadDestination,
 ): Promise<UploadedImage> {
   validateImage(file);
-  const url = await generateUploadUrl();
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": file.type },
+  const generated = await generateUploadUrl({
+    ...destination,
+    fileName: file.name,
+    contentType: file.type,
+    size: file.size,
+  });
+  const res = await fetch(generated.uploadUrl, {
+    method: "PUT",
+    headers: generated.headers ?? { "Content-Type": file.type },
     body: file,
   });
   if (!res.ok) throw new Error("Image upload failed.");
-  const json = (await res.json()) as { storageId: Id<"_storage"> };
-  return { storageId: json.storageId, fileName: file.name };
+  await completeUpload({ storageId: generated.storageId });
+  return { storageId: generated.storageId, fileName: file.name };
 }
