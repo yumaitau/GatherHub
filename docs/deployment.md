@@ -22,6 +22,36 @@ Set the production environment variables in the Convex dashboard:
 | `CLERK_SECRET_KEY`         | Yes      | Creates Clerk invites and reads invite metadata.   |
 | `PUBLIC_APP_URL`           | Yes      | Redirect target for Clerk invitation emails.       |
 | `CLERK_WEBHOOK_SECRET`     | Optional | Verifies the Clerk webhook for server-side sync.   |
+| `R2_ACCOUNT_ID`            | Yes      | Cloudflare account id for R2 presigned URLs.       |
+| `R2_BUCKET`                | Yes      | R2 bucket for uploaded images and documents.       |
+| `R2_ACCESS_KEY_ID`         | Yes      | R2 S3-compatible access key id.                    |
+| `R2_SECRET_ACCESS_KEY`     | Yes      | R2 S3-compatible secret access key.                |
+
+### R2 CORS
+
+Browser uploads use short-lived presigned R2 `PUT` URLs, so the R2 bucket must
+allow CORS requests from the web app origin. Add a CORS policy in the bucket
+settings using exact origins only; do not include a path or trailing slash.
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "http://localhost:5173",
+      "https://app.gatherhub.au"
+    ],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+If uploads fail with a browser preflight `403`, compare the blocked request in
+DevTools with this policy: the request origin must be listed in
+`AllowedOrigins`, the intended method must be in `AllowedMethods`, and every
+header in `Access-Control-Request-Headers` must be in `AllowedHeaders`.
 
 The production Convex deployment exposes an HTTP site URL
 (`https://<name>.convex.site`). Configure the Clerk webhook endpoint as

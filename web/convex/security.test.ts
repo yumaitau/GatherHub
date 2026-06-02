@@ -133,8 +133,8 @@ describe("R2 uploads", () => {
       expect(upload.uploadUrl).toContain("X-Amz-Signature=");
       expect(upload.headers).toMatchObject({
         "content-type": "image/png",
-        "x-amz-meta-declared-size": "1234",
       });
+      expect(upload.headers).not.toHaveProperty("x-amz-meta-declared-size");
 
       const row = await t.run(async (ctx) => {
         return await ctx.db
@@ -231,8 +231,8 @@ describe("R2 uploads", () => {
       );
       expect(upload.headers).toMatchObject({
         "content-type": "application/pdf",
-        "x-amz-meta-declared-size": "4096",
       });
+      expect(upload.headers).not.toHaveProperty("x-amz-meta-declared-size");
 
       const row = await t.run(async (ctx) => {
         return await ctx.db

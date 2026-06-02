@@ -119,7 +119,24 @@ In the Convex dashboard (or via `npx convex env set`), set:
   Cloudflare R2 bucket credentials for uploaded images/documents.
 
 The R2 bucket CORS policy must allow browser `PUT` requests from the web app
-origin with `content-type` and `x-amz-meta-declared-size` request headers.
+origin with the `Content-Type` request header. In the Cloudflare R2 bucket
+settings, the JSON policy should look like this, with no trailing slash on each
+origin:
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "http://localhost:5173",
+      "https://your-production-app.example"
+    ],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
 
 Authenticated HTTP clients can request an upload URL without the Convex SDK:
 

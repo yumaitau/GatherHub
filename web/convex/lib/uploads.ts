@@ -192,7 +192,6 @@ export async function createOrgImageUpload(
     key,
     headers: {
       "content-type": metadata.contentType,
-      "x-amz-meta-declared-size": String(metadata.size),
     },
   });
   const now = Date.now();
