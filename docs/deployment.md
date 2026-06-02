@@ -41,7 +41,7 @@ settings using exact origins only; do not include a path or trailing slash.
       "https://app.gatherhub.au"
     ],
     "AllowedMethods": ["PUT", "GET", "HEAD"],
-    "AllowedHeaders": ["Content-Type"],
+    "AllowedHeaders": ["content-type"],
     "ExposeHeaders": ["ETag"],
     "MaxAgeSeconds": 3600
   }
