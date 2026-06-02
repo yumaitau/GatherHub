@@ -131,10 +131,7 @@ describe("R2 uploads", () => {
         ),
       );
       expect(upload.uploadUrl).toContain("X-Amz-Signature=");
-      expect(upload.headers).toMatchObject({
-        "content-type": "image/png",
-      });
-      expect(upload.headers).not.toHaveProperty("x-amz-meta-declared-size");
+      expect(upload.headers).toEqual({});
 
       const row = await t.run(async (ctx) => {
         return await ctx.db
@@ -229,10 +226,7 @@ describe("R2 uploads", () => {
           `^orgs/${escapeRegExp(club.orgId)}/certifications/${safePathSegmentForTest(certId)}/document/[a-f0-9-]+-wwcc-certificate\\.pdf$`,
         ),
       );
-      expect(upload.headers).toMatchObject({
-        "content-type": "application/pdf",
-      });
-      expect(upload.headers).not.toHaveProperty("x-amz-meta-declared-size");
+      expect(upload.headers).toEqual({});
 
       const row = await t.run(async (ctx) => {
         return await ctx.db
@@ -285,7 +279,6 @@ describe("R2 uploads", () => {
             status: 200,
             headers: {
               "content-length": "8192",
-              "content-type": "application/pdf",
             },
           });
         }
@@ -475,7 +468,6 @@ describe("R2 uploads", () => {
           status: 200,
           headers: {
             "content-length": "100",
-            "content-type": "image/png",
           },
         });
       }) as typeof fetch;

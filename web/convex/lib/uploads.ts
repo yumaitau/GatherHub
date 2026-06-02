@@ -190,9 +190,6 @@ export async function createOrgImageUpload(
   const signed = await presignR2Url({
     method: "PUT",
     key,
-    headers: {
-      "content-type": metadata.contentType,
-    },
   });
   const now = Date.now();
   await ctx.db.insert("uploadedFiles", {

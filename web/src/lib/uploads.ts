@@ -84,10 +84,11 @@ async function uploadValidatedFile(
     contentType: file.type,
     size: file.size,
   });
+  const headers = generated.headers ?? {};
   const res = await fetch(generated.uploadUrl, {
     method: "PUT",
-    headers: generated.headers ?? { "Content-Type": file.type },
-    body: file,
+    headers,
+    body: await file.arrayBuffer(),
   });
   if (!res.ok) throw new Error("File upload failed.");
   await completeUpload({ storageId: generated.storageId });

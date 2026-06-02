@@ -30,8 +30,10 @@ Set the production environment variables in the Convex dashboard:
 ### R2 CORS
 
 Browser uploads use short-lived presigned R2 `PUT` URLs, so the R2 bucket must
-allow CORS requests from the web app origin. Add a CORS policy in the bucket
-settings using exact origins only; do not include a path or trailing slash.
+allow CORS requests from the web app origin. GatherHub sends the file bytes
+without custom browser request headers, so `AllowedHeaders` can be omitted. Add
+a CORS policy in the bucket settings using exact origins only; do not include a
+path or trailing slash.
 
 ```json
 [
@@ -41,7 +43,6 @@ settings using exact origins only; do not include a path or trailing slash.
       "https://app.gatherhub.au"
     ],
     "AllowedMethods": ["PUT", "GET", "HEAD"],
-    "AllowedHeaders": ["content-type"],
     "ExposeHeaders": ["ETag"],
     "MaxAgeSeconds": 3600
   }
@@ -50,8 +51,9 @@ settings using exact origins only; do not include a path or trailing slash.
 
 If uploads fail with a browser preflight `403`, compare the blocked request in
 DevTools with this policy: the request origin must be listed in
-`AllowedOrigins`, the intended method must be in `AllowedMethods`, and every
-header in `Access-Control-Request-Headers` must be in `AllowedHeaders`.
+`AllowedOrigins`, and the intended method must be in `AllowedMethods`. If an
+old client still sends `Access-Control-Request-Headers`, add those exact headers
+to `AllowedHeaders` or redeploy the current web bundle.
 
 The production Convex deployment exposes an HTTP site URL
 (`https://<name>.convex.site`). Configure the Clerk webhook endpoint as

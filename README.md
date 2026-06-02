@@ -119,9 +119,9 @@ In the Convex dashboard (or via `npx convex env set`), set:
   Cloudflare R2 bucket credentials for uploaded images/documents.
 
 The R2 bucket CORS policy must allow browser `PUT` requests from the web app
-origin with the `Content-Type` request header. In the Cloudflare R2 bucket
-settings, the JSON policy should look like this, with no trailing slash on each
-origin:
+origin. GatherHub uploads file bytes without custom browser request headers, so
+`AllowedHeaders` can be omitted. In the Cloudflare R2 bucket settings, the JSON
+policy should look like this, with no trailing slash on each origin:
 
 ```json
 [
@@ -131,7 +131,6 @@ origin:
       "https://your-production-app.example"
     ],
     "AllowedMethods": ["PUT", "GET", "HEAD"],
-    "AllowedHeaders": ["content-type"],
     "ExposeHeaders": ["ETag"],
     "MaxAgeSeconds": 3600
   }

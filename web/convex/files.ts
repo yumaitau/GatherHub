@@ -166,7 +166,18 @@ export const completeUpload = action({
       throw new Error("Uploaded file was not found in R2.");
     }
 
-    const validationError = uploadValidationError(upload.purpose, object);
+    if (object.size !== upload.size) {
+      await ctx.runMutation(internal.files.markUploadDeleted, {
+        storageId: args.storageId,
+      });
+      await deleteR2ObjectByKey(upload.path).catch(() => undefined);
+      throw new Error("Uploaded file size does not match the selected file.");
+    }
+
+    const validationError = uploadValidationError(upload.purpose, {
+      contentType: upload.contentType,
+      size: object.size,
+    });
     if (validationError) {
       await ctx.runMutation(internal.files.markUploadDeleted, {
         storageId: args.storageId,
@@ -175,7 +186,10 @@ export const completeUpload = action({
       throw new Error(validationError);
     }
 
-    const metadata = validateDeclaredUploadMetadata(upload.purpose, object);
+    const metadata = validateDeclaredUploadMetadata(upload.purpose, {
+      contentType: upload.contentType,
+      size: object.size,
+    });
     await ctx.runMutation(internal.files.markUploadVerified, {
       storageId: args.storageId,
       contentType: metadata.contentType,
@@ -205,6 +219,8 @@ export const getUploadForVerification = internalQuery({
     return {
       path: upload.path,
       purpose: upload.purpose,
+      contentType: upload.contentType,
+      size: upload.size,
     };
   },
 });
