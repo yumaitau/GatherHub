@@ -27,6 +27,12 @@ Set the production environment variables in the Convex dashboard:
 | `R2_ACCESS_KEY_ID`         | Yes      | R2 S3-compatible access key id.                    |
 | `R2_SECRET_ACCESS_KEY`     | Yes      | R2 S3-compatible secret access key.                |
 
+Leave `R2_ENDPOINT` unset unless an explicit endpoint is required. If set, it
+must be the Cloudflare R2 S3 API endpoint, for example
+`https://<account-id>.r2.cloudflarestorage.com`, not an `r2.dev` public bucket
+URL or a custom domain. Presigned URLs are generated as
+`https://<bucket>.<account-id>.r2.cloudflarestorage.com/<object-key>`.
+
 ### R2 CORS
 
 Browser uploads use short-lived presigned R2 `PUT` URLs, so the R2 bucket must

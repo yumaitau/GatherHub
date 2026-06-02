@@ -118,6 +118,11 @@ In the Convex dashboard (or via `npx convex env set`), set:
 - `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` —
   Cloudflare R2 bucket credentials for uploaded images/documents.
 
+Leave `R2_ENDPOINT` unset unless you need an explicit S3 API endpoint. If set,
+it must be the Cloudflare R2 S3 API endpoint, for example
+`https://<account-id>.r2.cloudflarestorage.com`, not an `r2.dev` public bucket
+URL or a custom domain.
+
 The R2 bucket CORS policy must allow browser `PUT` requests from the web app
 origin. GatherHub uploads file bytes without custom browser request headers, so
 `AllowedHeaders` can be omitted. In the Cloudflare R2 bucket settings, the JSON

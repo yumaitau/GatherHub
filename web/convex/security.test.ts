@@ -131,6 +131,19 @@ describe("R2 uploads", () => {
         ),
       );
       expect(upload.uploadUrl).toContain("X-Amz-Signature=");
+      const uploadUrl = new URL(upload.uploadUrl);
+      expect(uploadUrl.hostname).toBe(
+        "gatherhub-test.test-account.r2.cloudflarestorage.com",
+      );
+      expect(decodeURIComponent(uploadUrl.pathname)).toMatch(
+        new RegExp(
+          `^/orgs/${escapeRegExp(club.orgId)}/sponsors/${safePathSegmentForTest(sponsorId)}/logo/[a-f0-9-]+-main-logo\\.png$`,
+        ),
+      );
+      expect(uploadUrl.searchParams.get("X-Amz-Content-Sha256")).toBe(
+        "UNSIGNED-PAYLOAD",
+      );
+      expect(uploadUrl.searchParams.get("X-Amz-SignedHeaders")).toBe("host");
       expect(upload.headers).toEqual({});
 
       const row = await t.run(async (ctx) => {
@@ -195,6 +208,41 @@ describe("R2 uploads", () => {
     });
   });
 
+  test("explicit bucket-hosted R2 endpoints are not double-prefixed", async () => {
+    await withR2Env(async () => {
+      process.env.R2_ENDPOINT =
+        "https://gatherhub-test.test-account.r2.cloudflarestorage.com";
+      const t = convexTest(schema, modules);
+      const club = await seedOrg(t, {
+        clerkOrg: "org_r2_bucket_endpoint",
+        clerkUser: "user_r2_bucket_endpoint",
+        role: "owner",
+      });
+      const sponsorId = await club.as.mutation(api.sponsors.create, {
+        name: "Bucket Endpoint Sponsor",
+      });
+
+      const upload = await club.as.mutation(api.files.generateUploadUrl, {
+        ownerType: "sponsors",
+        ownerId: sponsorId,
+        purpose: "logo",
+        fileName: "logo.png",
+        contentType: "image/png",
+        size: 128,
+      });
+
+      const uploadUrl = new URL(upload.uploadUrl);
+      expect(uploadUrl.hostname).toBe(
+        "gatherhub-test.test-account.r2.cloudflarestorage.com",
+      );
+      expect(decodeURIComponent(uploadUrl.pathname)).toMatch(
+        new RegExp(
+          `^/orgs/${escapeRegExp(club.orgId)}/sponsors/${safePathSegmentForTest(sponsorId)}/logo/[a-f0-9-]+-logo\\.png$`,
+        ),
+      );
+    });
+  });
+
   test("certification document uploads use training permissions and document-safe R2 keys", async () => {
     await withR2Env(async () => {
       const t = convexTest(schema, modules);
@@ -226,6 +274,19 @@ describe("R2 uploads", () => {
           `^orgs/${escapeRegExp(club.orgId)}/certifications/${safePathSegmentForTest(certId)}/document/[a-f0-9-]+-wwcc-certificate\\.pdf$`,
         ),
       );
+      const uploadUrl = new URL(upload.uploadUrl);
+      expect(uploadUrl.hostname).toBe(
+        "gatherhub-test.test-account.r2.cloudflarestorage.com",
+      );
+      expect(decodeURIComponent(uploadUrl.pathname)).toMatch(
+        new RegExp(
+          `^/orgs/${escapeRegExp(club.orgId)}/certifications/${safePathSegmentForTest(certId)}/document/[a-f0-9-]+-wwcc-certificate\\.pdf$`,
+        ),
+      );
+      expect(uploadUrl.searchParams.get("X-Amz-Content-Sha256")).toBe(
+        "UNSIGNED-PAYLOAD",
+      );
+      expect(uploadUrl.searchParams.get("X-Amz-SignedHeaders")).toBe("host");
       expect(upload.headers).toEqual({});
 
       const row = await t.run(async (ctx) => {

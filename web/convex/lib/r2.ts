@@ -77,11 +77,28 @@ function encodeRfc3986(value: string): string {
   );
 }
 
-function canonicalUri(bucket: string, key: string): string {
-  return `/${encodeRfc3986(bucket)}/${key
+function canonicalKeyUri(key: string): string {
+  return `/${key
     .split("/")
     .map((segment) => encodeRfc3986(segment))
     .join("/")}`;
+}
+
+function r2RequestTarget(config: R2Config, key: string) {
+  const endpoint = new URL(config.endpoint);
+  if (!endpoint.hostname.endsWith(".r2.cloudflarestorage.com")) {
+    throw new Error(
+      "R2_ENDPOINT must be the Cloudflare R2 S3 API endpoint, not a public bucket URL or custom domain.",
+    );
+  }
+
+  const bucketHostPrefix = `${config.bucket.toLowerCase()}.`;
+  const host = endpoint.hostname.toLowerCase().startsWith(bucketHostPrefix)
+    ? endpoint.host
+    : `${config.bucket}.${endpoint.host}`;
+  const uri = canonicalKeyUri(key);
+  const url = new URL(`${endpoint.protocol}//${host}${uri}`);
+  return { url, uri, host };
 }
 
 function amzDate(now: Date): { date: string; dateTime: string } {
@@ -164,12 +181,12 @@ export async function presignR2Url({
   headers = {},
 }: PresignArgs): Promise<R2PresignedUrl> {
   const config = r2Config();
-  const endpoint = new URL(config.endpoint);
+  const target = r2RequestTarget(config, key);
   const now = new Date();
   const { date, dateTime } = amzDate(now);
   const credentialScope = `${date}/${R2_REGION}/${R2_SERVICE}/aws4_request`;
   const signedHeaderInput = {
-    host: endpoint.host,
+    host: target.host,
     ...headers,
   };
   const { canonical, signedHeaders } = canonicalHeaders(signedHeaderInput);
@@ -179,10 +196,11 @@ export async function presignR2Url({
     ["X-Amz-Date", dateTime],
     ["X-Amz-Expires", String(expiresSeconds ?? DEFAULT_UPLOAD_EXPIRES_SECONDS)],
     ["X-Amz-SignedHeaders", signedHeaders],
+    ["X-Amz-Content-Sha256", "UNSIGNED-PAYLOAD"],
   ];
   const canonicalRequest = [
     method,
-    canonicalUri(config.bucket, key),
+    target.uri,
     canonicalQuery(queryParams),
     canonical,
     signedHeaders,
@@ -202,7 +220,7 @@ export async function presignR2Url({
   );
   queryParams.push(["X-Amz-Signature", signature]);
 
-  const url = new URL(`${endpoint.origin}${canonicalUri(config.bucket, key)}`);
+  const url = target.url;
   url.search = canonicalQuery(queryParams);
   const { host: _host, ...clientHeaders } = signedHeaderInput;
   return { url: url.toString(), headers: clientHeaders };
