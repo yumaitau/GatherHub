@@ -102,7 +102,7 @@ This epic extends member records with volunteer-specific data: a volunteer flag,
   - [ ] Displayed on member detail's volunteer section.
   - [ ] Permission-gated read/write.
   - [ ] Optional timestamped note history.
-- **Technical notes:** Keep notes distinct from medical notes (different sensitivity, Epic 3 #7). Plain text/markdown for MVP.
+- **Technical notes:** Plain text/markdown notes are sufficient for MVP; do not use this area for high-sensitivity personal information.
 - **Dependencies:** Epic 9 #1 Volunteer fields on member profile
 - **Labels:** `area:backend`, `area:web`, `type:feature`, `epic:volunteers`, `good-first-issue`
 - **Estimated effort:** S (2-4h)

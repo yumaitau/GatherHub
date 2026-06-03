@@ -2,11 +2,10 @@ import SwiftUI
 import AVFoundation
 import CoreNFC
 
-/// Field-ops scan surface. Auto-starts an NFC raw-UID read on appear so
-/// staff can tap-and-go without hunting for a button; falls back to a
-/// live QR camera preview underneath. Mirrors the Kit-Trace flow:
-///   1. Open screen → NFC session begins.
-///   2. Tag tapped → raw hardware UID captured.
+/// Field-ops scan surface. Shows a live QR camera preview and lets staff
+/// explicitly start an NFC raw-UID read when they need to tap a tag:
+///   1. Point the camera at a QR code, or tap the NFC button.
+///   2. QR payload or NFC raw hardware UID is captured.
 ///   3. Look up the asset via `tags:lookupAuthed`; recordScan with
 ///      geolocation if found; offer "register tag" if not.
 ///
@@ -19,7 +18,6 @@ struct ScanView: View {
 
     @State private var scannedTagId: String?
     @State private var showError = false
-    @State private var autoStartedNfc = false
 
     var body: some View {
         NavigationStack {
@@ -48,12 +46,6 @@ struct ScanView: View {
             }
             .onAppear {
                 camera.start()
-                // Auto-start an NFC session the first time the tab appears
-                // in a session, mirroring Kit-Trace's "tap to scan" feel.
-                if !autoStartedNfc, NFCReaderSession.readingAvailable {
-                    autoStartedNfc = true
-                    nfcRaw.beginScanning()
-                }
             }
             .onDisappear { camera.stop() }
             .onChange(of: camera.lastScanned) { _, value in handleScanned(value) }
@@ -77,7 +69,7 @@ struct ScanView: View {
             .frame(width: 240, height: 240)
             .shadow(radius: 8)
             .overlay(
-                Text("Point at a QR code or tap a tag")
+                Text("Point at a QR code or start NFC")
                     .font(.footnote)
                     .foregroundStyle(.white)
                     .padding(.top, 8),

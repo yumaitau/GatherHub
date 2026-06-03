@@ -10,7 +10,7 @@ This epic delivers the scanning experiences that make KitTrace fast in the field
 - **Acceptance criteria:**
   - [ ] Route `/a/:tagId` resolves a tag id to a public view.
   - [ ] Shows only non-sensitive fields (e.g. asset name, owning club, "report found" prompt).
-  - [ ] No custodian, value, medical, or audit data exposed publicly.
+  - [ ] No custodian, value, member, or audit data exposed publicly.
   - [ ] Unknown tags handled safely (Issue 8).
 - **Technical notes:** Backed by a Convex public query that returns a strictly whitelisted projection. This is the value encoded in QR codes (Epic 6 #8). Must pass the safe-public-route check (Epic 14 #7).
 - **Dependencies:** Epic 6 #7 Generate unique asset tag IDs, Epic 6 #8 Generate QR codes

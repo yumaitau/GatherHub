@@ -70,7 +70,7 @@ This epic delivers authentication and multi-tenant isolation. Clerk handles user
 - **Goal:** A documented, enforceable role enum with a permission matrix usable across the app.
 - **Acceptance criteria:**
   - [ ] Role enum defined: Owner, Admin, Committee, Coach, Volunteer, Parent, Player.
-  - [ ] A permission matrix maps roles to capabilities (manage members, manage assets, view medical notes, etc.).
+  - [ ] A permission matrix maps roles to capabilities (manage members, manage assets, post announcements, etc.).
   - [ ] Role is stored on each membership; `roles.updateRole` lets admins promote/demote with the last-owner guard.
   - [ ] Helper functions (`hasAtLeastRole`, `requireRole`, `requireAnyRole`) return whether a member has a given capability.
 - **Technical notes:** Keep capabilities coarse for MVP but model them as named permissions, not raw role checks, so future roles compose. Owner is a superset of Admin. Coach scope is team-limited where applicable (Epic 3).

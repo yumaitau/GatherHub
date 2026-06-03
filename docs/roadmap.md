@@ -31,7 +31,7 @@ field-ops iOS app — all multi-tenant via Convex-native clubs, all on Convex.
 | --- | --- | --- |
 | 1 | **Project Foundation** | Monorepo, `/web` (Vite + React 18 + TS + React Router v6 + Tailwind + shadcn/Radix), `/web/convex`, `/ios` skeleton, lint/format/CI, env config. |
 | 2 | **Auth & Multi-Tenancy** | Clerk auth (sign in/up, identity only), Convex-native clubs + memberships, in-app club switcher and invite-code joins, `convex` JWT template, Convex `auth.config.ts`, `requireOrgMember`/`requireRole` helpers, Clerk→Convex `user.*` sync webhook. |
-| 3 | **Members & Teams** | `members` (people, may not be users), guardians, emergency contacts, teams, team assignments (player/coach/manager), medical-notes redaction. |
+| 3 | **Members & Teams** | `members` (people, may not be users), guardians, emergency contacts, teams, team assignments (player/coach/manager). |
 | 4 | **Events & Attendance** | Events (training/match/meeting), RSVPs (going/not_going/maybe), attendance recording, parent-RSVP-for-child. |
 | 5 | **Announcements** | Club/team announcements, pinning, read receipts. |
 | 6 | **KitTrace Asset Tracking** | `assets` (full field set), categories, statuses, custodian/location, asset CRUD, photos. |
@@ -42,7 +42,7 @@ field-ops iOS app — all multi-tenant via Convex-native clubs, all on Convex.
 | 11 | **Public Website** | Per-org `publicSiteSettings`, news/posts, public-facing club page, optional sponsor display. |
 | 12 | **iOS App** | SwiftUI field-ops app: Clerk iOS auth, Convex Swift client, org selection, asset lookup, QR (AVFoundation) + NFC (Core NFC), check-out/in/transfer, events + RSVP, offline-friendly errors. |
 | 13 | **Reporting & Dashboards** | Asset status overview, overdue/checked-out kit, attendance summaries, certification-expiry alerts, sponsor overview. |
-| 14 | **Security & Compliance** | Org-scoping audit, RBAC matrix verification, file-upload validation, rate limiting, medical-notes restriction, audit-log immutability checks. |
+| 14 | **Security & Compliance** | Org-scoping audit, RBAC matrix verification, file-upload validation, rate limiting, audit-log immutability checks. |
 | 15 | **Testing & Quality** | Unit/integration tests for Convex functions (auth, scoping, transitions), component tests, e2e happy paths, iOS smoke tests. |
 | 16 | **Documentation & Launch** | These docs, contributor guide, deployment guide, demo data/seed, v0.1 release. |
 
@@ -100,8 +100,7 @@ v0.1 is done when a real club can run day-to-day operations end to end:
 **Functional**
 - [ ] Create a club; invite users; assign roles (Owner/Admin/Committee/Coach/
       Volunteer/Parent/Player).
-- [ ] Manage members (incl. non-user members), guardians, emergency contacts;
-      medical notes are role-restricted.
+- [ ] Manage members (incl. non-user members), guardians, and emergency contacts.
 - [ ] Create teams and assign players/coaches/managers.
 - [ ] Create events; members RSVP (going/not_going/maybe); attendance recorded.
 - [ ] Post announcements (club/team) with read receipts.

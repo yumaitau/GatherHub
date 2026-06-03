@@ -8,7 +8,7 @@ This directory holds the MVP roadmap, organised into 16 epics. Each epic file li
 
 1. [Epic 1: Project Foundation](./epic-01-project-foundation.md) — Monorepo, TypeScript, Vite + React, Tailwind, component library, Convex, Clerk, env docs, local dev, and CI. The scaffolding every other epic builds on. (10 issues)
 2. [Epic 2: Auth & Multi-Tenancy](./epic-02-auth-multi-tenancy.md) — Clerk login and org switching, user/org sync to Convex, the role model, auth guards, org-scoped queries, invitations, profile, and access-denied states. (10 issues)
-3. [Epic 3: Members & Teams](./epic-03-members-and-teams.md) — Member records (guardians, emergency contacts, restricted medical notes) and teams with rosters and coach assignments. (12 issues)
+3. [Epic 3: Members & Teams](./epic-03-members-and-teams.md) — Member records (guardians, emergency contacts) and teams with rosters and coach assignments. (11 issues)
 4. [Epic 4: Events & Attendance](./epic-04-events-and-attendance.md) — Events (training/match/meeting), RSVP, attendance tracking, team-specific events, dashboard card, and export. (10 issues)
 5. [Epic 5: Announcements](./epic-05-announcements.md) — Org and team announcements with pinning, read/unread tracking, and permissions. (7 issues)
 6. [Epic 6: KitTrace Asset Tracking](./epic-06-kittrace-asset-tracking.md) — Asset model: categories, status, condition, tag IDs, QR, NFC, custodian, location, value, and sponsor links, plus list/detail/form. (14 issues)

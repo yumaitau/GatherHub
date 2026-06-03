@@ -257,7 +257,6 @@ enum MatchParticipationStatus: String, Codable, CaseIterable, Identifiable, Hash
     case selected
     case arrived
     case unavailable
-    case injured
     case active
     case bench
     case substituted
@@ -270,7 +269,6 @@ enum MatchParticipationStatus: String, Codable, CaseIterable, Identifiable, Hash
         case .selected: return "Selected"
         case .arrived: return "Arrived"
         case .unavailable: return "Unavailable"
-        case .injured: return "Injured"
         case .active: return "Active"
         case .bench: return "Bench"
         case .substituted: return "Substituted"

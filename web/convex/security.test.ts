@@ -140,9 +140,7 @@ describe("R2 uploads", () => {
           `^/orgs/${escapeRegExp(club.orgId)}/sponsors/${safePathSegmentForTest(sponsorId)}/logo/[a-f0-9-]+-main-logo\\.png$`,
         ),
       );
-      expect(uploadUrl.searchParams.get("X-Amz-Content-Sha256")).toBe(
-        "UNSIGNED-PAYLOAD",
-      );
+      expect(uploadUrl.searchParams.get("X-Amz-Content-Sha256")).toBeNull();
       expect(uploadUrl.searchParams.get("X-Amz-SignedHeaders")).toBe("host");
       expect(upload.headers).toEqual({});
 
@@ -283,9 +281,7 @@ describe("R2 uploads", () => {
           `^/orgs/${escapeRegExp(club.orgId)}/certifications/${safePathSegmentForTest(certId)}/document/[a-f0-9-]+-wwcc-certificate\\.pdf$`,
         ),
       );
-      expect(uploadUrl.searchParams.get("X-Amz-Content-Sha256")).toBe(
-        "UNSIGNED-PAYLOAD",
-      );
+      expect(uploadUrl.searchParams.get("X-Amz-Content-Sha256")).toBeNull();
       expect(uploadUrl.searchParams.get("X-Amz-SignedHeaders")).toBe("host");
       expect(upload.headers).toEqual({});
 

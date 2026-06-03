@@ -65,7 +65,7 @@ Clerk-authenticated session — there is no REST API tier in between.
 Cross-refs: `docs/architecture.md` (system overview, JWT flow, deployment),
 `docs/mobile-architecture.md` (iOS app structure, scan + asset flows,
 screen list), `docs/security-model.md` (`requireOrgMember`, permissions
-matrix, public QR rules, file-upload validation, medical-notes redaction).
+matrix, public QR rules, file-upload validation, data minimisation).
 
 ## 4. Auth model
 
@@ -87,8 +87,6 @@ Stored on `memberships.role`. Ranks from `web/convex/lib/auth.ts`:
 the rank exists so committee+ checks stay simple. Server-side guards:
 `requireUser`, `requireOrgMember`, `requireRole(min)`,
 `requireAnyRole([...])`, `assertSameOrg(auth, doc)`.
-`canViewRestricted(role)` gates medical-notes reads
-(owner/admin/committee/coach).
 
 ### 4.2 Typed error codes
 
@@ -348,15 +346,11 @@ the full set; the auth model only needs the `by_org*` indexes anyway.
   `volunteerNotes?`, `isLifetimeMember?`, `lifetimeMemberSince?`,
   `lifetimeMemberNotes?`, `lifetimeMemberFirstAddedToClub?`,
   `lifetimeMemberAddedBy?`, `clubRole?` (free string: "coach", "manager",
-  etc.). `members.notes` is general; **medical** notes live in their own
-  `medicalNotes` table, role-gated on read.
+  etc.).
 - **guardians** — `orgId`, `memberId` (child), `guardianMemberId`,
   `relationship?`.
 - **emergencyContacts** — `orgId`, `memberId`, `name`, `relationship?`,
   `phone`, `email?`.
-- **medicalNotes** — `orgId`, `memberId`, `notes`, `updatedBy`,
-  `updatedAt`. **Role-restricted on read:** `canViewRestricted(role)` in
-  `web/convex/lib/auth.ts` — owner/admin/committee/coach only.
 - **teams** — `orgId`, `name`, `ageGroup?`, `season?`, `description?`,
   `isActive`; soccer extras: `kitColour?`, `kitBagNumber?`,
   `competitionId?`, `divisionId?`, `coach?`, `coachEmail?`, `coachPhone?`,
@@ -486,22 +480,18 @@ spinner on the affected control instead.
 - **`members.list`** — query, `requireOrgMember`.
   `{ status?, search?, lifetimeOnly? }`. Sorted by last name.
 - **`members.get`** — query, `requireOrgMember`. `{ memberId }` → member +
-  guardians + dependents + emergencyContacts + team links + certifications;
-  `medicalNotes` only if `canViewRestricted(role)`. Includes
-  `canSeeMedical: bool`. `assertSameOrg` collapses absent / cross-org into
-  `not_found`.
+  guardians + dependents + emergencyContacts + team links + certifications.
+  `assertSameOrg` collapses absent / cross-org into `not_found`.
 - **`members.create`** — mutation, `requireRole("coach")`.
 - **`members.update`** — mutation, `requireRole("coach")`. `clubRole`
   nullable.
 - **`members.remove`** — mutation, `requireRole("admin")`. Cascades
-  `guardians`, `emergencyContacts`, `medicalNotes`, `teamMembers`, `rsvps`,
-  `attendance`, `volunteerCertifications`.
+  `guardians`, `emergencyContacts`, `teamMembers`, `rsvps`, `attendance`,
+  `volunteerCertifications`.
 - **`members.addGuardian` / `removeGuardian`** — mutations,
   `requireRole("coach")`.
 - **`members.addEmergencyContact` / `removeEmergencyContact`** — mutations,
   `requireRole("coach")`.
-- **`members.setMedicalNotes`** — mutation, `requireRole("coach")` **AND**
-  `canViewRestricted(role)`.
 - **`members.setLifetimeMember`** — mutation, `requireRole("committee")`.
 
 ### 7.5 Teams — `web/convex/teams.ts`
@@ -827,8 +817,6 @@ Security-review items (all server-enforced; iOS must not try to bypass):
   `organizations.joinByCode` is capped today; `tags.lookupPublic`,
   `invitations.preview`, `publicSite.*` are uncapped. Errors there will
   not look like 429s.
-- **Medical notes server-redacted** — stripped from queries when the
-  caller fails `canViewRestricted`. No other route exists.
 - **Audit log is immutable for everyone, including Owner.** Render
   read-only.
 - **Tag ids are opaque and globally unique.** Do not parse or display the
@@ -843,7 +831,7 @@ Security-review items (all server-enforced; iOS must not try to bypass):
 - `docs/mobile-architecture.md` — iOS app structure, scan + asset flows,
   screen list.
 - `docs/security-model.md` — `requireOrgMember`, permissions matrix,
-  public QR rules, file-upload validation, medical-notes redaction.
+  public QR rules, file-upload validation, data minimisation.
 - `docs/data-model.md` — earlier data-model commentary; defer to
   `web/convex/schema.ts` on conflicts.
 - `docs/kittrace.md` — asset lifecycle state machine.

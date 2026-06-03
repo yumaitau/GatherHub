@@ -162,7 +162,6 @@ export const matchParticipationStatusValidator = v.union(
   v.literal("selected"),
   v.literal("arrived"),
   v.literal("unavailable"),
-  v.literal("injured"),
   v.literal("active"),
   v.literal("bench"),
   v.literal("substituted"),
@@ -173,7 +172,6 @@ export const matchParticipationEventTypeValidator = v.union(
   v.literal("status_update"),
   v.literal("arrived"),
   v.literal("unavailable"),
-  v.literal("injured"),
   v.literal("substitution"),
   v.literal("interchange"),
   v.literal("position_change"),
@@ -461,17 +459,6 @@ export default defineSchema({
     relationship: v.optional(v.string()),
     phone: v.string(),
     email: v.optional(v.string()),
-  })
-    .index("by_org", ["orgId"])
-    .index("by_member", ["memberId"]),
-
-  // Restricted-visibility medical notes (separate table so reads can be gated).
-  medicalNotes: defineTable({
-    orgId: v.id("organizations"),
-    memberId: v.id("members"),
-    notes: v.string(),
-    updatedBy: v.id("users"),
-    updatedAt: v.number(),
   })
     .index("by_org", ["orgId"])
     .index("by_member", ["memberId"]),

@@ -1,9 +1,9 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireOrgMember, assertSameOrg, canViewRestricted } from "./lib/auth";
+import { requireOrgMember, assertSameOrg } from "./lib/auth";
 import { memberStatusValidator } from "./schema";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
-import { hasCapability, requireCapability } from "./lib/capabilities";
+import { requireCapability } from "./lib/capabilities";
 import { orgImageUrl } from "./lib/uploads";
 
 const nullableString = v.union(v.string(), v.null());
@@ -107,7 +107,7 @@ export const setLifetimeMember = mutation({
   },
 });
 
-/** Full member detail incl. relations. Medical notes gated by role. */
+/** Full member detail including relations. */
 export const get = query({
   args: { memberId: v.id("members") },
   handler: async (ctx, args) => {
@@ -155,19 +155,6 @@ export const get = query({
       })),
     );
 
-    // Medical notes — restricted visibility.
-    let medicalNotes: string | null = null;
-    const canSeeMedical =
-      canViewRestricted(auth.role) ||
-      (await hasCapability(ctx, auth, "members.write"));
-    if (canSeeMedical) {
-      const note = await ctx.db
-        .query("medicalNotes")
-        .withIndex("by_member", (q) => q.eq("memberId", member._id))
-        .unique();
-      medicalNotes = note?.notes ?? null;
-    }
-
     const certificationRows = await ctx.db
       .query("volunteerCertifications")
       .withIndex("by_member", (q) => q.eq("memberId", member._id))
@@ -187,8 +174,6 @@ export const get = query({
       dependents: dependentMembers,
       emergencyContacts,
       teams,
-      medicalNotes,
-      canSeeMedical,
       certifications,
     };
   },
@@ -301,7 +286,6 @@ export const remove = mutation({
     for (const table of [
       "guardians",
       "emergencyContacts",
-      "medicalNotes",
       "teamMembers",
       "rsvps",
       "attendance",
@@ -393,36 +377,5 @@ export const removeEmergencyContact = mutation({
     const contact = await ctx.db.get(args.contactId);
     assertSameOrg(auth, contact);
     await ctx.db.delete(args.contactId);
-  },
-});
-
-// --- Medical notes (restricted) ----------------------------------------------
-
-export const setMedicalNotes = mutation({
-  args: { memberId: v.id("members"), notes: v.string() },
-  handler: async (ctx, args) => {
-    const auth = await requireOrgMember(ctx);
-    await requireCapability(ctx, auth, "members.write");
-    const member = await ctx.db.get(args.memberId);
-    assertSameOrg(auth, member);
-    const existing = await ctx.db
-      .query("medicalNotes")
-      .withIndex("by_member", (q) => q.eq("memberId", args.memberId))
-      .unique();
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        notes: args.notes,
-        updatedBy: auth.user._id,
-        updatedAt: Date.now(),
-      });
-    } else {
-      await ctx.db.insert("medicalNotes", {
-        orgId: auth.org._id,
-        memberId: args.memberId,
-        notes: args.notes,
-        updatedBy: auth.user._id,
-        updatedAt: Date.now(),
-      });
-    }
   },
 });

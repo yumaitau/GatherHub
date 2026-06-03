@@ -96,7 +96,7 @@ export const run = internalMutation({
       memberIds.push(id);
     }
 
-    // Guardian + emergency contact + medical note examples.
+    // Guardian + emergency contact examples.
     await ctx.db.insert("guardians", {
       orgId,
       memberId: memberIds[2]!, // Riley (child)
@@ -110,14 +110,6 @@ export const run = internalMutation({
       relationship: "Parent",
       phone: "+61 400 000 000",
     });
-    await ctx.db.insert("medicalNotes", {
-      orgId,
-      memberId: memberIds[2]!,
-      notes: "Mild asthma — carries a blue inhaler.",
-      updatedBy: adminUserId,
-      updatedAt: now,
-    });
-
     // Teams.
     const seniorTeam = await ctx.db.insert("teams", {
       orgId,

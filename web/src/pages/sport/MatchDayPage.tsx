@@ -63,7 +63,6 @@ const PARTICIPATION_STATUSES = [
   "substituted",
   "interchanged",
   "unavailable",
-  "injured",
 ] as const;
 type ParticipationStatus = (typeof PARTICIPATION_STATUSES)[number];
 
@@ -98,7 +97,6 @@ function statusVariant(status: ParticipationStatus) {
     case "interchanged":
       return "warning";
     case "unavailable":
-    case "injured":
       return "destructive";
     default:
       return "default";
@@ -843,7 +841,7 @@ function rosterWarnings(squad: SquadRow, template: RosterTemplate) {
       `Squad has ${squad.members.length}/${template.squadMin} players.`,
     );
   }
-  const unavailable = new Set(["unavailable", "injured"]);
+  const unavailable = new Set(["unavailable"]);
   const onField = squad.members.filter(
     (member) =>
       member.positionKey &&

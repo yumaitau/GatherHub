@@ -45,12 +45,3 @@ export const ASSET_MANAGER_ROLES: Role[] = [
 export function canManageAssets(role: Role): boolean {
   return ASSET_MANAGER_ROLES.includes(role);
 }
-
-export function canViewRestricted(role: Role): boolean {
-  return (
-    role === "owner" ||
-    role === "admin" ||
-    role === "committee" ||
-    role === "coach"
-  );
-}

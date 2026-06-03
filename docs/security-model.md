@@ -134,7 +134,6 @@ Legend: ✅ full · 🟡 limited/own-scope · ❌ none.
 | **Members — view** | ✅ | ✅ | ✅ | 🟡 own teams | ❌ | 🟡 own children | 🟡 self |
 | **Members — create/edit** | ✅ | ✅ | ✅ | ❌ | ❌ | 🟡 own children | ❌ |
 | **Members — delete** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Medical notes — view** | ✅ | ✅ | 🟡 committee policy | 🟡 own team only | ❌ | 🟡 own children | ❌ |
 | **Teams — view** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Teams — create/edit/assign** | ✅ | ✅ | ✅ | 🟡 own teams | ❌ | ❌ | ❌ |
 | **Events — view** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -273,33 +272,7 @@ For an MVP the approach is layered and lightweight:
 
 ---
 
-## 7. Medical-notes restricted visibility
-
-`members.medicalNotes` is sensitive and gated beyond normal member-view:
-
-- Server-side, `medicalNotes` is **stripped** from list/detail query results
-  unless the caller passes a role/relationship check:
-  - Owner / Admin: always.
-  - Committee: per club policy (default allowed).
-  - Coach: only for members on a team they coach.
-  - Parent/Guardian: only for their own linked children.
-  - Volunteer / Player: never.
-- The field is removed in the query handler before returning — clients never
-  receive it when unauthorised, rather than being hidden only in the UI.
-- Access to medical notes is a candidate for its own audit trail in a later
-  version.
-
-```ts
-function redactMember(member, viewer, canSeeMedical: boolean) {
-  if (canSeeMedical) return member;
-  const { medicalNotes, ...safe } = member;
-  return safe; // medical notes never leave the server
-}
-```
-
----
-
-## 8. Summary of guarantees
+## 7. Summary of guarantees
 
 | Threat | Mitigation |
 | --- | --- |
@@ -309,4 +282,4 @@ function redactMember(member, viewer, canSeeMedical: boolean) {
 | QR/NFC data leakage | Opaque tag ids; no private data on unauthenticated landing; permission check before detail. |
 | Malicious uploads | Server-issued upload URLs; content-type + size validation; org/role checks; redacted access. |
 | Abuse / flooding | Layered rate limiting on auth, public HTTP routes, and sensitive mutations. |
-| Sensitive PII exposure | Medical notes redacted server-side based on role/relationship. |
+| Sensitive data minimisation | The product does not provide dedicated high-sensitivity personal-data collection fields. |

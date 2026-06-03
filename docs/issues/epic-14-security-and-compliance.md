@@ -12,7 +12,7 @@ This epic hardens GatherHub: documenting the security model, building permission
   - [ ] Describes public-route data exposure rules and the audit log's immutability.
   - [ ] Lists known limitations/assumptions for MVP.
   - [ ] Reviewed and linked from the README.
-- **Technical notes:** Reference Epic 2 (auth), Epic 3 #7 (medical notes), Epic 7 #1 (audit). Keep it living; update as features land.
+- **Technical notes:** Reference Epic 2 (auth), Epic 3 (member/contact data), Epic 7 #1 (audit). Keep it living; update as features land.
 - **Dependencies:** Epic 2 #5 Implement role model, Epic 2 #7 Add organisation-scoped queries
 - **Labels:** `area:docs`, `type:security`, `epic:security`
 - **Estimated effort:** S (2-4h)
@@ -53,11 +53,10 @@ This epic hardens GatherHub: documenting the security model, building permission
 - **Description:** Tests asserting each role's allowed/denied operations against the permission matrix.
 - **Goal:** The role matrix is enforced and regression-protected.
 - **Acceptance criteria:**
-  - [ ] Tests cover key operations per role (manage members/teams/assets, view medical notes, post announcements, asset operations).
+  - [ ] Tests cover key operations per role (manage members/teams/assets, post announcements, asset operations).
   - [ ] Both allowed and denied cases asserted.
-  - [ ] Medical-note access restricted per matrix.
   - [ ] Tests run in CI.
-- **Technical notes:** Drive from a table mapping role x operation to expected outcome, using the helpers (Issue 2). Covers Epic 3 #7 and Epic 7 #9.
+- **Technical notes:** Drive from a table mapping role x operation to expected outcome, using the helpers (Issue 2). Covers Epic 3 and Epic 7 #9.
 - **Dependencies:** Epic 14 #2 Convex permission test helpers, Epic 2 #5 Implement role model
 - **Labels:** `area:backend`, `type:test`, `type:security`, `epic:security`
 - **Estimated effort:** M (4-8h)
@@ -140,11 +139,11 @@ This epic hardens GatherHub: documenting the security model, building permission
 ## Issue 10: Privacy policy template
 
 - **Title:** Privacy policy template
-- **Description:** Provide a privacy policy template covering the personal data GatherHub processes (members, minors, medical notes, contacts) for clubs to adapt.
+- **Description:** Provide a privacy policy template covering the personal data GatherHub processes (members, minors, contacts) for clubs to adapt.
 - **Goal:** Clubs have a starting privacy policy reflecting GatherHub's data handling.
 - **Acceptance criteria:**
   - [ ] Template enumerates data categories collected and their purpose.
-  - [ ] Addresses minors' data and sensitive medical information.
+  - [ ] Addresses minors' data and contact-data handling.
   - [ ] Covers retention, access, and data subject rights at a high level.
   - [ ] Clearly marked as a template requiring legal review.
 - **Technical notes:** Not legal advice; provide placeholders for club-specific details. Align categories with the security model doc (Issue 1).

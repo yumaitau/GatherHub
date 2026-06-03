@@ -15,8 +15,8 @@ field-ops scaffold.
 
 ### Modules
 
-- **Members** — profiles, guardians, emergency contacts, restricted medical
-  notes, active/inactive status, CSV export.
+- **Members** — profiles, guardians, emergency contacts, active/inactive
+  status, CSV export.
 - **Teams** — creation, rosters, player/coach/manager assignment.
 - **Events & attendance** — training/match/meeting events, RSVPs, attendance
   recording and export, upcoming-events dashboard.

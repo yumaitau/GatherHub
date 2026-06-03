@@ -2,10 +2,10 @@ import SwiftUI
 import AVFoundation
 import CoreNFC
 
-/// Single field-ops surface that combines QR camera + NFC tap + manual
-/// tag lookup. Replaces the previous separate Scan and Assets tabs:
-/// the most common operation (scan a tag) lives at the top, with a
-/// manual lookup fallback underneath.
+/// Single field-ops surface that combines QR camera, explicit NFC scanning,
+/// and manual tag lookup. Replaces the previous separate Scan and Assets tabs:
+/// the most common operation (scan a tag) lives at the top, with a manual
+/// lookup fallback underneath.
 struct AssetsView: View {
     let context: CurrentContext?
 
@@ -86,12 +86,6 @@ struct AssetsView: View {
             }
             .onAppear {
                 camera.start()
-                // Match Kit-Trace: auto-poll an NFC session every time
-                // the Assets tab appears (not just once per launch) so
-                // tapping the tab is the only action needed to scan.
-                if NFCReaderSession.readingAvailable, !nfcRaw.isScanning {
-                    nfcRaw.beginScanning()
-                }
                 Task { await loadAssets() }
             }
             .onDisappear { camera.stop() }

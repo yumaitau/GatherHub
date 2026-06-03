@@ -210,7 +210,6 @@ A person in a club. May or may not be a `user`.
 | `email` | `v.optional(v.string())` | |
 | `phone` | `v.optional(v.string())` | |
 | `photoStorageId` | `v.optional(v.string())` | Compatibility field name; stores an R2 object key for uploaded photo. |
-| `medicalNotes` | `v.optional(v.string())` | **Restricted visibility** (see security-model). |
 | `isMinor` | `v.optional(v.boolean())` | Derived/cached from DOB. |
 | `status` | `v.union(v.literal("active"), v.literal("inactive"))` | |
 

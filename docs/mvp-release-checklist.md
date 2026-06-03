@@ -8,7 +8,7 @@ definition of done.
 - [ ] Sign in / sign up via Clerk works; organisation create/switch works.
 - [ ] New user + org are mirrored into Convex on first load.
 - [ ] Members: create, list, search, edit, status, guardians, emergency
-      contacts, medical notes (restricted), delete.
+      contacts, delete.
 - [ ] Teams: create, list, detail, assign players + coaches, deactivate.
 - [ ] Events: create training/match/meeting, list upcoming, RSVP, attendance.
 - [ ] Announcements: org + team, pin, read/unread.
@@ -29,7 +29,6 @@ definition of done.
 - [ ] Every Convex query/mutation derives `orgId` from the session.
 - [ ] Cross-org id access returns "not found" (isolation test passes).
 - [ ] Role checks enforced server-side for all mutating operations.
-- [ ] Medical notes hidden from non-privileged roles.
 - [ ] QR/NFC tags contain no private data; public lookup leaks nothing sensitive.
 - [ ] File upload restricted to committee+; served URLs validated.
 - [ ] Security headers configured at the host (see `deployment.md`).

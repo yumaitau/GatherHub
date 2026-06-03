@@ -29,9 +29,7 @@ Permissions are enforced on the server; the UI hides actions you can't perform.
 
 - **Members** lists everyone in the club. Search and filter by status.
 - Open a member to edit details, set active/inactive, add **guardians** and
-  **emergency contacts**, record **certifications**, and (for authorised roles)
-  view/edit **medical notes**.
-- Medical notes are visible only to owners, admins, committee, and coaches.
+  **emergency contacts**, and record **certifications**.
 
 ## Teams
 

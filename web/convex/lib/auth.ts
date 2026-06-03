@@ -209,16 +209,6 @@ export function assertSameOrg(
   }
 }
 
-/** Can the caller view restricted data such as medical notes? */
-export function canViewRestricted(role: Role): boolean {
-  return (
-    role === "owner" ||
-    role === "admin" ||
-    role === "committee" ||
-    role === "coach"
-  );
-}
-
 /** Roles permitted to manage (mutate) assets and run asset operations. */
 export const ASSET_MANAGER_ROLES: Role[] = [
   "owner",

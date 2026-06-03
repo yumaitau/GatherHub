@@ -143,9 +143,6 @@ export default function MemberDetailPage() {
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="contacts">Guardians &amp; contacts</TabsTrigger>
           <TabsTrigger value="teams">Teams</TabsTrigger>
-          {data.canSeeMedical && (
-            <TabsTrigger value="medical">Medical</TabsTrigger>
-          )}
           <TabsTrigger value="certs">Certifications</TabsTrigger>
         </TabsList>
 
@@ -158,15 +155,6 @@ export default function MemberDetailPage() {
         <TabsContent value="teams">
           <TeamsTab data={data} />
         </TabsContent>
-        {data.canSeeMedical && (
-          <TabsContent value="medical">
-            <MedicalTab
-              memberId={member._id}
-              notes={data.medicalNotes}
-              canEdit={canEditMembers}
-            />
-          </TabsContent>
-        )}
         <TabsContent value="certs">
           <CertificationsTab data={data} canEdit={canManageTraining} />
         </TabsContent>
@@ -610,66 +598,6 @@ function TeamsTab({ data }: { data: MemberData }) {
             ))}
           </ul>
         )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function MedicalTab({
-  memberId,
-  notes,
-  canEdit,
-}: {
-  memberId: Id<"members">;
-  notes: string | null;
-  canEdit: boolean;
-}) {
-  const setMedicalNotes = useMutation(api.members.setMedicalNotes);
-  const [value, setValue] = React.useState(notes ?? "");
-  const [error, setError] = React.useState<string | null>(null);
-  const [saving, setSaving] = React.useState(false);
-  const [saved, setSaved] = React.useState(false);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSaved(false);
-    setSaving(true);
-    try {
-      await setMedicalNotes({ memberId, notes: value });
-      setSaved(true);
-      toastSuccess("Medical notes saved.");
-    } catch (err) {
-      setError(toastFailure(err, "Could not save medical notes."));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Medical notes</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={submit} className="grid gap-4">
-          <Textarea
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            disabled={!canEdit}
-            className="min-h-[140px]"
-            placeholder="Allergies, conditions, medication…"
-          />
-          {error && <p className="text-caption text-danger">{error}</p>}
-          {saved && <p className="text-caption text-success">Saved.</p>}
-          {canEdit && (
-            <div>
-              <Button type="submit" disabled={saving}>
-                {saving ? "Saving…" : "Save medical notes"}
-              </Button>
-            </div>
-          )}
-        </form>
       </CardContent>
     </Card>
   );

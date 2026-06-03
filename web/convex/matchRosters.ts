@@ -126,8 +126,6 @@ function statusEventType(
       return "arrived";
     case "unavailable":
       return "unavailable";
-    case "injured":
-      return "injured";
     case "substituted":
       return "substitution";
     case "interchanged":

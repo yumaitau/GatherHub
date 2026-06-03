@@ -20,7 +20,7 @@ KitTrace is GatherHub's asset-tracking module for club equipment and kit. This e
 ## Issue 2: Asset category enum
 
 - **Title:** Asset category enum
-- **Description:** Define a category enum (e.g. apparel, equipment, balls, medical, electronics, other) for classifying assets.
+- **Description:** Define a category enum (e.g. apparel, equipment, balls, electronics, other) for classifying assets.
 - **Goal:** Assets are categorised consistently and filterable by category.
 - **Acceptance criteria:**
   - [ ] Category enum defined and centralised.

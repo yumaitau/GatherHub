@@ -1,9 +1,9 @@
 # Privacy Policy Template
 
 > **This is a template, not legal advice.** Replace the bracketed placeholders
-> and have it reviewed before publishing. Clubs handling children's data and
-> medical information have heightened obligations under privacy law (e.g. the
-> Australian Privacy Act / APPs, UK/EU GDPR). Seek advice for your jurisdiction.
+> and have it reviewed before publishing. Clubs handling children's data have
+> heightened obligations under privacy law (e.g. the Australian Privacy Act /
+> APPs, UK/EU GDPR). Seek advice for your jurisdiction.
 
 ## Privacy Policy for [Club Name]
 
@@ -19,9 +19,6 @@ data, contact [contact email].
 - **Member details:** name, date of birth, contact details, team assignments,
   active/inactive status.
 - **Guardian & emergency contacts** for members (especially minors).
-- **Medical notes** — sensitive information used only to keep members safe.
-  Access is restricted to authorised club officials (owners, admins, committee,
-  and the member's coach).
 - **Attendance and RSVP** records for events.
 - **Volunteer information:** skills, certifications and expiry dates.
 - **Asset custody records** (who has which equipment) and an audit history.
@@ -40,9 +37,9 @@ members can opt out or request deletion.]
 
 ### Who can see what
 
-Access is role-based and enforced by the system. Medical notes and emergency
-contacts are visible only to authorised officials. Public website content is
-limited to active teams, published news, and sponsors marked as public.
+Access is role-based and enforced by the system. Emergency contacts are visible
+only to authorised officials. Public website content is limited to active teams,
+published news, and sponsors marked as public.
 
 ### Data storage & security
 

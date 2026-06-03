@@ -275,7 +275,7 @@ private struct MatchDayMemberRow: View {
             return .info
         case .substituted, .interchanged:
             return .warning
-        case .unavailable, .injured:
+        case .unavailable:
             return .danger
         }
     }
