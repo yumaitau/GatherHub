@@ -487,7 +487,7 @@ private struct PlayerRegistrationEditorSheet: View {
     }
 
     private var playerSection: some View {
-        Section("Player") {
+        Section {
             TextField("First name", text: $firstName)
                 .textContentType(.givenName)
             TextField("Last name", text: $lastName)
@@ -502,6 +502,10 @@ private struct PlayerRegistrationEditorSheet: View {
                 .keyboardType(.phonePad)
             TextField("Notes", text: $notes, axis: .vertical)
                 .lineLimit(2...4)
+        } header: {
+            Text("Player")
+        } footer: {
+            Text("Do not enter medical, allergy, or other health information. This app does not store or process health data.")
         }
     }
 

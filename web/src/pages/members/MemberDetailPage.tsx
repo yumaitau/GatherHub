@@ -314,6 +314,10 @@ function ProfileTab({
               onChange={(e) => setNotes(e.target.value)}
               disabled={!canEdit}
             />
+            <p className="text-xs text-muted-foreground">
+              Do not enter medical, allergy, or other health information. This
+              app does not store or process health data.
+            </p>
           </div>
           <label className="flex items-center gap-2 text-sm font-medium">
             <input
