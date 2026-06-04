@@ -266,12 +266,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
-  const { isLoading, isSignedInToOrg, org, role, can, hasCapability } =
+  const { isLoading, isSignedInToOrg, org, can, hasCapability } =
     useGatherHub();
   const groups = buildNav(org);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const location = useLocation();
-  const hasWebAccess = !role || can("volunteer");
+  // Web app is for volunteer-and-above roles only; parent/player accounts are
+  // mobile-only (see MobileAppOnly). Fail closed: a missing/unknown role does
+  // not get web access. By the time this renders, isLoading is false and the
+  // org is present, so an authenticated user with an org always has a role.
+  const hasWebAccess = can("volunteer");
   const showNavigation = Boolean(isSignedInToOrg && org && hasWebAccess);
 
   React.useEffect(() => setMobileOpen(false), [location.pathname]);

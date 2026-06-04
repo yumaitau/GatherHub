@@ -25,6 +25,19 @@ the field lists.
 - **Field types** use Convex validator notation (`v.string()`, `v.number()`,
   `v.boolean()`, `v.id()`, `v.optional()`, `v.union(v.literal(...))`, etc.).
 
+## Out of scope: health data
+
+GatherHub does **not** collect, store, or process medical, allergy, or other
+health information about any member, player, guardian, or contact. No table in
+this model has a field for medical conditions, allergies, medications, dietary
+or accessibility needs, or any other health data, and none must be added.
+
+Free-text fields (e.g. `members.notes`, `members.volunteerNotes`) are
+general-purpose and are **not** intended for health data. The member and player
+forms (web and iOS) carry inline guidance telling users not to enter it. If a
+health-data requirement ever arises, treat it as a new feature with its own
+privacy, consent, and security review — do not repurpose the notes fields.
+
 ---
 
 ## Enums

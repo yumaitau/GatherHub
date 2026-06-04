@@ -513,9 +513,13 @@ private struct MemberEditorSheet: View {
                         .textInputAutocapitalization(.never)
                     Toggle("Volunteer", isOn: $isVolunteer)
                 }
-                Section("Notes") {
+                Section {
                     TextField("Notes", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
+                } header: {
+                    Text("Notes")
+                } footer: {
+                    Text("Do not enter medical, allergy, or other health information. This app does not store or process health data.")
                 }
             }
             .navigationTitle(member == nil ? "New member" : "Edit member")
