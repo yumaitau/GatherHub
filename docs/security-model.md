@@ -123,7 +123,12 @@ mutation re-checks regardless.
 
 Web app access is for operational roles only: **Volunteer and above** can enter
 the web shell. **Parent** and **Player** accounts are mobile-app-only; if they
-sign in on the web they see an access-state screen and no workspace navigation.
+sign in on the web they see an access-state screen (`MobileAppOnly`) and no
+workspace navigation — the routed page never mounts, so its queries never run.
+The gate (`AppLayout`'s `hasWebAccess = can("volunteer")`) **fails closed**: an
+unknown or missing role is treated as no web access. This is a client-side
+platform restriction — web and mobile share one Convex backend, so per-query
+role checks (above) remain the authoritative boundary on both.
 
 ### Permissions matrix (role × capability)
 
