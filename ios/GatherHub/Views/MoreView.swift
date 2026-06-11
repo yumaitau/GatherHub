@@ -64,6 +64,11 @@ struct MoreView: View {
                     )
                 }
             }
+            if context.org.moduleEnabled("posts") {
+                row("Community", system: "bubble.left.and.bubble.right") {
+                    PostsListView()
+                }
+            }
             if context.org.moduleEnabled("training") && context.hasCapability("training.manage") {
                 row("Training & \(context.org.term(\.certificationPlural, fallback: "certifications"))", system: "graduationcap") {
                     TrainingCertificationsListView(
