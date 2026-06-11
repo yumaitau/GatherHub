@@ -497,6 +497,178 @@ final class ConvexService: ObservableObject {
         )
     }
 
+    // MARK: - Community posts
+
+    /// `posts:list` (query, `{ teamId?, limit? }`) — newest-first feed. With
+    /// `teamId`, returns that team's posts plus org-wide posts; without it,
+    /// the whole org.
+    func listPosts(teamId: String? = nil, limit: Int? = nil) async throws -> [Post] {
+        var args: [String: ConvexEncodable?] = [:]
+        if let teamId { args["teamId"] = teamId }
+        if let limit { args["limit"] = Double(limit) }
+        return try await once("posts:list", with: args)
+    }
+
+    /// `posts:get` (query, `{ postId }`) — one post with seen count and the
+    /// full comment tree. `nil` when the post has been deleted.
+    func getPost(_ postId: String) async throws -> PostDetail? {
+        try await once("posts:get", with: ["postId": postId])
+    }
+
+    /// `posts:myPostingAccess` (query, `{ teamId? }`) — whether the caller
+    /// may post/moderate in the given feed. Drives compose-button visibility.
+    func myPostingAccess(teamId: String? = nil) async throws -> PostingAccess {
+        var args: [String: ConvexEncodable?] = [:]
+        if let teamId { args["teamId"] = teamId }
+        return try await once("posts:myPostingAccess", with: args)
+    }
+
+    /// `posts:create` (mutation). `teamId` nil posts to the org-wide feed.
+    @discardableResult
+    func createPost(
+        title: String? = nil,
+        body: String,
+        teamId: String? = nil,
+        commentsDisabled: Bool = false,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args: [String: ConvexEncodable?] = [
+            "body": body,
+            "commentsDisabled": commentsDisabled,
+        ]
+        putOptionalString("title", title, into: &args)
+        putOptionalString("teamId", teamId, into: &args)
+        return try await performMutation(
+            "posts:create",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `posts:update` (mutation) — author or `posts.moderate` only.
+    func updatePost(
+        postId: String,
+        title: String? = nil,
+        body: String,
+        commentsDisabled: Bool,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = [
+            "postId": postId,
+            "body": body,
+            "commentsDisabled": commentsDisabled,
+        ]
+        putOptionalString("title", title, into: &args, includeNull: true)
+        try await performMutation(
+            "posts:update",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `posts:remove` (mutation) — author or `posts.moderate`. Cascades
+    /// comments, reactions, and read receipts.
+    func removePost(postId: String, clientMutationId: String? = nil) async throws {
+        try await performMutation(
+            "posts:remove",
+            with: ["postId": postId],
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `posts:setReaction` (mutation) — set or replace the caller's reaction
+    /// on a post (`commentId` nil) or a comment/reply. Pass `kind: nil` to
+    /// clear the reaction.
+    func setPostReaction(
+        postId: String,
+        commentId: String? = nil,
+        kind: PostReactionKind?,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = ["postId": postId]
+        if let commentId { args["commentId"] = commentId }
+        // Backend expects an explicit null to clear, so always send the key.
+        args.updateValue(kind?.rawValue, forKey: "kind")
+        try await performMutation(
+            "posts:setReaction",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `posts:addComment` (mutation). `parentCommentId` makes a one-level
+    /// reply; replies to replies are rejected by the backend.
+    @discardableResult
+    func addPostComment(
+        postId: String,
+        body: String,
+        parentCommentId: String? = nil,
+        clientMutationId: String? = nil
+    ) async throws -> String {
+        var args: [String: ConvexEncodable?] = [
+            "postId": postId,
+            "body": body,
+        ]
+        if let parentCommentId { args["parentCommentId"] = parentCommentId }
+        return try await performMutation(
+            "posts:addComment",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `posts:updateComment` (mutation) — author or `posts.moderate` only.
+    func updatePostComment(
+        commentId: String,
+        body: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "posts:updateComment",
+            with: ["commentId": commentId, "body": body],
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `posts:removeComment` (mutation) — author or `posts.moderate`.
+    /// Cascades replies and reactions.
+    func removePostComment(
+        commentId: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "posts:removeComment",
+            with: ["commentId": commentId],
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `posts:markRead` (mutation) — record the caller has seen the post.
+    func markPostRead(_ postId: String, clientMutationId: String? = nil) async throws {
+        try await performMutation(
+            "posts:markRead",
+            with: ["postId": postId],
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `posts:setMemberPosting` (mutation, `posts.moderate`) — toggle whether
+    /// plain members may post to a team feed (`teamId` set) or the org-wide
+    /// feed (`teamId` nil).
+    func setMemberPosting(
+        teamId: String? = nil,
+        enabled: Bool,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = ["enabled": enabled]
+        if let teamId { args["teamId"] = teamId }
+        try await performMutation(
+            "posts:setMemberPosting",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
     // MARK: - Training certifications / tasks
 
     /// `certifications:list` (query) — generic training/certification rows.

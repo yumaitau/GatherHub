@@ -14,6 +14,7 @@ export type OrganizationModuleKey =
   | "teams"
   | "events"
   | "announcements"
+  | "posts"
   | "assets"
   | "volunteers"
   | "training"
@@ -95,6 +96,7 @@ export const MODULE_LABELS: Record<OrganizationModuleKey, string> = {
   teams: "Teams / groups",
   events: "Events / jobs",
   announcements: "Announcements",
+  posts: "Community posts",
   assets: "Assets / equipment",
   volunteers: "Volunteers",
   training: "Training & certifications",

@@ -34,6 +34,7 @@ import type * as matchRosters from "../matchRosters.js";
 import type * as members from "../members.js";
 import type * as news from "../news.js";
 import type * as organizations from "../organizations.js";
+import type * as posts from "../posts.js";
 import type * as publicSite from "../publicSite.js";
 import type * as qrSettings from "../qrSettings.js";
 import type * as roles from "../roles.js";
@@ -83,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   members: typeof members;
   news: typeof news;
   organizations: typeof organizations;
+  posts: typeof posts;
   publicSite: typeof publicSite;
   qrSettings: typeof qrSettings;
   roles: typeof roles;

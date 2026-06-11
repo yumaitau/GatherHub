@@ -22,6 +22,7 @@ export const ORGANIZATION_MODULE_KEYS = [
   "teams",
   "events",
   "announcements",
+  "posts",
   "assets",
   "volunteers",
   "training",
@@ -87,6 +88,7 @@ const BASE_MODULES: OrganizationModuleKey[] = [
 
 const COMMUNITY_MODULES: OrganizationModuleKey[] = [
   ...BASE_MODULES,
+  "posts",
   "volunteers",
   "public_site",
   "sponsors",

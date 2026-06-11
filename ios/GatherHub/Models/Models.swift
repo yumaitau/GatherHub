@@ -372,6 +372,154 @@ struct Announcement: Codable, Identifiable, Hashable {
     }
 }
 
+// MARK: - Community posts
+
+/// Mirrors `postReactionKindValidator` in schema.ts — the fixed reaction set
+/// for posts and comments.
+enum PostReactionKind: String, Codable, Hashable, CaseIterable, Identifiable {
+    case like, love, celebrate, laugh
+
+    var id: String { rawValue }
+
+    var emoji: String {
+        switch self {
+        case .like: return "👍"
+        case .love: return "❤️"
+        case .celebrate: return "🎉"
+        case .laugh: return "😂"
+        }
+    }
+}
+
+/// Aggregated reaction counts as returned in `reactionCounts` on posts and
+/// comments by `posts:list` / `posts:get`.
+struct PostReactionCounts: Codable, Hashable {
+    let like: Int
+    let love: Int
+    let celebrate: Int
+    let laugh: Int
+
+    var total: Int { like + love + celebrate + laugh }
+
+    func count(for kind: PostReactionKind) -> Int {
+        switch kind {
+        case .like: return like
+        case .love: return love
+        case .celebrate: return celebrate
+        case .laugh: return laugh
+        }
+    }
+}
+
+/// Row returned by `posts:list` — a community feed post with derived author,
+/// team, reaction, comment-count, and read state.
+struct Post: Codable, Identifiable, Hashable {
+    let id: String
+    /// nil == org-wide feed.
+    let teamId: String?
+    let teamName: String?
+    let title: String?
+    let body: String
+    let commentsDisabled: Bool
+    /// Epoch ms; set when the post has been edited after creation.
+    let editedAt: Double?
+    let authorUserId: String
+    let authorName: String?
+    let authorImageUrl: String?
+    let commentCount: Int
+    let isRead: Bool
+    /// True when the caller authored the post or holds `posts.moderate`.
+    let canEdit: Bool
+    let reactionCounts: PostReactionCounts
+    /// The caller's own reaction, nil when they have not reacted.
+    let myReaction: PostReactionKind?
+    /// Epoch ms — Convex `_creationTime`.
+    let creationTime: Double
+
+    var creationDate: Date { Date(timeIntervalSince1970: creationTime / 1000) }
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case teamId, teamName, title, body, commentsDisabled, editedAt
+        case authorUserId, authorName, authorImageUrl
+        case commentCount, isRead, canEdit, reactionCounts, myReaction
+        case creationTime = "_creationTime"
+    }
+}
+
+/// A comment (or one-level reply) as returned inside `posts:get`. Top-level
+/// comments carry their `replies`; replies have `replies == nil`.
+struct PostComment: Codable, Identifiable, Hashable {
+    let id: String
+    let postId: String
+    /// nil == top-level comment; set == reply to that comment.
+    let parentCommentId: String?
+    let body: String
+    let editedAt: Double?
+    let authorUserId: String
+    let authorName: String?
+    let authorImageUrl: String?
+    let canEdit: Bool
+    let reactionCounts: PostReactionCounts
+    let myReaction: PostReactionKind?
+    let replies: [PostComment]?
+    let creationTime: Double
+
+    var creationDate: Date { Date(timeIntervalSince1970: creationTime / 1000) }
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case postId, parentCommentId, body, editedAt
+        case authorUserId, authorName, authorImageUrl
+        case canEdit, reactionCounts, myReaction, replies
+        case creationTime = "_creationTime"
+    }
+}
+
+/// Full result of `posts:get` — the post plus seen count and comment tree.
+/// The backend returns `null` for a deleted post, so decode as optional.
+struct PostDetail: Codable, Identifiable, Hashable {
+    let id: String
+    let teamId: String?
+    let teamName: String?
+    let title: String?
+    let body: String
+    let commentsDisabled: Bool
+    let editedAt: Double?
+    let authorUserId: String
+    let authorName: String?
+    let authorImageUrl: String?
+    let commentCount: Int
+    let isRead: Bool
+    let canEdit: Bool
+    let reactionCounts: PostReactionCounts
+    let myReaction: PostReactionKind?
+    /// How many org members have seen the post (Spond's "seen by N").
+    let seenCount: Int
+    let comments: [PostComment]
+    let creationTime: Double
+
+    var creationDate: Date { Date(timeIntervalSince1970: creationTime / 1000) }
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case teamId, teamName, title, body, commentsDisabled, editedAt
+        case authorUserId, authorName, authorImageUrl
+        case commentCount, isRead, canEdit, reactionCounts, myReaction
+        case seenCount, comments
+        case creationTime = "_creationTime"
+    }
+}
+
+/// Result of `posts:myPostingAccess` — drives whether the compose button and
+/// moderation controls are shown for a given feed.
+struct PostingAccess: Codable, Hashable {
+    let canPost: Bool
+    let canModerate: Bool
+    /// The member-posting toggle for the queried scope (org or team).
+    let membersCanPost: Bool
+}
+
 // MARK: - Soccer rows
 
 /// Row returned by `soccer:playerListing`.

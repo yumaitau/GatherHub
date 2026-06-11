@@ -37,6 +37,8 @@ export const capabilityValidator = v.union(
   v.literal("events.write"),
   v.literal("events.delete"),
   v.literal("announcements.write"),
+  v.literal("posts.write"),
+  v.literal("posts.moderate"),
   v.literal("assets.read"),
   v.literal("assets.operate"),
   v.literal("assets.admin"),
@@ -55,6 +57,15 @@ export const capabilityValidator = v.union(
   v.literal("jobs.complete"),
   v.literal("fleet.inspect"),
   v.literal("safety.manage"),
+);
+
+// Fixed reaction set for community posts and comments (Spond-style feed,
+// but a curated palette instead of free emoji so aggregation stays simple).
+export const postReactionKindValidator = v.union(
+  v.literal("like"),
+  v.literal("love"),
+  v.literal("celebrate"),
+  v.literal("laugh"),
 );
 
 export const memberStatusValidator = v.union(
@@ -208,6 +219,7 @@ export const organizationModuleKeyValidator = v.union(
   v.literal("teams"),
   v.literal("events"),
   v.literal("announcements"),
+  v.literal("posts"),
   v.literal("assets"),
   v.literal("volunteers"),
   v.literal("training"),
@@ -320,6 +332,9 @@ export default defineSchema({
     terminology: v.optional(organizationTerminologyValidator),
     profileUpdatedAt: v.optional(v.number()),
     defaultAddress: v.optional(v.string()),
+    // When true, any org member may create org-wide posts. When false/unset,
+    // org-wide posting requires the `posts.write` capability.
+    membersCanPost: v.optional(v.boolean()),
   })
     .index("by_slug", ["slug"])
     .index("by_invite_code", ["inviteCode"]),
@@ -491,6 +506,9 @@ export default defineSchema({
     teamRegistered: v.optional(v.boolean()),
     teamRegisteredDate: v.optional(v.string()),
     teamRegistrationPaid: v.optional(v.boolean()),
+    // When true, any member of this team may post to the team feed. When
+    // false/unset, posting to the team requires the `posts.write` capability.
+    membersCanPost: v.optional(v.boolean()),
   })
     .index("by_org", ["orgId"])
     .index("by_org_and_active", ["orgId", "isActive"]),
@@ -559,6 +577,63 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_org_and_pinned", ["orgId", "pinned"])
     .index("by_team", ["teamId"]),
+
+  // Community feed posts (Spond-style group posts). A post lives either in a
+  // team feed (`teamId` set) or the org-wide feed (`teamId` undefined).
+  // Announcements remain the broadcast surface; posts are the conversational
+  // one — members can comment and react.
+  posts: defineTable({
+    orgId: v.id("organizations"),
+    teamId: v.optional(v.id("teams")), // undefined == org-wide feed
+    title: v.optional(v.string()),
+    body: v.string(),
+    commentsDisabled: v.boolean(),
+    createdBy: v.id("users"),
+    editedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_team", ["teamId"]),
+
+  // One level of nesting only (comment → reply), mirroring Spond. A reply's
+  // `parentCommentId` must reference a top-level comment on the same post;
+  // mutations enforce this.
+  postComments: defineTable({
+    orgId: v.id("organizations"),
+    postId: v.id("posts"),
+    parentCommentId: v.optional(v.id("postComments")),
+    body: v.string(),
+    createdBy: v.id("users"),
+    editedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_post", ["postId"])
+    .index("by_parent", ["parentCommentId"]),
+
+  // One reaction per user per target. `commentId` undefined == reaction on
+  // the post itself; set == reaction on that comment/reply.
+  postReactions: defineTable({
+    orgId: v.id("organizations"),
+    postId: v.id("posts"),
+    commentId: v.optional(v.id("postComments")),
+    userId: v.id("users"),
+    kind: postReactionKindValidator,
+  })
+    .index("by_org", ["orgId"])
+    .index("by_post", ["postId"])
+    .index("by_comment", ["commentId"])
+    .index("by_target_and_user", ["postId", "commentId", "userId"]),
+
+  // Per-user read tracking, same shape as announcementReads. Drives unread
+  // badges on mobile; aggregate count doubles as Spond's "seen by N".
+  postReads: defineTable({
+    orgId: v.id("organizations"),
+    postId: v.id("posts"),
+    userId: v.id("users"),
+    readAt: v.number(),
+  })
+    .index("by_post_and_user", ["postId", "userId"])
+    .index("by_post", ["postId"])
+    .index("by_user", ["userId"]),
 
   announcementReads: defineTable({
     orgId: v.id("organizations"),
