@@ -428,6 +428,14 @@ export const taskReminderEmailStatusValidator = v.union(
   v.literal("skipped"),
 );
 
+// Per-recipient delivery state for community-post notification emails.
+export const postNotificationStatusValidator = v.union(
+  v.literal("queued"),
+  v.literal("sent"),
+  v.literal("failed"),
+  v.literal("skipped"),
+);
+
 export const fixtureStatusValidator = v.union(
   v.literal("scheduled"),
   v.literal("postponed"),
@@ -1721,6 +1729,36 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_task", ["taskId"])
     .index("by_status_queued", ["status", "queuedAt"]),
+
+  // One row per recipient per community post: the email audit + retry trail.
+  postNotifications: defineTable({
+    orgId: v.id("organizations"),
+    postId: v.id("posts"),
+    recipientEmail: v.string(),
+    recipientName: v.optional(v.string()),
+    memberId: v.optional(v.id("members")),
+    userId: v.optional(v.id("users")),
+    status: postNotificationStatusValidator,
+    error: v.optional(v.string()),
+    providerMessageId: v.optional(v.string()),
+    queuedAt: v.number(),
+    sentAt: v.optional(v.number()),
+    failedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_post", ["postId"])
+    .index("by_status_queued", ["status", "queuedAt"]),
+
+  // Email opt-outs, keyed by lowercased address + scope (e.g. "community_posts").
+  // Covers both login users and member records (people without an account).
+  emailOptOuts: defineTable({
+    orgId: v.id("organizations"),
+    email: v.string(),
+    scope: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_scope", ["orgId", "scope"]),
 
   sponsors: defineTable({
     orgId: v.id("organizations"),

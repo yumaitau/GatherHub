@@ -14,6 +14,12 @@ const sendQueuedReminderEmails = makeFunctionReference<
   { configured: boolean; sent: number; failed: number; queued: number }
 >("taskReminderEmailSender:sendQueued");
 
+const sendQueuedPostNotifications = makeFunctionReference<
+  "action",
+  { limit?: number },
+  { configured: boolean; sent: number; failed: number; queued?: number }
+>("postNotifications:sendQueued");
+
 const crons = cronJobs();
 
 crons.daily(
@@ -27,6 +33,16 @@ crons.hourly(
   "send queued task reminder emails",
   { minuteUTC: 15 },
   sendQueuedReminderEmails,
+  {},
+);
+
+// Backstop for community-post notifications: posts notify immediately on
+// create, but this retries any rows left queued (immediate send crashed, or
+// email was configured after the post was made).
+crons.interval(
+  "send queued post notification emails",
+  { minutes: 30 },
+  sendQueuedPostNotifications,
   {},
 );
 
