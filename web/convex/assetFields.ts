@@ -237,11 +237,60 @@ export const removeDef = mutation({
   },
 });
 
-/** Set an asset's custom field values, validated against the active defs. */
+/** Stored custom field values for an asset (for clients that don't carry them
+ * in their detail payload, e.g. iOS). */
+export const attributesForAsset = query({
+  args: { assetId: v.id("assets") },
+  handler: async (ctx, args) => {
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.read");
+    const asset = await ctx.db.get(args.assetId);
+    assertSameOrg(auth, asset);
+    return asset!.attributes ?? [];
+  },
+});
+
+/** Resolved field defs + current values for one asset, by id alone. Lets a
+ * client (e.g. iOS) render the form without knowing the asset's category/type. */
+export const forAsset = query({
+  args: { assetId: v.id("assets") },
+  handler: async (ctx, args) => {
+    const auth = await requireOrgMember(ctx);
+    await requireCapability(ctx, auth, "assets.read");
+    const asset = await ctx.db.get(args.assetId);
+    assertSameOrg(auth, asset);
+    const defs = await resolveDefs(
+      ctx,
+      auth.org._id,
+      asset!.category,
+      asset!.assetType,
+    );
+    return {
+      defs: defs.map((d) => ({
+        key: d.key,
+        label: d.label,
+        kind: d.kind,
+        options: d.options ?? [],
+        unit: d.unit ?? null,
+        required: d.required,
+      })),
+      attributes: asset!.attributes ?? [],
+    };
+  },
+});
+
+/**
+ * Set an asset's custom field values, validated against the active defs. Values
+ * arrive either as the `attributes` array (web) or a JSON-encoded string in
+ * `attributesJson` (mobile, whose client can't encode nested arrays).
+ */
 export const setAttributes = mutation({
   args: {
     assetId: v.id("assets"),
-    attributes: v.array(v.object({ key: v.string(), value: v.string() })),
+    attributes: v.optional(
+      v.array(v.object({ key: v.string(), value: v.string() })),
+    ),
+    attributesJson: v.optional(v.string()),
     clientMutationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -252,14 +301,31 @@ export const setAttributes = mutation({
     const asset = await ctx.db.get(args.assetId);
     assertSameOrg(auth, asset);
 
+    let supplied: { key: string; value: string }[] = args.attributes ?? [];
+    if (args.attributesJson) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(args.attributesJson);
+      } catch {
+        throw new ConvexError("Invalid attributes payload.");
+      }
+      if (!Array.isArray(parsed))
+        throw new ConvexError("Invalid attributes payload.");
+      supplied = parsed
+        .filter(
+          (e): e is { key: string; value: string } =>
+            !!e && typeof e.key === "string" && typeof e.value === "string",
+        )
+        .map((e) => ({ key: e.key, value: e.value }));
+    }
+
     const defs = await resolveDefs(
       ctx,
       auth.org._id,
       asset!.category,
       asset!.assetType,
     );
-    const byKey = new Map(defs.map((d) => [d.key, d]));
-    const incoming = new Map(args.attributes.map((a) => [a.key, a.value]));
+    const incoming = new Map(supplied.map((a) => [a.key, a.value]));
 
     const cleaned: { key: string; value: string }[] = [];
     for (const def of defs) {
@@ -269,11 +335,7 @@ export const setAttributes = mutation({
         throw new ConvexError(`"${def.label}" is required.`);
       if (value !== "") cleaned.push({ key: def.key, value });
     }
-    // Preserve values for keys that still exist but weren't in this submit only
-    // when caller omitted them entirely is intentional replacement, so we don't
-    // merge — the form always submits the full active set.
-    void byKey;
-
+    // The form always submits the full active set, so this is a replacement.
     await ctx.db.patch(asset!._id, { attributes: cleaned });
     await recordClientMutation(
       ctx,

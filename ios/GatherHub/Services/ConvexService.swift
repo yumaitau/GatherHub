@@ -267,6 +267,27 @@ final class ConvexService: ObservableObject {
         )
     }
 
+    // MARK: - Asset custom fields
+
+    /// `assetFields:forAsset` (query). Resolved field defs + current values.
+    func assetCustomFields(assetId: String) async throws -> AssetCustomFields {
+        try await once("assetFields:forAsset", with: ["assetId": assetId])
+    }
+
+    /// `assetFields:setAttributes` (mutation). Values are JSON-encoded because
+    /// the mobile Convex client can't encode arrays of objects directly.
+    func setAssetAttributes(
+        assetId: String,
+        attributesJson: String,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "assetFields:setAttributes",
+            with: ["assetId": assetId, "attributesJson": attributesJson],
+            clientMutationId: clientMutationId
+        )
+    }
+
     // MARK: - Events
 
     /// `events:list` (query, `{ upcomingOnly?, teamId? }`).

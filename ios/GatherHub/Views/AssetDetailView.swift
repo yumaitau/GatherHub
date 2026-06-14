@@ -23,6 +23,7 @@ struct AssetDetailView: View {
     @State private var retiringAsset: Asset?
     @State private var deletingAsset: Asset?
     @State private var showFleetPreStart = false
+    @State private var showCustomFields = false
 
     init(
         tagId: String,
@@ -61,6 +62,14 @@ struct AssetDetailView: View {
                                     editingAsset = asset
                                 } label: {
                                     Label("Edit", systemImage: "pencil")
+                                }
+                                Button {
+                                    showCustomFields = true
+                                } label: {
+                                    Label(
+                                        "Custom fields",
+                                        systemImage: "slider.horizontal.3"
+                                    )
                                 }
                             }
                             if canOperate && asset.status != .retired {
@@ -152,6 +161,11 @@ struct AssetDetailView: View {
             .sheet(isPresented: $showFleetPreStart) {
                 if let asset = model.loadedAsset {
                     FleetPreStartView(assetId: asset.id, assetName: asset.name)
+                }
+            }
+            .sheet(isPresented: $showCustomFields) {
+                if let asset = model.loadedAsset {
+                    AssetCustomFieldsView(assetId: asset.id, assetName: asset.name)
                 }
             }
             .confirmationDialog(
