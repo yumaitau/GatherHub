@@ -45,6 +45,7 @@ import {
 } from "@/components/shared";
 import { QrCode, assetTagUrl } from "@/components/QrCode";
 import { useGatherHub } from "@/lib/gatherhub";
+import { AssetCustomFields } from "@/components/assets/AssetCustomFields";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import {
   humanise,
@@ -181,6 +182,16 @@ export default function AssetDetailPage() {
               <Field label="Notes" value={asset.notes ?? "—"} wide />
             </dl>
           </section>
+
+          <div className="mt-6">
+            <AssetCustomFields
+              assetId={asset._id}
+              category={asset.category}
+              assetType={asset.assetType}
+              attributes={asset.attributes}
+              canEdit={canAdminAssets}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="qr">
