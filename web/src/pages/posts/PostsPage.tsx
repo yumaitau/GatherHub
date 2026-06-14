@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import {
   MessagesSquare,
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
+import { moduleEnabled } from "@/lib/verticals";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { cn, relativeTime } from "@/lib/utils";
 
@@ -86,12 +88,35 @@ type CommentItem = {
 type CommentNode = CommentItem & { replies: CommentItem[] };
 
 export default function PostsPage() {
+  const { org } = useGatherHub();
+  const postsEnabled = moduleEnabled(org, "posts");
   const [audience, setAudience] = React.useState<string>("all");
-  const teams = useQuery(api.teams.list, {});
+  const teams = useQuery(api.teams.list, postsEnabled ? {} : "skip");
   const teamId = audience === "all" ? undefined : (audience as Id<"teams">);
-  const posts = useQuery(api.posts.list, teamId ? { teamId } : {});
-  const access = useQuery(api.posts.myPostingAccess, {});
+  const posts = useQuery(
+    api.posts.list,
+    postsEnabled ? (teamId ? { teamId } : {}) : "skip",
+  );
+  const access = useQuery(
+    api.posts.myPostingAccess,
+    postsEnabled ? {} : "skip",
+  );
   const canCompose = Boolean(access?.canPost) || Boolean(access?.canModerate);
+
+  if (!postsEnabled) {
+    return (
+      <EmptyState
+        icon={MessagesSquare}
+        title="Community is off"
+        description="Enable the Community module in Settings to share posts and discussions."
+        action={
+          <Button asChild>
+            <Link to="/settings">Open settings</Link>
+          </Button>
+        }
+      />
+    );
+  }
 
   const actions = (
     <div className="flex items-center gap-2">
@@ -658,6 +683,7 @@ function EditCommentForm({
     setSaving(true);
     try {
       await updateComment({ commentId: comment._id, body: body.trim() });
+      toastSuccess("Comment updated.");
       onDone();
     } catch (err) {
       toastFailure(err, "Could not update comment.");
