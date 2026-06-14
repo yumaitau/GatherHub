@@ -76,6 +76,48 @@ export const postBodyFormatValidator = v.union(
   v.literal("html"),
 );
 
+// ---- Field service (GX-10) ------------------------------------------------
+// Lifecycle of a job/stop: created off a route, scheduled/assigned, worked in
+// the field (en route → on site), then closed as completed or exception.
+export const jobStatusValidator = v.union(
+  v.literal("open"),
+  v.literal("scheduled"),
+  v.literal("en_route"),
+  v.literal("on_site"),
+  v.literal("completed"),
+  v.literal("exception"),
+  v.literal("cancelled"),
+);
+
+export const jobPriorityValidator = v.union(
+  v.literal("low"),
+  v.literal("normal"),
+  v.literal("high"),
+  v.literal("urgent"),
+);
+
+export const routeStatusValidator = v.union(
+  v.literal("planned"),
+  v.literal("active"),
+  v.literal("completed"),
+  v.literal("cancelled"),
+);
+
+// Append-only action log for a job. "corrected" supersedes a prior proof row.
+export const jobAuditActionValidator = v.union(
+  v.literal("created"),
+  v.literal("updated"),
+  v.literal("scheduled"),
+  v.literal("assigned"),
+  v.literal("en_route"),
+  v.literal("on_site"),
+  v.literal("completed"),
+  v.literal("exception"),
+  v.literal("reopened"),
+  v.literal("cancelled"),
+  v.literal("corrected"),
+);
+
 export const memberStatusValidator = v.union(
   v.literal("active"),
   v.literal("inactive"),
@@ -1172,6 +1214,121 @@ export default defineSchema({
     borderColor: v.string(),
     borderWidth: v.number(),
     borderRadius: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+  }).index("by_org", ["orgId"]),
+
+  // ---- Field service (GX-10) ---------------------------------------------
+  // Customers / accounts the org does work for.
+  fieldCustomers: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    contactName: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_active", ["orgId", "isActive"]),
+
+  // Service locations / sites, optionally tied to a customer.
+  fieldSites: defineTable({
+    orgId: v.id("organizations"),
+    customerId: v.optional(v.id("fieldCustomers")),
+    name: v.string(),
+    address: v.optional(v.string()),
+    geoLatitude: v.optional(v.number()),
+    geoLongitude: v.optional(v.number()),
+    accessNotes: v.optional(v.string()),
+    riskNotes: v.optional(v.string()),
+    contactName: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_active", ["orgId", "isActive"])
+    .index("by_customer", ["customerId"]),
+
+  // Routes / runs — an ordered set of jobs for a crew/driver on a given day.
+  fieldRoutes: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    date: v.string(), // ISO yyyy-mm-dd
+    status: routeStatusValidator,
+    assignedTeamId: v.optional(v.id("teams")),
+    assignedUserId: v.optional(v.id("users")),
+    notes: v.optional(v.string()),
+    createdBy: v.id("users"),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_date", ["orgId", "date"])
+    .index("by_org_and_assignee", ["orgId", "assignedUserId"]),
+
+  // Jobs / work orders. A job on a route is a "stop"; `routeOrder` sequences it.
+  fieldJobs: defineTable({
+    orgId: v.id("organizations"),
+    customerId: v.optional(v.id("fieldCustomers")),
+    siteId: v.optional(v.id("fieldSites")),
+    routeId: v.optional(v.id("fieldRoutes")),
+    routeOrder: v.optional(v.number()), // 0-based position within the route
+    title: v.string(),
+    jobType: v.optional(v.string()),
+    priority: jobPriorityValidator,
+    status: jobStatusValidator,
+    instructions: v.optional(v.string()),
+    windowStart: v.optional(v.number()), // epoch ms
+    windowEnd: v.optional(v.number()),
+    slaAt: v.optional(v.number()),
+    assignedTeamId: v.optional(v.id("teams")),
+    assignedUserId: v.optional(v.id("users")),
+    // Denormalised latest outcome; fieldJobAuditLog is the authoritative log.
+    exceptionReason: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+    completedBy: v.optional(v.id("users")),
+    lastEventAt: v.optional(v.number()),
+    createdBy: v.id("users"),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_status", ["orgId", "status"])
+    .index("by_route", ["routeId"])
+    .index("by_org_and_assignee", ["orgId", "assignedUserId"]),
+
+  // Immutable, append-only audit + proof-of-service log. No update/delete path:
+  // a correction appends a "corrected" row referencing the superseded one.
+  fieldJobAuditLog: defineTable({
+    orgId: v.id("organizations"),
+    jobId: v.id("fieldJobs"),
+    action: jobAuditActionValidator,
+    fromStatus: v.optional(jobStatusValidator),
+    toStatus: v.optional(jobStatusValidator),
+    notes: v.optional(v.string()),
+    // Proof-of-service capture (on completed / exception / corrected rows).
+    signatureName: v.optional(v.string()),
+    photoStorageIds: v.optional(v.array(v.string())),
+    scanRef: v.optional(v.string()),
+    exceptionReason: v.optional(v.string()),
+    geoLatitude: v.optional(v.number()),
+    geoLongitude: v.optional(v.number()),
+    geoAccuracy: v.optional(v.number()),
+    correctsEventId: v.optional(v.id("fieldJobAuditLog")),
+    performedBy: v.id("users"),
+    performedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_job", ["jobId"]),
+
+  // Per-org field-service settings: job types, exception reasons, and which
+  // proof artefacts a completion requires.
+  fieldServiceConfig: defineTable({
+    orgId: v.id("organizations"),
+    jobTypes: v.array(v.string()),
+    exceptionReasons: v.array(v.string()),
+    requirePhoto: v.boolean(),
+    requireSignature: v.boolean(),
+    requireScan: v.boolean(),
     updatedAt: v.number(),
     updatedBy: v.id("users"),
   }).index("by_org", ["orgId"]),

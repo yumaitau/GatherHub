@@ -87,6 +87,7 @@
 		FA44CCF14EC52A23DC8F18B4 /* OrganizationAddressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A74E09E4987A11F3CC5B8BAF /* OrganizationAddressView.swift */; };
 		FA468B16C5B1276844581F83 /* AnnouncementsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60C48A0926F5EEC03B8C6A93 /* AnnouncementsListView.swift */; };
 		7C0FFEE700000000000000B1 /* PostsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C0FFEE700000000000000F1 /* PostsListView.swift */; };
+		BBCD110023456789ABCDEF02 /* FieldRunsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FEDCBA9876543210FEDCBB /* FieldRunsListView.swift */; };
 		FE6270D95C7F98B444A2179D /* Spacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7CF0F476BC4FA9A122CE751 /* Spacing.swift */; };
 /* End PBXBuildFile section */
 
@@ -134,6 +135,7 @@
 		6012BFBD714BB92384BA2CB7 /* OfflineStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineStateView.swift; sourceTree = "<group>"; };
 		60C48A0926F5EEC03B8C6A93 /* AnnouncementsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnouncementsListView.swift; sourceTree = "<group>"; };
 		7C0FFEE700000000000000F1 /* PostsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostsListView.swift; sourceTree = "<group>"; };
+		21FEDCBA9876543210FEDCBB /* FieldRunsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldRunsListView.swift; sourceTree = "<group>"; };
 		6A91C0AA0D4A4F46B2C3D101 /* AppDataPreloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDataPreloader.swift; sourceTree = "<group>"; };
 		6CE2F0462C519B6C9EBB2B9E /* EventDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailSheet.swift; sourceTree = "<group>"; };
 		717202E7EDCC334CBAB12996 /* EventListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventListView.swift; sourceTree = "<group>"; };
@@ -349,6 +351,7 @@
 			children = (
 				60C48A0926F5EEC03B8C6A93 /* AnnouncementsListView.swift */,
 				7C0FFEE700000000000000F1 /* PostsListView.swift */,
+				21FEDCBA9876543210FEDCBB /* FieldRunsListView.swift */,
 				A154278F0138333E43EBDAEF /* CoachesManagersView.swift */,
 				C40D561FBD506CD8633FC4F8 /* GradingListView.swift */,
 				4D8F39AB5F89D41595ED32AF /* MembersListView.swift */,
@@ -487,6 +490,7 @@
 				C893CFF2134C22392B87B4EC /* AddressLookupField.swift in Sources */,
 				FA468B16C5B1276844581F83 /* AnnouncementsListView.swift in Sources */,
 				7C0FFEE700000000000000B1 /* PostsListView.swift in Sources */,
+				BBCD110023456789ABCDEF02 /* FieldRunsListView.swift in Sources */,
 				375B0ECB1BA6B59E46FB789B /* AssetDetailView.swift in Sources */,
 				B9D347C70D75BED46FB0F6B8 /* AssetLocationSheet.swift in Sources */,
 				97306B54633D1F0DBB977E59 /* AssetLookupView.swift in Sources */,

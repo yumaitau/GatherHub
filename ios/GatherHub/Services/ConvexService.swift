@@ -669,6 +669,61 @@ final class ConvexService: ObservableObject {
         )
     }
 
+    // MARK: - Field service (GX-10)
+
+    /// `fieldService:myRuns` (query) — routes assigned to the caller with their
+    /// ordered stops. Drives the driver run list.
+    func fieldMyRuns() async throws -> [FieldRun] {
+        try await once("fieldService:myRuns")
+    }
+
+    /// `fieldService:startJob` (mutation, `jobs.complete`) — advance to en route
+    /// or on site.
+    func fieldStartJob(
+        _ payload: FieldStartJobPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        try await performMutation(
+            "fieldService:startJob",
+            with: ["jobId": payload.jobId, "stage": payload.stage],
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `fieldService:completeJob` (mutation, `jobs.complete`) — complete with
+    /// proof-of-service.
+    func fieldCompleteJob(
+        _ payload: FieldCompleteJobPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = ["jobId": payload.jobId]
+        if let v = payload.signatureName { args["signatureName"] = v }
+        if let v = payload.scanRef { args["scanRef"] = v }
+        if let v = payload.notes { args["notes"] = v }
+        try await performMutation(
+            "fieldService:completeJob",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `fieldService:raiseException` (mutation, `jobs.complete`).
+    func fieldRaiseException(
+        _ payload: FieldExceptionPayload,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = [
+            "jobId": payload.jobId,
+            "exceptionReason": payload.exceptionReason,
+        ]
+        if let v = payload.notes { args["notes"] = v }
+        try await performMutation(
+            "fieldService:raiseException",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
     // MARK: - Training certifications / tasks
 
     /// `certifications:list` (query) — generic training/certification rows.

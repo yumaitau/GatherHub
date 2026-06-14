@@ -69,6 +69,14 @@ struct MoreView: View {
                     PostsListView()
                 }
             }
+            if context.org.moduleEnabled("field_service")
+                && context.hasCapability("jobs.complete") {
+                row("My runs", system: "truck.box") {
+                    FieldRunsListView(
+                        canComplete: context.hasCapability("jobs.complete")
+                    )
+                }
+            }
             if context.org.moduleEnabled("training") && context.hasCapability("training.manage") {
                 row("Training & \(context.org.term(\.certificationPlural, fallback: "certifications"))", system: "graduationcap") {
                     TrainingCertificationsListView(

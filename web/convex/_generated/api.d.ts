@@ -16,6 +16,7 @@ import type * as clerk from "../clerk.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as events from "../events.js";
+import type * as fieldService from "../fieldService.js";
 import type * as files from "../files.js";
 import type * as fixtures from "../fixtures.js";
 import type * as http from "../http.js";
@@ -66,6 +67,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   dashboard: typeof dashboard;
   events: typeof events;
+  fieldService: typeof fieldService;
   files: typeof files;
   fixtures: typeof fixtures;
   http: typeof http;

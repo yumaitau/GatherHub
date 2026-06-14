@@ -191,6 +191,14 @@ final class LocalStore {
         try cacheValue(rows, for: "assets.checkedOut")
     }
 
+    func replaceFieldRuns(_ runs: [FieldRun]) throws {
+        try cacheValue(runs, for: "fieldService.myRuns")
+    }
+
+    func cachedFieldRuns() throws -> [FieldRun]? {
+        try cachedValue(for: "fieldService.myRuns", as: [FieldRun].self)
+    }
+
     func cachedCheckedOutAssets() throws -> [AssetSummary] {
         try cachedValue(for: "assets.checkedOut", as: [AssetSummary].self) ?? []
     }

@@ -93,6 +93,12 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     case teamAgeGroupSetActive
     /// `matchRosters:updateParticipation` — match-day attendance/participation.
     case matchParticipationUpdate
+    /// `fieldService:startJob` — advance a job to en route / on site.
+    case fieldStartJob
+    /// `fieldService:completeJob` — complete a job with proof-of-service.
+    case fieldCompleteJob
+    /// `fieldService:raiseException` — mark a job as an exception.
+    case fieldRaiseException
 
     var label: String {
         switch self {
@@ -140,6 +146,9 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
         case .teamAgeGroupUpdate: return "Age group edit"
         case .teamAgeGroupSetActive: return "Age group status"
         case .matchParticipationUpdate: return "Match-day participation"
+        case .fieldStartJob: return "Job start"
+        case .fieldCompleteJob: return "Job completion"
+        case .fieldRaiseException: return "Job exception"
         }
     }
 
@@ -181,6 +190,8 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
             return "settings.admin"
         case .matchParticipationUpdate:
             return "events.write"
+        case .fieldStartJob, .fieldCompleteJob, .fieldRaiseException:
+            return "jobs.complete"
         }
     }
 }

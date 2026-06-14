@@ -892,3 +892,43 @@ struct Event: Codable, Identifiable, Hashable {
         case teamId, opponent, teamName, goingCount
     }
 }
+
+// MARK: - Field service (GX-10)
+
+/// A driver's run — a route with its ordered stops, from `fieldService:myRuns`.
+struct FieldRun: Codable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let date: String
+    let status: String
+    let stops: [FieldStop]
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case name, date, status, stops
+    }
+}
+
+/// A single stop / job on a run, as enriched by the backend.
+struct FieldStop: Codable, Identifiable, Hashable {
+    let id: String
+    let title: String
+    let jobType: String?
+    let priority: String
+    let status: String
+    let instructions: String?
+    let customerName: String?
+    let siteName: String?
+    let siteAddress: String?
+    let exceptionReason: String?
+    let lastEventAt: Double?
+
+    var isClosed: Bool { status == "completed" || status == "exception" }
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case title, jobType, priority, status, instructions
+        case customerName, siteName, siteAddress
+        case exceptionReason, lastEventAt
+    }
+}
