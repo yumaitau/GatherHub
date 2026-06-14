@@ -1,11 +1,23 @@
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
 import { Role } from "./lib/auth";
 
 // Vite-style module discovery for convex-test.
 const modules = import.meta.glob("./**/*.ts");
+
+// Creating a post schedules the email-notification action (posts.create →
+// scheduler.runAfter). convex-test runs scheduled work on a real setTimeout
+// that would otherwise fire after the test tears down. Fake ONLY the timer
+// functions (not Date, so timestamp ordering elsewhere is unaffected) so the
+// scheduled job is captured and discarded — these tests don't assert on email.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval"] });
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 /** Seed an org + user + membership and return an authed test client. */
 async function seedOrg(
@@ -278,6 +290,40 @@ describe("posts: rich text", () => {
         bodyFormat: "html",
       }),
     ).rejects.toThrow(/required/i);
+  });
+
+  test("dangerous html bodies are rejected by the write-side tripwire", async () => {
+    const t = convexTest(schema, modules);
+    const owner = await seedOrg(t, {
+      clerkOrg: "org_rt_unsafe",
+      clerkUser: "posts_rt_unsafe_owner",
+      role: "owner",
+    });
+
+    // Constructs a sanitized post body never contains: a direct API call that
+    // bypasses the client sanitizer must not be able to store them.
+    const unsafe = [
+      "<p>hi</p><script>alert(1)</script>",
+      '<iframe src="https://evil.test"></iframe>',
+      '<p onclick="steal()">tap</p>',
+      '<a href="javascript:alert(1)">x</a>',
+      '<img src="data:text/html;base64,abc">',
+    ];
+    for (const body of unsafe) {
+      await expect(
+        owner.as.mutation(api.posts.create, { body, bodyFormat: "html" }),
+      ).rejects.toThrow(/unsafe|unsupported/i);
+    }
+
+    // A clean body with an https image and a link still goes through.
+    const safe =
+      '<p>See <a href="https://x.test">site</a></p><img src="https://x.test/a.png" alt="a">';
+    const postId = await owner.as.mutation(api.posts.create, {
+      body: safe,
+      bodyFormat: "html",
+    });
+    const detail = await owner.as.query(api.posts.get, { postId });
+    expect(detail!.bodyFormat).toBe("html");
   });
 });
 
