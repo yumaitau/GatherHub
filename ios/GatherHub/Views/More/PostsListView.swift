@@ -208,7 +208,7 @@ private struct PostFeedRow: View {
                     .font(.gh.bodyStrong)
                     .foregroundStyle(Color.gh.inkStrong)
             }
-            Text(post.body)
+            Text(post.isHTML ? RichTextRenderer.plainText(from: post.body) : post.body)
                 .font(.gh.body)
                 .foregroundStyle(Color.gh.inkSoft)
                 .lineLimit(3)
@@ -358,10 +358,7 @@ struct PostDetailView: View {
                     .font(.gh.headline)
                     .foregroundStyle(Color.gh.inkStrong)
             }
-            Text(detail.body)
-                .font(.gh.body)
-                .foregroundStyle(Color.gh.ink)
-                .fixedSize(horizontal: false, vertical: true)
+            PostBody(text: detail.body, isHTML: detail.isHTML)
 
             PostReactionBar(counts: detail.reactionCounts, myReaction: detail.myReaction) { kind in
                 Task { await react(kind, on: nil, current: detail.myReaction) }
@@ -399,7 +396,7 @@ struct PostDetailView: View {
                         },
                         onReply: { replyingTo = comment },
                         onEdit: { editingComment = $0 },
-                        onDelete: { Task { await removeComment($0) } }
+                        onDelete: { comment in Task { await removeComment(comment) } }
                     )
                 }
             }
@@ -921,6 +918,7 @@ private extension PostDetail {
             teamName: teamName,
             title: title,
             body: body,
+            bodyFormat: bodyFormat,
             commentsDisabled: commentsDisabled,
             editedAt: editedAt,
             authorUserId: authorUserId,

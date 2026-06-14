@@ -420,6 +420,9 @@ struct Post: Codable, Identifiable, Hashable {
     let teamName: String?
     let title: String?
     let body: String
+    /// "plain" (legacy/default) or "html" rich-text markup. See `bodyFormat`
+    /// on the posts table; render with `PostBody`.
+    let bodyFormat: String?
     let commentsDisabled: Bool
     /// Epoch ms; set when the post has been edited after creation.
     let editedAt: Double?
@@ -438,9 +441,12 @@ struct Post: Codable, Identifiable, Hashable {
 
     var creationDate: Date { Date(timeIntervalSince1970: creationTime / 1000) }
 
+    /// True when `body` is HTML rich text rather than legacy plain text.
+    var isHTML: Bool { bodyFormat == "html" }
+
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case teamId, teamName, title, body, commentsDisabled, editedAt
+        case teamId, teamName, title, body, bodyFormat, commentsDisabled, editedAt
         case authorUserId, authorName, authorImageUrl
         case commentCount, isRead, canEdit, reactionCounts, myReaction
         case creationTime = "_creationTime"
@@ -484,6 +490,8 @@ struct PostDetail: Codable, Identifiable, Hashable {
     let teamName: String?
     let title: String?
     let body: String
+    /// "plain" (legacy/default) or "html" rich-text markup.
+    let bodyFormat: String?
     let commentsDisabled: Bool
     let editedAt: Double?
     let authorUserId: String
@@ -501,9 +509,12 @@ struct PostDetail: Codable, Identifiable, Hashable {
 
     var creationDate: Date { Date(timeIntervalSince1970: creationTime / 1000) }
 
+    /// True when `body` is HTML rich text rather than legacy plain text.
+    var isHTML: Bool { bodyFormat == "html" }
+
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case teamId, teamName, title, body, commentsDisabled, editedAt
+        case teamId, teamName, title, body, bodyFormat, commentsDisabled, editedAt
         case authorUserId, authorName, authorImageUrl
         case commentCount, isRead, canEdit, reactionCounts, myReaction
         case seenCount, comments

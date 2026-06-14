@@ -5,8 +5,39 @@ import { requireOrgMember, assertSameOrg, type AuthContext } from "./lib/auth";
 import { getClientMutation, recordClientMutation } from "./lib/idempotency";
 import { hasCapability, requireCapability } from "./lib/capabilities";
 import { requireModule } from "./lib/orgConfig";
-import { postReactionKindValidator } from "./schema";
+import { postBodyFormatValidator, postReactionKindValidator } from "./schema";
 import { ConvexError } from "convex/values";
+
+/** Generous upper bound on stored post markup (sanitized HTML can be verbose). */
+const MAX_POST_BODY = 100_000;
+
+type BodyFormat = "plain" | "html";
+
+/** Crude tag/entity strip used only to test an HTML body for real content. */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&[a-z]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Trim, bound, and require non-empty content for a post body. For HTML the
+ * emptiness check runs against the tag-stripped text so an empty editor
+ * (`<p></p>`) is rejected. Markup is sanitised by clients on render, not here.
+ */
+function normalisePostBody(raw: string, format: BodyFormat): string {
+  const body = raw.trim();
+  if (body.length > MAX_POST_BODY) {
+    throw new ConvexError("Post body is too long.");
+  }
+  const hasContent =
+    format === "html" ? stripHtml(body).length > 0 : body.length > 0;
+  if (!hasContent) throw new ConvexError("Post body is required.");
+  return body;
+}
 
 /**
  * Community feed posts (Spond-style group posts) with one-level comment
@@ -148,6 +179,7 @@ async function enrichPost(
     teamName: team?.name ?? null,
     title: post.title ?? null,
     body: post.body,
+    bodyFormat: post.bodyFormat ?? "plain",
     commentsDisabled: post.commentsDisabled,
     editedAt: post.editedAt ?? null,
     authorUserId: post.createdBy,
@@ -283,6 +315,7 @@ export const create = mutation({
   args: {
     title: v.optional(v.string()),
     body: v.string(),
+    bodyFormat: v.optional(postBodyFormatValidator),
     teamId: v.optional(v.id("teams")),
     commentsDisabled: v.optional(v.boolean()),
     clientMutationId: v.optional(v.string()),
@@ -298,8 +331,8 @@ export const create = mutation({
     }
     if (replay) throw new Error("Missing post idempotency result.");
 
-    const body = args.body.trim();
-    if (!body) throw new ConvexError("Post body is required.");
+    const format = args.bodyFormat ?? "plain";
+    const body = normalisePostBody(args.body, format);
     if (args.teamId) {
       const team = await ctx.db.get(args.teamId);
       assertSameOrg(auth, team);
@@ -316,6 +349,8 @@ export const create = mutation({
       teamId: args.teamId,
       title: args.title?.trim() || undefined,
       body,
+      // Keep plain implicit (absent) so legacy rows and new plain rows match.
+      bodyFormat: format === "html" ? "html" : undefined,
       commentsDisabled: args.commentsDisabled ?? false,
       createdBy: auth.user._id,
     });
@@ -342,6 +377,7 @@ export const update = mutation({
     postId: v.id("posts"),
     title: v.optional(v.union(v.string(), v.null())),
     body: v.optional(v.string()),
+    bodyFormat: v.optional(postBodyFormatValidator),
     commentsDisabled: v.optional(v.boolean()),
     clientMutationId: v.optional(v.string()),
   },
@@ -353,14 +389,22 @@ export const update = mutation({
     assertSameOrg(auth, post);
     if (!post) return;
     await requireAuthorOrModerator(ctx, auth, post.createdBy);
-    if (args.body !== undefined && !args.body.trim()) {
-      throw new ConvexError("Post body is required.");
-    }
+
+    // Effective format for this edit: explicit > existing > plain.
+    const format: BodyFormat = args.bodyFormat ?? post.bodyFormat ?? "plain";
+    const nextBody =
+      args.body !== undefined
+        ? normalisePostBody(args.body, format)
+        : undefined;
     await ctx.db.patch(args.postId, {
       ...(args.title !== undefined
         ? { title: args.title?.trim() || undefined }
         : {}),
-      ...(args.body !== undefined ? { body: args.body.trim() } : {}),
+      ...(nextBody !== undefined ? { body: nextBody } : {}),
+      // Only touch the format when the body itself is being replaced.
+      ...(args.body !== undefined
+        ? { bodyFormat: format === "html" ? "html" : undefined }
+        : {}),
       ...(args.commentsDisabled !== undefined
         ? { commentsDisabled: args.commentsDisabled }
         : {}),
