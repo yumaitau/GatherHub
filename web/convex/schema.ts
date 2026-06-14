@@ -68,6 +68,14 @@ export const postReactionKindValidator = v.union(
   v.literal("laugh"),
 );
 
+// Encoding of a post body. "plain" is legacy line-broken text; "html" is the
+// sanitized rich-text markup produced by the web editor (bold, lists, tables,
+// etc.). Stored markup is still sanitised on every render by each client.
+export const postBodyFormatValidator = v.union(
+  v.literal("plain"),
+  v.literal("html"),
+);
+
 export const memberStatusValidator = v.union(
   v.literal("active"),
   v.literal("inactive"),
@@ -587,6 +595,8 @@ export default defineSchema({
     teamId: v.optional(v.id("teams")), // undefined == org-wide feed
     title: v.optional(v.string()),
     body: v.string(),
+    // Absent == legacy "plain" text; "html" is sanitized rich-text markup.
+    bodyFormat: v.optional(postBodyFormatValidator),
     commentsDisabled: v.boolean(),
     createdBy: v.id("users"),
     editedAt: v.optional(v.number()),

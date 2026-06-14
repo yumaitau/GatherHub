@@ -38,6 +38,9 @@ import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
 import { useGatherHub } from "@/lib/gatherhub";
 import { moduleEnabled } from "@/lib/verticals";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
+import { RichText } from "@/components/rich-text/RichText";
+import { RichTextEditor } from "@/components/rich-text/RichTextEditor";
+import { isHtmlEmpty, plainToHtml } from "@/lib/richtext";
 import { cn, relativeTime } from "@/lib/utils";
 
 type ReactionKind = "like" | "love" | "celebrate" | "laugh";
@@ -58,6 +61,7 @@ type PostListItem = {
   teamName: string | null;
   title: string | null;
   body: string;
+  bodyFormat: "plain" | "html";
   commentsDisabled: boolean;
   editedAt: number | null;
   authorUserId: Id<"users">;
@@ -301,9 +305,13 @@ function PostCard({ post }: { post: PostListItem }) {
                 {post.title}
               </h3>
             )}
-            <p className="whitespace-pre-wrap text-body text-ink max-w-prose">
-              {post.body}
-            </p>
+            {post.bodyFormat === "html" ? (
+              <RichText html={post.body} />
+            ) : (
+              <p className="whitespace-pre-wrap text-body text-ink max-w-prose">
+                {post.body}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -619,18 +627,23 @@ function EditPostForm({
 }) {
   const update = useMutation(api.posts.update);
   const [title, setTitle] = React.useState(post.title ?? "");
-  const [body, setBody] = React.useState(post.body);
+  // Edits always upgrade the body to HTML; seed legacy plain posts as HTML.
+  const [body, setBody] = React.useState(() =>
+    post.bodyFormat === "html" ? post.body : plainToHtml(post.body),
+  );
   const [saving, setSaving] = React.useState(false);
+  const empty = isHtmlEmpty(body);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!body.trim()) return;
+    if (empty) return;
     setSaving(true);
     try {
       await update({
         postId: post._id,
         title: title.trim() ? title.trim() : null,
-        body: body.trim(),
+        body,
+        bodyFormat: "html",
       });
       toastSuccess("Post updated.");
       onDone();
@@ -648,14 +661,9 @@ function EditPostForm({
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Title (optional)"
       />
-      <Textarea
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        rows={4}
-        required
-      />
+      <RichTextEditor value={body} onChange={setBody} ariaLabel="Post body" />
       <div className="flex items-center gap-2">
-        <Button type="submit" size="sm" disabled={saving || !body.trim()}>
+        <Button type="submit" size="sm" disabled={saving || empty}>
           {saving ? "Saving…" : "Save"}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={onDone}>
@@ -749,7 +757,7 @@ function NewPostDialog({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!body.trim()) {
+    if (isHtmlEmpty(body)) {
       setError("Write something to post.");
       return;
     }
@@ -758,7 +766,8 @@ function NewPostDialog({
     try {
       await create({
         title: title.trim() || undefined,
-        body: body.trim(),
+        body,
+        bodyFormat: "html",
         teamId: selectedTeamId,
         commentsDisabled,
       });
@@ -825,12 +834,10 @@ function NewPostDialog({
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="post-body">Message</Label>
-            <Textarea
-              id="post-body"
+            <RichTextEditor
               value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={5}
-              required
+              onChange={setBody}
+              ariaLabel="Post message"
             />
           </div>
           {canModerate && (

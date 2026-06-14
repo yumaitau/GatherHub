@@ -245,6 +245,42 @@ describe("posts: comments and reactions", () => {
   });
 });
 
+describe("posts: rich text", () => {
+  test("html body round-trips with bodyFormat; empty markup is rejected", async () => {
+    const t = convexTest(schema, modules);
+    const owner = await seedOrg(t, {
+      clerkOrg: "org_richtext",
+      clerkUser: "posts_rt_owner",
+      role: "owner",
+    });
+
+    const html = "<h2>Notice</h2><p><strong>Bring boots.</strong></p>";
+    const postId = await owner.as.mutation(api.posts.create, {
+      body: html,
+      bodyFormat: "html",
+    });
+
+    const detail = await owner.as.query(api.posts.get, { postId });
+    expect(detail!.body).toBe(html);
+    expect(detail!.bodyFormat).toBe("html");
+
+    // Legacy plain posts report bodyFormat "plain".
+    const plainId = await owner.as.mutation(api.posts.create, {
+      body: "Just text",
+    });
+    const plain = await owner.as.query(api.posts.get, { postId: plainId });
+    expect(plain!.bodyFormat).toBe("plain");
+
+    // Markup with no visible text is treated as empty.
+    await expect(
+      owner.as.mutation(api.posts.create, {
+        body: "<p></p>",
+        bodyFormat: "html",
+      }),
+    ).rejects.toThrow(/required/i);
+  });
+});
+
 describe("posts: moderation", () => {
   test("authors edit their own; players cannot touch others'; owners can", async () => {
     const t = convexTest(schema, modules);
