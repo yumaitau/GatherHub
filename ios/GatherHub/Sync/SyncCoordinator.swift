@@ -360,6 +360,31 @@ final class SyncCoordinator {
                 let args = try JSONDecoder().decode(MatchParticipationPayload.self, from: op.payload)
                 try await convex.updateMatchParticipation(args, clientMutationId: op.clientId)
                 await refreshMatchDayCaches()
+            case .fleetInspection:
+                let args = try JSONDecoder().decode(FleetInspectionPayload.self, from: op.payload)
+                try await convex.recordFleetInspection(
+                    assetId: args.assetId,
+                    type: args.type,
+                    result: args.result,
+                    odometer: args.odometer,
+                    engineHours: args.engineHours,
+                    notes: args.notes,
+                    latitude: args.latitude,
+                    longitude: args.longitude,
+                    accuracy: args.accuracy,
+                    clientMutationId: op.clientId
+                )
+                await refreshAssetListCaches()
+            case .fleetDefect:
+                let args = try JSONDecoder().decode(FleetDefectPayload.self, from: op.payload)
+                try await convex.reportFleetDefect(
+                    assetId: args.assetId,
+                    severity: args.severity,
+                    title: args.title,
+                    description: args.description,
+                    clientMutationId: op.clientId
+                )
+                await refreshAssetListCaches()
             }
             op.transition(to: .applied)
             try? store.save()
@@ -560,6 +585,25 @@ struct ScanPayload: Codable {
     let latitude: Double?
     let longitude: Double?
     let accuracy: Double?
+}
+
+struct FleetInspectionPayload: Codable {
+    let assetId: String
+    let type: String // pre_start | periodic | return
+    let result: String // pass | pass_with_defects | fail
+    let odometer: Double?
+    let engineHours: Double?
+    let notes: String?
+    let latitude: Double?
+    let longitude: Double?
+    let accuracy: Double?
+}
+
+struct FleetDefectPayload: Codable {
+    let assetId: String
+    let severity: String // minor | major | critical
+    let title: String
+    let description: String?
 }
 
 struct RegisterNfcPayload: Codable {
