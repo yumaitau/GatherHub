@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Webhook } from "svix";
+import { verifyUnsubscribe } from "./lib/unsubscribe";
 
 const http = httpRouter();
 
@@ -122,6 +123,33 @@ const uploadUrl = httpAction(async (ctx, request) => {
   }
 });
 
+/**
+ * One-click unsubscribe for notification emails. The signed token carries
+ * org + email + scope, so no auth is needed and nothing is stored until the
+ * recipient clicks. Supports GET (link in the footer) and POST (RFC 8058
+ * one-click via the List-Unsubscribe-Post header). Always responds 200 so mail
+ * clients don't flag a broken link; the body reflects the outcome.
+ */
+const emailUnsubscribe = httpAction(async (ctx, request) => {
+  const token = new URL(request.url).searchParams.get("token");
+  const secret = process.env.UNSUBSCRIBE_SECRET ?? process.env.RESEND_API_KEY;
+  if (!token || !secret) {
+    return htmlPage("This unsubscribe link is invalid or has expired.");
+  }
+  const payload = await verifyUnsubscribe(token, secret);
+  if (!payload) {
+    return htmlPage("This unsubscribe link is invalid or has expired.");
+  }
+  await ctx.runMutation(internal.emailOptOuts.optOut, {
+    orgId: payload.orgId,
+    email: payload.email,
+    scope: payload.scope,
+  });
+  return htmlPage(
+    `You've been unsubscribed. ${payload.email} will no longer receive these emails.`,
+  );
+});
+
 const options = httpAction(async () => {
   return new Response(null, {
     status: 204,
@@ -147,7 +175,27 @@ http.route({
   handler: options,
 });
 
+http.route({
+  path: "/email/unsubscribe",
+  method: "GET",
+  handler: emailUnsubscribe,
+});
+
+http.route({
+  path: "/email/unsubscribe",
+  method: "POST",
+  handler: emailUnsubscribe,
+});
+
 export default http;
+
+function htmlPage(message: string) {
+  const body = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe</title></head><body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f5f6f8;color:#2c2f3d;"><div style="max-width:440px;margin:14vh auto;padding:28px;background:#fff;border:1px solid #e6e8ec;border-radius:12px;"><div style="height:3px;background:#3b6fd0;border-radius:3px;margin:-28px -28px 22px;"></div><p style="margin:0;font-size:15px;line-height:1.5;">${message}</p></div></body></html>`;
+  return new Response(body, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
 
 function jsonResponse(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), {

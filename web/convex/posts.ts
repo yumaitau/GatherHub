@@ -1,4 +1,5 @@
 import { mutation, MutationCtx, query, QueryCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 import { requireOrgMember, assertSameOrg, type AuthContext } from "./lib/auth";
@@ -24,14 +25,29 @@ function stripHtml(html: string): string {
 }
 
 /**
+ * Write-side tripwire for HTML bodies. Markup is fully sanitised by the web
+ * client before submit and again by every client on render; this is a
+ * dependency-free backstop that rejects markup carrying unambiguously dangerous
+ * constructs (script/style/frame tags, inline event handlers, executable URIs).
+ * Sanitised post HTML never contains these, so a hit means the body bypassed
+ * the client sanitizer (e.g. a direct API call) and must not be stored raw.
+ */
+const DANGEROUS_HTML =
+  /<\s*\/?\s*(script|iframe|object|embed|style|link|meta|base|noscript|template|svg)\b|\son\w+\s*=|(?:javascript|vbscript)\s*:|data\s*:\s*text\/html/i;
+
+/**
  * Trim, bound, and require non-empty content for a post body. For HTML the
  * emptiness check runs against the tag-stripped text so an empty editor
- * (`<p></p>`) is rejected. Markup is sanitised by clients on render, not here.
+ * (`<p></p>`) is rejected, and dangerous markup is refused outright. Markup is
+ * otherwise sanitised by clients (on write and on render), not here.
  */
 function normalisePostBody(raw: string, format: BodyFormat): string {
   const body = raw.trim();
   if (body.length > MAX_POST_BODY) {
     throw new ConvexError("Post body is too long.");
+  }
+  if (format === "html" && DANGEROUS_HTML.test(body)) {
+    throw new ConvexError("Post contains unsupported or unsafe markup.");
   }
   const hasContent =
     format === "html" ? stripHtml(body).length > 0 : body.length > 0;
@@ -368,6 +384,12 @@ export const create = mutation({
       "posts:create",
       String(postId),
     );
+    // Notify the audience by email (team roster, or whole org for org-wide
+    // posts). Scheduled so it only fires once the post actually commits, and so
+    // the slow per-recipient send work happens outside this mutation.
+    await ctx.scheduler.runAfter(0, internal.postNotifications.deliver, {
+      postId,
+    });
     return postId;
   },
 });

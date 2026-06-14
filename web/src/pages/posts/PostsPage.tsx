@@ -40,7 +40,7 @@ import { moduleEnabled } from "@/lib/verticals";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { RichText } from "@/components/rich-text/RichText";
 import { RichTextEditor } from "@/components/rich-text/RichTextEditor";
-import { isHtmlEmpty, plainToHtml } from "@/lib/richtext";
+import { isHtmlEmpty, plainToHtml, sanitizeHtml } from "@/lib/richtext";
 import { cn, relativeTime } from "@/lib/utils";
 
 type ReactionKind = "like" | "love" | "celebrate" | "laugh";
@@ -618,6 +618,82 @@ function CommentComposer({
   );
 }
 
+/**
+ * Post body input with two modes: the rich-text editor, or a raw-HTML textarea
+ * for pasting markup from another site. Both modes drive the same HTML `value`;
+ * the parent sanitizes again on submit. Paste mode shows a sanitized live
+ * preview so the author sees exactly what survives (e.g. https-only images).
+ */
+function PostBodyField({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (html: string) => void;
+  ariaLabel?: string;
+}) {
+  const [mode, setMode] = React.useState<"rich" | "html">("rich");
+  return (
+    <div className="grid gap-2">
+      <div className="flex w-fit gap-0.5 rounded-md border border-line p-0.5">
+        {(
+          [
+            ["rich", "Editor"],
+            ["html", "Paste HTML"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={mode === key}
+            onClick={() => setMode(key)}
+            className={cn(
+              "rounded px-2 py-0.5 text-caption",
+              mode === key
+                ? "bg-primary text-on-primary"
+                : "text-ink-soft hover:text-ink",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === "rich" ? (
+        <RichTextEditor
+          value={value}
+          onChange={onChange}
+          ariaLabel={ariaLabel}
+        />
+      ) : (
+        <div className="grid gap-2">
+          <Textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label={ariaLabel ? `${ariaLabel} (HTML)` : "Post HTML"}
+            rows={8}
+            spellCheck={false}
+            placeholder="Paste HTML from your website…"
+            className="font-mono text-caption"
+          />
+          <div className="grid gap-1">
+            <span className="text-caption text-ink-soft">Preview</span>
+            <div className="rounded-md border border-line p-3">
+              {isHtmlEmpty(value) ? (
+                <p className="text-caption text-ink-soft">
+                  Nothing to preview yet.
+                </p>
+              ) : (
+                <RichText html={value} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EditPostForm({
   post,
   onDone,
@@ -632,7 +708,7 @@ function EditPostForm({
     post.bodyFormat === "html" ? post.body : plainToHtml(post.body),
   );
   const [saving, setSaving] = React.useState(false);
-  const empty = isHtmlEmpty(body);
+  const empty = isHtmlEmpty(sanitizeHtml(body));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -642,7 +718,7 @@ function EditPostForm({
       await update({
         postId: post._id,
         title: title.trim() ? title.trim() : null,
-        body,
+        body: sanitizeHtml(body),
         bodyFormat: "html",
       });
       toastSuccess("Post updated.");
@@ -661,7 +737,7 @@ function EditPostForm({
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Title (optional)"
       />
-      <RichTextEditor value={body} onChange={setBody} ariaLabel="Post body" />
+      <PostBodyField value={body} onChange={setBody} ariaLabel="Post body" />
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={saving || empty}>
           {saving ? "Saving…" : "Save"}
@@ -757,7 +833,8 @@ function NewPostDialog({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (isHtmlEmpty(body)) {
+    const clean = sanitizeHtml(body);
+    if (isHtmlEmpty(clean)) {
       setError("Write something to post.");
       return;
     }
@@ -766,7 +843,7 @@ function NewPostDialog({
     try {
       await create({
         title: title.trim() || undefined,
-        body,
+        body: clean,
         bodyFormat: "html",
         teamId: selectedTeamId,
         commentsDisabled,
@@ -834,7 +911,7 @@ function NewPostDialog({
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="post-body">Message</Label>
-            <RichTextEditor
+            <PostBodyField
               value={body}
               onChange={setBody}
               ariaLabel="Post message"
