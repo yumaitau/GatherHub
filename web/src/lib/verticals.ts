@@ -27,7 +27,8 @@ export type OrganizationModuleKey =
   | "field_service"
   | "logistics"
   | "waste"
-  | "safety";
+  | "safety"
+  | "fleet";
 
 export type SportKey =
   | "multi_sport"
@@ -110,6 +111,7 @@ export const MODULE_LABELS: Record<OrganizationModuleKey, string> = {
   logistics: "Logistics",
   waste: "Waste operations",
   safety: "Safety & compliance",
+  fleet: "Fleet & compliance",
 };
 
 export const SPORT_LABELS: Record<SportKey, string> = {

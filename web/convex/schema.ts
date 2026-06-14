@@ -56,6 +56,7 @@ export const capabilityValidator = v.union(
   v.literal("jobs.dispatch"),
   v.literal("jobs.complete"),
   v.literal("fleet.inspect"),
+  v.literal("fleet.manage"),
   v.literal("safety.manage"),
 );
 
@@ -149,6 +150,61 @@ export const assetActionValidator = v.union(
 
 export const tagTypeValidator = v.union(v.literal("qr"), v.literal("nfc"));
 
+// --- Fleet / asset compliance (GX-12) ---------------------------------------
+
+// Compliance-tracked asset subtype. An asset with `assetType` set is treated as
+// "fleet" (vehicles, trailers, plant, bins, tools, devices) and gains the
+// inspection / defect / maintenance lifecycle.
+export const fleetAssetTypeValidator = v.union(
+  v.literal("vehicle"),
+  v.literal("trailer"),
+  v.literal("plant"),
+  v.literal("equipment"),
+  v.literal("bin"),
+  v.literal("container"),
+  v.literal("tool"),
+  v.literal("device"),
+  v.literal("other"),
+);
+
+export const fleetInspectionTypeValidator = v.union(
+  v.literal("pre_start"),
+  v.literal("periodic"),
+  v.literal("return"),
+);
+
+export const fleetInspectionResultValidator = v.union(
+  v.literal("pass"),
+  v.literal("pass_with_defects"),
+  v.literal("fail"),
+);
+
+export const assetDefectSeverityValidator = v.union(
+  v.literal("minor"),
+  v.literal("major"),
+  v.literal("critical"),
+);
+
+export const assetDefectStatusValidator = v.union(
+  v.literal("open"),
+  v.literal("monitoring"),
+  v.literal("resolved"),
+);
+
+export const maintenanceKindValidator = v.union(
+  v.literal("service"),
+  v.literal("repair"),
+  v.literal("inspection"),
+  v.literal("other"),
+);
+
+export const maintenanceStatusValidator = v.union(
+  v.literal("scheduled"),
+  v.literal("in_progress"),
+  v.literal("completed"),
+  v.literal("cancelled"),
+);
+
 export const taskStatusValidator = v.union(
   v.literal("todo"),
   v.literal("in_progress"),
@@ -241,6 +297,7 @@ export const organizationModuleKeyValidator = v.union(
   v.literal("logistics"),
   v.literal("waste"),
   v.literal("safety"),
+  v.literal("fleet"),
 );
 
 export const organizationTerminologyValidator = v.object({
@@ -674,11 +731,31 @@ export default defineSchema({
     nfcTagId: v.optional(v.string()),
     // For overdue tracking on check-out.
     dueBack: v.optional(v.number()),
+    // --- Fleet / compliance metadata (GX-12). All optional + additive; an
+    // asset with `assetType` set is fleet-managed and shown on the fleet
+    // dashboard with the inspection/defect/maintenance lifecycle.
+    assetType: v.optional(fleetAssetTypeValidator),
+    registration: v.optional(v.string()), // rego / plate / unit number
+    registrationExpiry: v.optional(v.string()), // ISO yyyy-mm-dd
+    insuranceExpiry: v.optional(v.string()), // ISO yyyy-mm-dd
+    odometer: v.optional(v.number()),
+    odometerUnit: v.optional(v.string()), // "km" (default) | "mi"
+    engineHours: v.optional(v.number()),
+    fuelType: v.optional(v.string()), // diesel | petrol | electric | hybrid | …
+    homeDepot: v.optional(v.string()),
+    assignedDriverMemberId: v.optional(v.id("members")),
+    // Denormalised "next due" markers maintained from service rules /
+    // maintenance / inspections, so the dashboard can sort by what's overdue.
+    inspectionExpiry: v.optional(v.string()), // ISO; next periodic inspection due
+    nextServiceDate: v.optional(v.string()), // ISO
+    nextServiceOdometer: v.optional(v.number()),
   })
     .index("by_org", ["orgId"])
     .index("by_org_and_status", ["orgId", "status"])
     .index("by_org_and_category", ["orgId", "category"])
+    .index("by_org_and_type", ["orgId", "assetType"])
     .index("by_custodian", ["custodianMemberId"])
+    .index("by_assigned_driver", ["assignedDriverMemberId"])
     .index("by_sponsor", ["sponsorId"]),
 
   // Opaque tag → asset mapping for QR / NFC lookups (public-safe).
@@ -715,6 +792,105 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_asset", ["assetId"])
     .index("by_org_and_action", ["orgId", "action"]),
+
+  // --- Fleet / asset compliance (GX-12) -------------------------------------
+
+  // A completed inspection of a fleet asset (pre-start checklist, periodic
+  // safety check, or return check). May be submitted offline from mobile.
+  assetInspections: defineTable({
+    orgId: v.id("organizations"),
+    assetId: v.id("assets"),
+    type: fleetInspectionTypeValidator,
+    result: fleetInspectionResultValidator,
+    performedBy: v.id("users"),
+    performedByMemberId: v.optional(v.id("members")),
+    odometer: v.optional(v.number()),
+    engineHours: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    // Checklist outcomes, e.g. [{ label: "Tyres", ok: true }].
+    checklist: v.optional(
+      v.array(
+        v.object({
+          label: v.string(),
+          ok: v.boolean(),
+          note: v.optional(v.string()),
+        }),
+      ),
+    ),
+    photoFileIds: v.optional(v.array(v.id("uploadedFiles"))),
+    geoLatitude: v.optional(v.number()),
+    geoLongitude: v.optional(v.number()),
+    geoAccuracy: v.optional(v.number()),
+    performedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_asset", ["assetId"])
+    .index("by_org_and_result", ["orgId", "result"]),
+
+  // A fault on a fleet asset. Critical/major defects block assignment to
+  // routes/jobs by default (consumed by field-service once that lands).
+  assetDefects: defineTable({
+    orgId: v.id("organizations"),
+    assetId: v.id("assets"),
+    inspectionId: v.optional(v.id("assetInspections")),
+    severity: assetDefectSeverityValidator,
+    status: assetDefectStatusValidator,
+    title: v.string(),
+    description: v.optional(v.string()),
+    // Whether an open instance of this defect prevents assigning the asset to
+    // work. Defaults from severity; a manager may override.
+    blocksAssignment: v.boolean(),
+    photoFileIds: v.optional(v.array(v.id("uploadedFiles"))),
+    reportedBy: v.id("users"),
+    reportedByMemberId: v.optional(v.id("members")),
+    reportedAt: v.number(),
+    resolvedBy: v.optional(v.id("users")),
+    resolvedAt: v.optional(v.number()),
+    resolutionNotes: v.optional(v.string()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_asset", ["assetId"])
+    .index("by_org_and_status", ["orgId", "status"])
+    .index("by_asset_and_status", ["assetId", "status"]),
+
+  // Planned or completed maintenance/service work on a fleet asset.
+  maintenanceJobs: defineTable({
+    orgId: v.id("organizations"),
+    assetId: v.id("assets"),
+    title: v.string(),
+    kind: maintenanceKindValidator,
+    status: maintenanceStatusValidator,
+    scheduledFor: v.optional(v.string()), // ISO yyyy-mm-dd
+    dueOdometer: v.optional(v.number()),
+    assignedToMemberId: v.optional(v.id("members")),
+    vendor: v.optional(v.string()),
+    cost: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    serviceRuleId: v.optional(v.id("fleetServiceRules")),
+    completedAt: v.optional(v.number()),
+    completedBy: v.optional(v.id("users")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_asset", ["assetId"])
+    .index("by_org_and_status", ["orgId", "status"]),
+
+  // Recurring service schedule (by time and/or distance) for an asset.
+  fleetServiceRules: defineTable({
+    orgId: v.id("organizations"),
+    assetId: v.id("assets"),
+    label: v.string(),
+    intervalDays: v.optional(v.number()),
+    intervalKm: v.optional(v.number()),
+    lastServiceDate: v.optional(v.string()), // ISO yyyy-mm-dd
+    lastServiceOdometer: v.optional(v.number()),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_asset", ["assetId"]),
 
   // Historically named from the original volunteer module. This is now the
   // generic training/certification record table for any member in any org.
