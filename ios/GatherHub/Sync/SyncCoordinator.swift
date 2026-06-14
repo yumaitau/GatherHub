@@ -385,6 +385,14 @@ final class SyncCoordinator {
                     clientMutationId: op.clientId
                 )
                 await refreshAssetListCaches()
+            case .assetAttributes:
+                let args = try JSONDecoder().decode(AssetAttributesPayload.self, from: op.payload)
+                try await convex.setAssetAttributes(
+                    assetId: args.assetId,
+                    attributesJson: args.attributesJson,
+                    clientMutationId: op.clientId
+                )
+                await refreshAssetListCaches()
             }
             op.transition(to: .applied)
             try? store.save()
@@ -604,6 +612,11 @@ struct FleetDefectPayload: Codable {
     let severity: String // minor | major | critical
     let title: String
     let description: String?
+}
+
+struct AssetAttributesPayload: Codable {
+    let assetId: String
+    let attributesJson: String // JSON-encoded [{key,value}]
 }
 
 struct RegisterNfcPayload: Codable {

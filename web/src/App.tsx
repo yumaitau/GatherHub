@@ -27,6 +27,7 @@ import SponsorsPage from "@/pages/sponsors/SponsorsPage";
 import SponsorDetailPage from "@/pages/sponsors/SponsorDetailPage";
 import NewsAdminPage from "@/pages/NewsAdminPage";
 import SettingsPage from "@/pages/settings/SettingsPage";
+import AssetFieldsPage from "@/pages/settings/AssetFieldsPage";
 import FixturesPage from "@/pages/sport/FixturesPage";
 import MatchDayPage from "@/pages/sport/MatchDayPage";
 import RegistrationsPage from "@/pages/soccer/RegistrationsPage";
@@ -193,6 +194,10 @@ function AuthedApp() {
               />
               <Route path="/profile/*" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route
+                path="/settings/asset-fields"
+                element={<AssetFieldsPage />}
+              />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </AppLayout>

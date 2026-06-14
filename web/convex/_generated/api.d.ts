@@ -9,6 +9,7 @@
  */
 
 import type * as announcements from "../announcements.js";
+import type * as assetFields from "../assetFields.js";
 import type * as assetOps from "../assetOps.js";
 import type * as assets from "../assets.js";
 import type * as certifications from "../certifications.js";
@@ -60,6 +61,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   announcements: typeof announcements;
+  assetFields: typeof assetFields;
   assetOps: typeof assetOps;
   assets: typeof assets;
   certifications: typeof certifications;

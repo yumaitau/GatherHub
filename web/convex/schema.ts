@@ -205,6 +205,24 @@ export const maintenanceStatusValidator = v.union(
   v.literal("cancelled"),
 );
 
+// --- Custom asset fields (configurable per category / fleet type) -----------
+
+// What a custom field definition is keyed to: an asset Category (taxonomy key)
+// or a fleet assetType. An asset shows the union of fields for its category +
+// its assetType.
+export const assetFieldScopeValidator = v.union(
+  v.literal("category"),
+  v.literal("assetType"),
+);
+
+export const assetFieldKindValidator = v.union(
+  v.literal("text"),
+  v.literal("number"),
+  v.literal("date"),
+  v.literal("select"),
+  v.literal("boolean"),
+);
+
 export const taskStatusValidator = v.union(
   v.literal("todo"),
   v.literal("in_progress"),
@@ -749,6 +767,11 @@ export default defineSchema({
     inspectionExpiry: v.optional(v.string()), // ISO; next periodic inspection due
     nextServiceDate: v.optional(v.string()), // ISO
     nextServiceOdometer: v.optional(v.number()),
+    // Values for org-defined custom fields (see assetFieldDefs). Stored as
+    // strings keyed by the field's stable `key`; parsed per the field's kind.
+    attributes: v.optional(
+      v.array(v.object({ key: v.string(), value: v.string() })),
+    ),
   })
     .index("by_org", ["orgId"])
     .index("by_org_and_status", ["orgId", "status"])
@@ -891,6 +914,28 @@ export default defineSchema({
   })
     .index("by_org", ["orgId"])
     .index("by_asset", ["assetId"]),
+
+  // Org-defined custom field definitions for assets, keyed to a category or a
+  // fleet assetType. Rendered dynamically on asset/fleet detail screens.
+  assetFieldDefs: defineTable({
+    orgId: v.id("organizations"),
+    scope: assetFieldScopeValidator,
+    scopeKey: v.string(), // category taxonomy key, or assetType literal
+    key: v.string(), // stable machine key, unique within the org
+    label: v.string(),
+    kind: assetFieldKindValidator,
+    options: v.optional(v.array(v.string())), // for kind == "select"
+    unit: v.optional(v.string()), // for kind == "number"
+    required: v.boolean(),
+    order: v.number(),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_scope", ["orgId", "scope", "scopeKey"])
+    .index("by_org_and_key", ["orgId", "key"]),
 
   // Historically named from the original volunteer module. This is now the
   // generic training/certification record table for any member in any org.

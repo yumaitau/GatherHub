@@ -39,7 +39,7 @@ const FLAG_META: Record<
 };
 
 export default function FleetPage() {
-  const { org } = useGatherHub();
+  const { org, hasCapability } = useGatherHub();
   const fleetEnabled = moduleEnabled(org, "fleet");
   const [flag, setFlag] = React.useState<"all" | ComplianceFlag>("all");
   const data = useQuery(api.fleet.dashboard, fleetEnabled ? {} : "skip");
@@ -64,6 +64,13 @@ export default function FleetPage() {
       <PageHeader
         title="Fleet"
         description="Vehicles, trailers, plant, and equipment with inspections, defects, and maintenance compliance."
+        actions={
+          hasCapability("assets.admin") ? (
+            <Button asChild variant="secondary">
+              <Link to="/settings/asset-fields">Custom fields</Link>
+            </Button>
+          ) : undefined
+        }
       />
 
       {data === undefined ? (

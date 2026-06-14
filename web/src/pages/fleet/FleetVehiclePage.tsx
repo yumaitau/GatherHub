@@ -35,6 +35,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { PageHeader, LoadingState, EmptyState } from "@/components/shared";
+import { AssetCustomFields } from "@/components/assets/AssetCustomFields";
 import { useGatherHub } from "@/lib/gatherhub";
 import { toastFailure, toastSuccess } from "@/lib/feedback";
 import { formatDate, humanise } from "@/lib/utils";
@@ -139,6 +140,14 @@ export default function FleetVehiclePage() {
 
       <div className="grid gap-6">
         <DetailGrid asset={asset} />
+
+        <AssetCustomFields
+          assetId={asset._id}
+          category={asset.category}
+          assetType={asset.assetType}
+          attributes={asset.attributes}
+          canEdit={hasCapability("assets.admin")}
+        />
 
         <Section
           title="Defects"
