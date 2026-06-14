@@ -8,6 +8,7 @@ import {
   Shield,
   CalendarDays,
   Megaphone,
+  MessagesSquare,
   Package,
   HandHeart,
   Building2,
@@ -117,6 +118,12 @@ function buildNav(org: VerticalOrgConfig | null): NavGroup[] {
           icon: Megaphone,
           module: "announcements",
           capability: "announcements.write",
+        },
+        {
+          to: "/community",
+          label: "Community",
+          icon: MessagesSquare,
+          module: "posts",
         },
         {
           to: "/assets",
