@@ -15,6 +15,7 @@ import EventsPage from "@/pages/events/EventsPage";
 import EventDetailPage from "@/pages/events/EventDetailPage";
 import AnnouncementsPage from "@/pages/AnnouncementsPage";
 import PostsPage from "@/pages/posts/PostsPage";
+import FieldServicePage from "@/pages/field-service/FieldServicePage";
 import AssetsPage from "@/pages/assets/AssetsPage";
 import AssetDetailPage from "@/pages/assets/AssetDetailPage";
 import QrSheetPage from "@/pages/assets/QrSheetPage";
@@ -81,6 +82,11 @@ function AuthedApp() {
               <Route path="/events/:eventId" element={<EventDetailPage />} />
               <Route path="/announcements" element={<AnnouncementsPage />} />
               <Route path="/community" element={<PostsPage />} />
+              <Route path="/field-service" element={<FieldServicePage />} />
+              <Route
+                path="/field-service/jobs/:jobId"
+                element={<FieldServicePage />}
+              />
               <Route path="/assets" element={<AssetsPage />} />
               <Route
                 path="/assets/history"

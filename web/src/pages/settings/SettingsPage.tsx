@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SoccerSettingsTab } from "@/pages/soccer/SoccerSettingsTab";
+import { FieldServiceSettingsTab } from "@/pages/settings/FieldServiceSettingsTab";
 import { QrSettingsTab } from "@/pages/settings/QrSettingsTab";
 import {
   Table,
@@ -96,6 +97,10 @@ export default function SettingsPage() {
               {sportEnabled ? "" : " (off)"}
             </TabsTrigger>
           )}
+          {hasCapability("settings.admin") &&
+            moduleEnabled(org, "field_service") && (
+              <TabsTrigger value="field_service">Field service</TabsTrigger>
+            )}
           {hasCapability("settings.admin") && (
             <TabsTrigger value="qr">QR codes</TabsTrigger>
           )}
@@ -125,6 +130,12 @@ export default function SettingsPage() {
             <SoccerSettingsTab />
           </TabsContent>
         )}
+        {hasCapability("settings.admin") &&
+          moduleEnabled(org, "field_service") && (
+            <TabsContent value="field_service">
+              <FieldServiceSettingsTab />
+            </TabsContent>
+          )}
         {hasCapability("settings.admin") && (
           <TabsContent value="qr">
             <QrSettingsTab />

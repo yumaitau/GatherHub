@@ -360,6 +360,18 @@ final class SyncCoordinator {
                 let args = try JSONDecoder().decode(MatchParticipationPayload.self, from: op.payload)
                 try await convex.updateMatchParticipation(args, clientMutationId: op.clientId)
                 await refreshMatchDayCaches()
+            case .fieldStartJob:
+                let args = try JSONDecoder().decode(FieldStartJobPayload.self, from: op.payload)
+                try await convex.fieldStartJob(args, clientMutationId: op.clientId)
+                await refreshFieldCaches()
+            case .fieldCompleteJob:
+                let args = try JSONDecoder().decode(FieldCompleteJobPayload.self, from: op.payload)
+                try await convex.fieldCompleteJob(args, clientMutationId: op.clientId)
+                await refreshFieldCaches()
+            case .fieldRaiseException:
+                let args = try JSONDecoder().decode(FieldExceptionPayload.self, from: op.payload)
+                try await convex.fieldRaiseException(args, clientMutationId: op.clientId)
+                await refreshFieldCaches()
             }
             op.transition(to: .applied)
             try? store.save()
@@ -511,9 +523,33 @@ final class SyncCoordinator {
             try? store.replaceLocationDefaults(defaults)
         }
     }
+
+    private func refreshFieldCaches() async {
+        if let runs = try? await convex.fieldMyRuns() {
+            try? store.replaceFieldRuns(runs)
+        }
+    }
 }
 
 // MARK: - Payload DTOs
+
+struct FieldStartJobPayload: Codable {
+    let jobId: String
+    let stage: String
+}
+
+struct FieldCompleteJobPayload: Codable {
+    let jobId: String
+    let signatureName: String?
+    let scanRef: String?
+    let notes: String?
+}
+
+struct FieldExceptionPayload: Codable {
+    let jobId: String
+    let exceptionReason: String
+    let notes: String?
+}
 
 struct RsvpPayload: Codable {
     let eventId: String
