@@ -35,8 +35,22 @@ export const CAPABILITIES = [
   "mobile.offline_sync",
   "jobs.dispatch",
   "jobs.complete",
+  "fleet.view",
   "fleet.inspect",
   "fleet.manage",
+  "fleet.vehicles.manage",
+  "fleet.drivers.manage",
+  "fleet.jobs.assign",
+  "fleet.costs.view",
+  "fleet.costs.manage",
+  "fleet.costs.approve",
+  "fleet.defects.submit",
+  "fleet.maintenance.manage",
+  "fleet.reminders.manage",
+  "fleet.dashboards.view",
+  "fleet.export",
+  "fleet.templates.manage",
+  "fleet.driver_portal",
   "safety.manage",
 ] as const;
 
@@ -65,8 +79,22 @@ const COMMITTEE_CAPABILITIES: Capability[] = [
   "assets.read",
   "assets.operate",
   "assets.admin",
+  "fleet.view",
   "fleet.inspect",
   "fleet.manage",
+  "fleet.vehicles.manage",
+  "fleet.drivers.manage",
+  "fleet.jobs.assign",
+  "fleet.costs.view",
+  "fleet.costs.manage",
+  "fleet.costs.approve",
+  "fleet.defects.submit",
+  "fleet.maintenance.manage",
+  "fleet.reminders.manage",
+  "fleet.dashboards.view",
+  "fleet.export",
+  "fleet.templates.manage",
+  "fleet.driver_portal",
   "volunteers.manage",
   "training.manage",
   "tasks.manage",
@@ -88,7 +116,10 @@ const COACH_CAPABILITIES: Capability[] = [
   "posts.write",
   "assets.read",
   "assets.operate",
+  "fleet.view",
   "fleet.inspect",
+  "fleet.defects.submit",
+  "fleet.driver_portal",
   "soccer.grade",
   "mobile.offline_sync",
 ];
@@ -96,6 +127,10 @@ const VOLUNTEER_CAPABILITIES: Capability[] = [
   "events.read",
   "assets.read",
   "assets.operate",
+  "fleet.view",
+  "fleet.inspect",
+  "fleet.defects.submit",
+  "fleet.driver_portal",
   "mobile.offline_sync",
 ];
 const FAMILY_CAPABILITIES: Capability[] = [
@@ -193,6 +228,37 @@ const OPERATIONS_ROLE_TEMPLATES: RoleTemplate[] = [
     ],
   },
   {
+    key: "fleet_manager",
+    displayName: "Fleet manager",
+    legacyRole: "committee",
+    description: "Owns vehicles, drivers, maintenance, reminders, and exports.",
+    capabilities: [
+      "members.read",
+      "assets.read",
+      "assets.operate",
+      "assets.admin",
+      "events.read",
+      "tasks.manage",
+      "jobs.dispatch",
+      "jobs.complete",
+      "audit.read",
+      "reports.export",
+      "fleet.view",
+      "fleet.inspect",
+      "fleet.manage",
+      "fleet.vehicles.manage",
+      "fleet.drivers.manage",
+      "fleet.jobs.assign",
+      "fleet.costs.view",
+      "fleet.defects.submit",
+      "fleet.maintenance.manage",
+      "fleet.reminders.manage",
+      "fleet.dashboards.view",
+      "fleet.export",
+      "mobile.offline_sync",
+    ],
+  },
+  {
     key: "dispatcher",
     displayName: "Dispatcher",
     legacyRole: "coach",
@@ -205,6 +271,9 @@ const OPERATIONS_ROLE_TEMPLATES: RoleTemplate[] = [
       "assets.read",
       "tasks.manage",
       "jobs.dispatch",
+      "fleet.view",
+      "fleet.jobs.assign",
+      "fleet.dashboards.view",
       "reports.export",
       "mobile.offline_sync",
     ],
@@ -221,8 +290,11 @@ const OPERATIONS_ROLE_TEMPLATES: RoleTemplate[] = [
       "events.write",
       "assets.read",
       "assets.operate",
+      "fleet.view",
       "jobs.complete",
       "fleet.inspect",
+      "fleet.defects.submit",
+      "fleet.driver_portal",
       "mobile.offline_sync",
     ],
   },
@@ -235,9 +307,61 @@ const OPERATIONS_ROLE_TEMPLATES: RoleTemplate[] = [
       "events.read",
       "assets.read",
       "assets.operate",
+      "fleet.view",
       "jobs.complete",
       "fleet.inspect",
+      "fleet.defects.submit",
+      "fleet.driver_portal",
       "mobile.offline_sync",
+    ],
+  },
+  {
+    key: "mechanic",
+    displayName: "Mechanic / maintenance",
+    legacyRole: "coach",
+    description: "Maintains vehicles, resolves defects, and records service.",
+    capabilities: [
+      "members.read",
+      "assets.read",
+      "assets.operate",
+      "fleet.view",
+      "fleet.inspect",
+      "fleet.defects.submit",
+      "fleet.maintenance.manage",
+      "fleet.dashboards.view",
+      "mobile.offline_sync",
+    ],
+  },
+  {
+    key: "finance",
+    displayName: "Finance",
+    legacyRole: "committee",
+    description: "Reviews fleet costs and approves expenses.",
+    capabilities: [
+      "members.read",
+      "assets.read",
+      "audit.read",
+      "reports.export",
+      "fleet.view",
+      "fleet.costs.view",
+      "fleet.costs.manage",
+      "fleet.costs.approve",
+      "fleet.dashboards.view",
+      "fleet.export",
+    ],
+  },
+  {
+    key: "readonly_viewer",
+    displayName: "Read-only viewer",
+    legacyRole: "parent",
+    description: "Can view dashboards and operational records without edits.",
+    capabilities: [
+      "members.read",
+      "events.read",
+      "assets.read",
+      "fleet.view",
+      "fleet.costs.view",
+      "fleet.dashboards.view",
     ],
   },
   {
@@ -291,7 +415,42 @@ export async function ensureOrganizationRoles(
   org: Doc<"organizations">,
 ) {
   const existing = await rolesForOrg(ctx, org._id);
-  if (existing.length > 0) return;
+  if (existing.length > 0) {
+    const templates = roleTemplatesForOrg(org);
+    const now = Date.now();
+    let order =
+      existing.reduce((max, role) => Math.max(max, role.order), -1) + 1;
+    for (const template of templates) {
+      const row = existing.find(
+        (role) => role.key === template.key && role.isSystem,
+      );
+      if (!row) {
+        await ctx.db.insert("organizationRoles", {
+          orgId: org._id,
+          key: template.key,
+          displayName: template.displayName,
+          description: template.description,
+          legacyRole: template.legacyRole,
+          capabilities: template.capabilities,
+          isSystem: true,
+          active: true,
+          order: order++,
+          updatedAt: now,
+        });
+        continue;
+      }
+      const merged = [
+        ...new Set([...row.capabilities, ...template.capabilities]),
+      ];
+      if (merged.length !== row.capabilities.length) {
+        await ctx.db.patch(row._id, {
+          capabilities: merged,
+          updatedAt: now,
+        });
+      }
+    }
+    return;
+  }
   let order = 0;
   const now = Date.now();
   for (const template of roleTemplatesForOrg(org)) {

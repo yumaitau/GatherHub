@@ -97,6 +97,8 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     case fleetInspection
     /// `fleet:reportDefect` — report a fleet asset defect.
     case fleetDefect
+    /// `assetFields:setAttributes` — set an asset's custom field values.
+    case assetAttributes
 
     var label: String {
         switch self {
@@ -146,6 +148,7 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
         case .matchParticipationUpdate: return "Match-day participation"
         case .fleetInspection: return "Fleet inspection"
         case .fleetDefect: return "Fleet defect report"
+        case .assetAttributes: return "Asset custom fields"
         }
     }
 
@@ -189,6 +192,8 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
             return "events.write"
         case .fleetInspection, .fleetDefect:
             return "fleet.inspect"
+        case .assetAttributes:
+            return "assets.admin"
         }
     }
 }

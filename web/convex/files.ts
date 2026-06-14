@@ -24,6 +24,13 @@ const ownerType = v.union(
   v.literal("news"),
   v.literal("qrSettings"),
   v.literal("sponsors"),
+  v.literal("fleetVehicles"),
+  v.literal("fleetDrivers"),
+  v.literal("fleetJobs"),
+  v.literal("fleetMaintenance"),
+  v.literal("fleetDefects"),
+  v.literal("fleetCosts"),
+  v.literal("fleetFuelLogs"),
 );
 const purpose = v.union(
   v.literal("coverImage"),
@@ -63,6 +70,13 @@ function uploadCapabilityFor(ownerType: string, purpose: string): Capability {
   if (ownerType === "qrSettings" && purpose === "qrLogo") {
     return "assets.admin";
   }
+  if (ownerType === "fleetVehicles") return "fleet.vehicles.manage";
+  if (ownerType === "fleetDrivers") return "fleet.drivers.manage";
+  if (ownerType === "fleetJobs") return "fleet.jobs.assign";
+  if (ownerType === "fleetMaintenance") return "fleet.maintenance.manage";
+  if (ownerType === "fleetDefects") return "fleet.defects.submit";
+  if (ownerType === "fleetCosts") return "fleet.costs.manage";
+  if (ownerType === "fleetFuelLogs") return "fleet.driver_portal";
   throw new Error("Unsupported upload destination.");
 }
 

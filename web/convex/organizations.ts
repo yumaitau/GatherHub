@@ -293,8 +293,10 @@ export const updateProfile = mutation({
       profileUpdatedAt: Date.now(),
     });
     if (template) {
-      await replaceOrganizationModules(ctx, auth.org._id, enabled);
+      await replaceOrganizationModules(ctx, auth.org._id, enabled, template);
     }
+    const updatedOrg = await ctx.db.get(auth.org._id);
+    if (updatedOrg) await ensureOrganizationRoles(ctx, updatedOrg);
     if (enabled.has("sport")) {
       await seedSportDefaultsForOrg(ctx, auth.org._id, profile.sportKey);
     }
@@ -320,9 +322,17 @@ export const setModule = mutation({
       )
       .unique();
     const now = Date.now();
+    const template = listVerticalTemplates().find(
+      (row) => row.key === auth.org.templateKey,
+    );
+    const fleetConfigJson =
+      template?.fleetConfig && args.key === "fleet"
+        ? JSON.stringify(template.fleetConfig)
+        : undefined;
     if (existing) {
       await ctx.db.patch(existing._id, {
         enabled: args.enabled,
+        configJson: existing.configJson ?? fleetConfigJson,
         updatedAt: now,
       });
     } else {
@@ -331,6 +341,7 @@ export const setModule = mutation({
         key: args.key,
         enabled: args.enabled,
         version: "1",
+        configJson: fleetConfigJson,
         updatedAt: now,
       });
     }

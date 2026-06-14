@@ -20,7 +20,14 @@ export type UploadOwnerType =
   | "certifications"
   | "news"
   | "qrSettings"
-  | "sponsors";
+  | "sponsors"
+  | "fleetVehicles"
+  | "fleetDrivers"
+  | "fleetJobs"
+  | "fleetMaintenance"
+  | "fleetDefects"
+  | "fleetCosts"
+  | "fleetFuelLogs";
 export type UploadPurpose = "coverImage" | "document" | "logo" | "qrLogo";
 
 export type UploadedFile = {
