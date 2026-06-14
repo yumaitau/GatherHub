@@ -36,6 +36,7 @@ export const CAPABILITIES = [
   "jobs.dispatch",
   "jobs.complete",
   "fleet.inspect",
+  "fleet.manage",
   "safety.manage",
 ] as const;
 
@@ -64,6 +65,8 @@ const COMMITTEE_CAPABILITIES: Capability[] = [
   "assets.read",
   "assets.operate",
   "assets.admin",
+  "fleet.inspect",
+  "fleet.manage",
   "volunteers.manage",
   "training.manage",
   "tasks.manage",
@@ -85,6 +88,7 @@ const COACH_CAPABILITIES: Capability[] = [
   "posts.write",
   "assets.read",
   "assets.operate",
+  "fleet.inspect",
   "soccer.grade",
   "mobile.offline_sync",
 ];
@@ -185,7 +189,6 @@ const OPERATIONS_ROLE_TEMPLATES: RoleTemplate[] = [
       ...COMMITTEE_CAPABILITIES,
       "jobs.dispatch",
       "jobs.complete",
-      "fleet.inspect",
       "safety.manage",
     ],
   },

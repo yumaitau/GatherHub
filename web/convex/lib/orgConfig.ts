@@ -36,6 +36,7 @@ export const ORGANIZATION_MODULE_KEYS = [
   "logistics",
   "waste",
   "safety",
+  "fleet",
 ] as const;
 
 export type OrganizationModuleKey = (typeof ORGANIZATION_MODULE_KEYS)[number];
@@ -292,7 +293,7 @@ const TEMPLATES: Record<string, TemplateDefinition> = {
     kind: "field_service",
     description:
       "Crews, jobs, assets, safety, training, tasking, and field operations.",
-    modules: [...BASE_MODULES, "field_service", "safety"],
+    modules: [...BASE_MODULES, "field_service", "safety", "fleet"],
     terminology: {
       ...DEFAULT_TERMINOLOGY,
       memberSingular: "worker",
@@ -311,7 +312,7 @@ const TEMPLATES: Record<string, TemplateDefinition> = {
     kind: "waste_operator",
     description:
       "Crews, routes, jobs, vehicles, bins, chain-of-custody, and safety operations.",
-    modules: [...BASE_MODULES, "field_service", "waste", "safety"],
+    modules: [...BASE_MODULES, "field_service", "waste", "safety", "fleet"],
     terminology: {
       ...DEFAULT_TERMINOLOGY,
       memberSingular: "worker",
@@ -330,7 +331,7 @@ const TEMPLATES: Record<string, TemplateDefinition> = {
     kind: "logistics",
     description:
       "Drivers, crews, routes, jobs, fleet assets, tasking, training, and safety.",
-    modules: [...BASE_MODULES, "logistics", "safety"],
+    modules: [...BASE_MODULES, "logistics", "safety", "fleet"],
     terminology: {
       ...DEFAULT_TERMINOLOGY,
       memberSingular: "worker",

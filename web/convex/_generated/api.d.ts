@@ -20,6 +20,7 @@ import type * as emailTemplates from "../emailTemplates.js";
 import type * as events from "../events.js";
 import type * as files from "../files.js";
 import type * as fixtures from "../fixtures.js";
+import type * as fleet from "../fleet.js";
 import type * as http from "../http.js";
 import type * as invitations from "../invitations.js";
 import type * as invitationsAdmin from "../invitationsAdmin.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   files: typeof files;
   fixtures: typeof fixtures;
+  fleet: typeof fleet;
   http: typeof http;
   invitations: typeof invitations;
   invitationsAdmin: typeof invitationsAdmin;

@@ -93,6 +93,10 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     case teamAgeGroupSetActive
     /// `matchRosters:updateParticipation` — match-day attendance/participation.
     case matchParticipationUpdate
+    /// `fleet:recordInspection` — fleet pre-start / periodic inspection.
+    case fleetInspection
+    /// `fleet:reportDefect` — report a fleet asset defect.
+    case fleetDefect
 
     var label: String {
         switch self {
@@ -140,6 +144,8 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
         case .teamAgeGroupUpdate: return "Age group edit"
         case .teamAgeGroupSetActive: return "Age group status"
         case .matchParticipationUpdate: return "Match-day participation"
+        case .fleetInspection: return "Fleet inspection"
+        case .fleetDefect: return "Fleet defect report"
         }
     }
 
@@ -181,6 +187,8 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
             return "settings.admin"
         case .matchParticipationUpdate:
             return "events.write"
+        case .fleetInspection, .fleetDefect:
+            return "fleet.inspect"
         }
     }
 }
