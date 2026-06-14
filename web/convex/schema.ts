@@ -55,8 +55,22 @@ export const capabilityValidator = v.union(
   v.literal("mobile.offline_sync"),
   v.literal("jobs.dispatch"),
   v.literal("jobs.complete"),
+  v.literal("fleet.view"),
   v.literal("fleet.inspect"),
   v.literal("fleet.manage"),
+  v.literal("fleet.vehicles.manage"),
+  v.literal("fleet.drivers.manage"),
+  v.literal("fleet.jobs.assign"),
+  v.literal("fleet.costs.view"),
+  v.literal("fleet.costs.manage"),
+  v.literal("fleet.costs.approve"),
+  v.literal("fleet.defects.submit"),
+  v.literal("fleet.maintenance.manage"),
+  v.literal("fleet.reminders.manage"),
+  v.literal("fleet.dashboards.view"),
+  v.literal("fleet.export"),
+  v.literal("fleet.templates.manage"),
+  v.literal("fleet.driver_portal"),
   v.literal("safety.manage"),
 );
 
@@ -203,6 +217,183 @@ export const maintenanceStatusValidator = v.union(
   v.literal("in_progress"),
   v.literal("completed"),
   v.literal("cancelled"),
+);
+
+export const fleetVehicleStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("booked"),
+  v.literal("in_maintenance"),
+  v.literal("unavailable"),
+  v.literal("retired"),
+  v.literal("sold"),
+  v.literal("written_off"),
+);
+
+export const fleetDriverStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("pending_approval"),
+  v.literal("suspended"),
+  v.literal("expired_documents"),
+  v.literal("inactive"),
+);
+
+export const fleetRenewalStatusValidator = v.union(
+  v.literal("current"),
+  v.literal("due_soon"),
+  v.literal("expired"),
+  v.literal("renewal_in_progress"),
+  v.literal("completed"),
+);
+
+export const fleetMaintenanceStatusValidator = v.union(
+  v.literal("reported"),
+  v.literal("scheduled"),
+  v.literal("in_progress"),
+  v.literal("completed"),
+  v.literal("deferred"),
+  v.literal("cancelled"),
+);
+
+export const fleetMaintenanceCategoryValidator = v.union(
+  v.literal("scheduled_service"),
+  v.literal("unscheduled_repair"),
+  v.literal("defect_repair"),
+  v.literal("inspection"),
+  v.literal("roadworthy"),
+  v.literal("tyres"),
+  v.literal("brakes"),
+  v.literal("fluids"),
+  v.literal("battery"),
+  v.literal("cleaning"),
+  v.literal("safety_equipment"),
+  v.literal("other"),
+);
+
+export const fleetDefectSeverityValidator = v.union(
+  v.literal("low"),
+  v.literal("medium"),
+  v.literal("high"),
+  v.literal("critical"),
+);
+
+export const fleetDefectStatusValidator = v.union(
+  v.literal("open"),
+  v.literal("triaged"),
+  v.literal("assigned"),
+  v.literal("fixed"),
+  v.literal("closed"),
+  v.literal("rejected"),
+);
+
+export const fleetJobTypeValidator = v.union(
+  v.literal("delivery"),
+  v.literal("pickup"),
+  v.literal("transport"),
+  v.literal("school_run"),
+  v.literal("excursion"),
+  v.literal("community_transport"),
+  v.literal("field_visit"),
+  v.literal("work_order"),
+  v.literal("asset_movement"),
+  v.literal("maintenance_run"),
+  v.literal("custom"),
+);
+
+export const fleetJobStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("scheduled"),
+  v.literal("assigned"),
+  v.literal("in_progress"),
+  v.literal("completed"),
+  v.literal("cancelled"),
+  v.literal("failed"),
+);
+
+export const fleetProjectStatusValidator = v.union(
+  v.literal("proposed"),
+  v.literal("active"),
+  v.literal("on_hold"),
+  v.literal("completed"),
+  v.literal("cancelled"),
+);
+
+export const fleetCostCategoryValidator = v.union(
+  v.literal("fuel"),
+  v.literal("maintenance"),
+  v.literal("registration"),
+  v.literal("insurance"),
+  v.literal("tolls"),
+  v.literal("parking"),
+  v.literal("fines"),
+  v.literal("repairs"),
+  v.literal("cleaning"),
+  v.literal("lease_finance"),
+  v.literal("driver_labour"),
+  v.literal("contractor"),
+  v.literal("job_expense"),
+  v.literal("project_expense"),
+  v.literal("other"),
+);
+
+export const fleetApprovalStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("submitted"),
+  v.literal("approved"),
+  v.literal("rejected"),
+);
+
+export const fleetReminderStatusValidator = v.union(
+  v.literal("scheduled"),
+  v.literal("due"),
+  v.literal("overdue"),
+  v.literal("sent"),
+  v.literal("dismissed"),
+  v.literal("resolved"),
+);
+
+export const fleetReminderTypeValidator = v.union(
+  v.literal("rego_expiry"),
+  v.literal("insurance_expiry"),
+  v.literal("inspection_expiry"),
+  v.literal("roadworthy_expiry"),
+  v.literal("service_due_date"),
+  v.literal("service_due_odometer"),
+  v.literal("licence_expiry"),
+  v.literal("wwcc_expiry"),
+  v.literal("police_check_expiry"),
+  v.literal("medical_clearance_expiry"),
+  v.literal("missing_required_document"),
+  v.literal("maintenance_scheduled"),
+  v.literal("job_assignment"),
+  v.literal("job_changed"),
+  v.literal("job_overdue"),
+  v.literal("defect_submitted"),
+  v.literal("critical_defect"),
+  v.literal("project_budget_exceeded"),
+);
+
+export const fleetNotificationChannelValidator = v.union(
+  v.literal("in_app"),
+  v.literal("email"),
+  v.literal("webhook"),
+  v.literal("sms"),
+);
+
+export const fleetNotificationStatusValidator = v.union(
+  v.literal("queued"),
+  v.literal("delivered"),
+  v.literal("read"),
+  v.literal("failed"),
+);
+
+export const fleetCustomFieldOwnerValidator = v.union(
+  v.literal("vehicle"),
+  v.literal("driver"),
+  v.literal("job"),
+  v.literal("project"),
+  v.literal("maintenance"),
+  v.literal("defect"),
+  v.literal("cost"),
 );
 
 // --- Custom asset fields (configurable per category / fleet type) -----------
@@ -432,6 +623,32 @@ export default defineSchema({
   })
     .index("by_org", ["orgId"])
     .index("by_org_key", ["orgId", "key"]),
+
+  organizationTemplates: defineTable({
+    key: v.string(),
+    label: v.string(),
+    kind: organizationKindValidator,
+    description: v.string(),
+    modules: v.array(organizationModuleKeyValidator),
+    terminology: organizationTerminologyValidator,
+    fleetConfigJson: v.optional(v.string()),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_key", ["key"])
+    .index("by_kind", ["kind"])
+    .index("by_active", ["active"]),
+
+  templateModules: defineTable({
+    templateKey: v.string(),
+    key: organizationModuleKeyValidator,
+    enabled: v.boolean(),
+    configJson: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_template", ["templateKey"])
+    .index("by_template_key", ["templateKey", "key"]),
 
   organizationRoles: defineTable({
     orgId: v.id("organizations"),
@@ -914,6 +1131,516 @@ export default defineSchema({
   })
     .index("by_org", ["orgId"])
     .index("by_asset", ["assetId"]),
+
+  // --- Fleet operations module ---------------------------------------------
+
+  depots: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    address: v.optional(v.string()),
+    managerName: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_active", ["orgId", "active"]),
+
+  suppliers: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    supplierType: v.optional(v.string()),
+    contactName: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    address: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_active", ["orgId", "active"]),
+
+  customers: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    customerType: v.optional(v.string()),
+    contactName: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    address: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_active", ["orgId", "active"]),
+
+  vehicles: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    registrationNumber: v.string(),
+    registrationState: v.optional(v.string()),
+    vin: v.optional(v.string()),
+    make: v.optional(v.string()),
+    model: v.optional(v.string()),
+    year: v.optional(v.number()),
+    vehicleType: v.string(),
+    fuelType: v.optional(v.string()),
+    odometer: v.number(),
+    engineHours: v.optional(v.number()),
+    status: fleetVehicleStatusValidator,
+    depotId: v.optional(v.id("depots")),
+    location: v.optional(v.string()),
+    teamDepartment: v.optional(v.string()),
+    primaryDriverId: v.optional(v.id("drivers")),
+    photoFileIds: v.optional(v.array(v.id("uploadedFiles"))),
+    purchaseDate: v.optional(v.string()),
+    purchaseCost: v.optional(v.number()),
+    leaseDetails: v.optional(v.string()),
+    insuranceProvider: v.optional(v.string()),
+    insuranceExpiry: v.optional(v.string()),
+    insuranceStatus: v.optional(fleetRenewalStatusValidator),
+    regoExpiry: v.optional(v.string()),
+    regoStatus: v.optional(fleetRenewalStatusValidator),
+    inspectionExpiry: v.optional(v.string()),
+    inspectionStatus: v.optional(fleetRenewalStatusValidator),
+    roadworthyExpiry: v.optional(v.string()),
+    roadworthyStatus: v.optional(fleetRenewalStatusValidator),
+    serviceIntervalKm: v.optional(v.number()),
+    serviceIntervalMonths: v.optional(v.number()),
+    serviceIntervalEngineHours: v.optional(v.number()),
+    nextServiceDueDate: v.optional(v.string()),
+    nextServiceDueOdometer: v.optional(v.number()),
+    nextServiceDueEngineHours: v.optional(v.number()),
+    lastServiceDate: v.optional(v.string()),
+    lastServiceOdometer: v.optional(v.number()),
+    lastServiceEngineHours: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_org_registration", ["orgId", "registrationNumber"])
+    .index("by_depot", ["depotId"])
+    .index("by_primary_driver", ["primaryDriverId"]),
+
+  vehicleDocuments: defineTable({
+    orgId: v.id("organizations"),
+    vehicleId: v.id("vehicles"),
+    documentType: v.string(),
+    fileId: v.optional(v.id("uploadedFiles")),
+    fileName: v.optional(v.string()),
+    expiryDate: v.optional(v.string()),
+    renewalStatus: fleetRenewalStatusValidator,
+    renewalCost: v.optional(v.number()),
+    renewalHistoryJson: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_vehicle", ["vehicleId"])
+    .index("by_org_expiry", ["orgId", "expiryDate"]),
+
+  drivers: defineTable({
+    orgId: v.id("organizations"),
+    memberId: v.optional(v.id("members")),
+    userId: v.optional(v.id("users")),
+    name: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    emergencyContactName: v.optional(v.string()),
+    emergencyContactPhone: v.optional(v.string()),
+    driverType: v.string(),
+    licenceNumber: v.optional(v.string()),
+    licenceClass: v.optional(v.string()),
+    licenceExpiry: v.optional(v.string()),
+    medicalClearanceExpiry: v.optional(v.string()),
+    policeCheckExpiry: v.optional(v.string()),
+    workingWithChildrenCheckExpiry: v.optional(v.string()),
+    inductionStatus: v.optional(v.string()),
+    trainingRecordsJson: v.optional(v.string()),
+    approvedVehicleTypes: v.array(v.string()),
+    status: fleetDriverStatusValidator,
+    defaultVehicleId: v.optional(v.id("vehicles")),
+    depotId: v.optional(v.id("depots")),
+    teamDepartment: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_member", ["memberId"])
+    .index("by_user", ["userId"])
+    .index("by_depot", ["depotId"]),
+
+  driverDocuments: defineTable({
+    orgId: v.id("organizations"),
+    driverId: v.id("drivers"),
+    documentType: v.string(),
+    fileId: v.optional(v.id("uploadedFiles")),
+    fileName: v.optional(v.string()),
+    expiryDate: v.optional(v.string()),
+    renewalStatus: fleetRenewalStatusValidator,
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_driver", ["driverId"])
+    .index("by_org_expiry", ["orgId", "expiryDate"]),
+
+  driverComplianceItems: defineTable({
+    orgId: v.id("organizations"),
+    driverId: v.id("drivers"),
+    itemType: fleetReminderTypeValidator,
+    label: v.string(),
+    dueDate: v.optional(v.string()),
+    status: fleetRenewalStatusValidator,
+    required: v.boolean(),
+    documentId: v.optional(v.id("driverDocuments")),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_driver", ["driverId"])
+    .index("by_org_status", ["orgId", "status"]),
+
+  projects: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    clientName: v.optional(v.string()),
+    customerId: v.optional(v.id("customers")),
+    internalOwner: v.optional(v.string()),
+    status: fleetProjectStatusValidator,
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+    budget: v.optional(v.number()),
+    revenue: v.optional(v.number()),
+    actualCost: v.optional(v.number()),
+    assignedVehicleIds: v.optional(v.array(v.id("vehicles"))),
+    assignedDriverIds: v.optional(v.array(v.id("drivers"))),
+    notes: v.optional(v.string()),
+    attachmentFileIds: v.optional(v.array(v.id("uploadedFiles"))),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_customer", ["customerId"]),
+
+  jobs: defineTable({
+    orgId: v.id("organizations"),
+    title: v.string(),
+    referenceNumber: v.optional(v.string()),
+    customerId: v.optional(v.id("customers")),
+    customerName: v.optional(v.string()),
+    internalDepartment: v.optional(v.string()),
+    projectId: v.optional(v.id("projects")),
+    pickupLocation: v.optional(v.string()),
+    dropoffLocation: v.optional(v.string()),
+    startDateTime: v.number(),
+    endDateTime: v.number(),
+    assignedVehicleId: v.optional(v.id("vehicles")),
+    assignedDriverId: v.optional(v.id("drivers")),
+    secondaryDriverIds: v.optional(v.array(v.id("drivers"))),
+    cargoPassengersEquipment: v.optional(v.string()),
+    jobType: fleetJobTypeValidator,
+    status: fleetJobStatusValidator,
+    estimatedDistance: v.optional(v.number()),
+    actualDistance: v.optional(v.number()),
+    estimatedCost: v.optional(v.number()),
+    actualCost: v.optional(v.number()),
+    fuelCost: v.optional(v.number()),
+    labourCost: v.optional(v.number()),
+    otherExpenses: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    attachmentFileIds: v.optional(v.array(v.id("uploadedFiles"))),
+    completionChecklistJson: v.optional(v.string()),
+    warningsJson: v.optional(v.string()),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_org_start", ["orgId", "startDateTime"])
+    .index("by_vehicle", ["assignedVehicleId"])
+    .index("by_driver", ["assignedDriverId"])
+    .index("by_project", ["projectId"]),
+
+  maintenanceRecords: defineTable({
+    orgId: v.id("organizations"),
+    vehicleId: v.id("vehicles"),
+    maintenanceType: fleetMaintenanceCategoryValidator,
+    dateReported: v.string(),
+    scheduledDate: v.optional(v.string()),
+    completedDate: v.optional(v.string()),
+    odometer: v.optional(v.number()),
+    engineHours: v.optional(v.number()),
+    supplierId: v.optional(v.id("suppliers")),
+    vendorMechanic: v.optional(v.string()),
+    status: fleetMaintenanceStatusValidator,
+    description: v.string(),
+    partsCost: v.optional(v.number()),
+    labourCost: v.optional(v.number()),
+    totalCost: v.optional(v.number()),
+    invoiceFileId: v.optional(v.id("uploadedFiles")),
+    downtimeHours: v.optional(v.number()),
+    approvedBy: v.optional(v.id("users")),
+    notes: v.optional(v.string()),
+    linkedDefectId: v.optional(v.id("defectReports")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_vehicle", ["vehicleId"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_defect", ["linkedDefectId"]),
+
+  serviceSchedules: defineTable({
+    orgId: v.id("organizations"),
+    vehicleId: v.id("vehicles"),
+    label: v.string(),
+    intervalKm: v.optional(v.number()),
+    intervalMonths: v.optional(v.number()),
+    intervalEngineHours: v.optional(v.number()),
+    lastServiceDate: v.optional(v.string()),
+    lastServiceOdometer: v.optional(v.number()),
+    lastServiceEngineHours: v.optional(v.number()),
+    nextServiceDueDate: v.optional(v.string()),
+    nextServiceDueOdometer: v.optional(v.number()),
+    nextServiceDueEngineHours: v.optional(v.number()),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_vehicle", ["vehicleId"])
+    .index("by_org_active", ["orgId", "active"]),
+
+  defectReports: defineTable({
+    orgId: v.id("organizations"),
+    vehicleId: v.id("vehicles"),
+    reporterUserId: v.optional(v.id("users")),
+    reporterDriverId: v.optional(v.id("drivers")),
+    dateTime: v.number(),
+    odometer: v.optional(v.number()),
+    category: v.string(),
+    severity: fleetDefectSeverityValidator,
+    photoFileIds: v.optional(v.array(v.id("uploadedFiles"))),
+    notes: v.optional(v.string()),
+    safeToOperate: v.boolean(),
+    immediateActionRequired: v.boolean(),
+    linkedMaintenanceRecordId: v.optional(v.id("maintenanceRecords")),
+    status: fleetDefectStatusValidator,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_vehicle", ["vehicleId"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_org_severity", ["orgId", "severity"]),
+
+  fuelLogs: defineTable({
+    orgId: v.id("organizations"),
+    vehicleId: v.id("vehicles"),
+    driverId: v.optional(v.id("drivers")),
+    jobId: v.optional(v.id("jobs")),
+    projectId: v.optional(v.id("projects")),
+    date: v.string(),
+    odometer: v.number(),
+    litres: v.number(),
+    cost: v.number(),
+    fuelType: v.optional(v.string()),
+    locationStation: v.optional(v.string()),
+    receiptFileId: v.optional(v.id("uploadedFiles")),
+    fullTank: v.boolean(),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_vehicle", ["vehicleId"])
+    .index("by_driver", ["driverId"])
+    .index("by_job", ["jobId"])
+    .index("by_project", ["projectId"]),
+
+  costEntries: defineTable({
+    orgId: v.id("organizations"),
+    date: v.string(),
+    category: fleetCostCategoryValidator,
+    amount: v.number(),
+    taxGst: v.optional(v.number()),
+    vehicleId: v.optional(v.id("vehicles")),
+    driverId: v.optional(v.id("drivers")),
+    jobId: v.optional(v.id("jobs")),
+    projectId: v.optional(v.id("projects")),
+    supplierId: v.optional(v.id("suppliers")),
+    receiptFileId: v.optional(v.id("uploadedFiles")),
+    notes: v.optional(v.string()),
+    approvalStatus: fleetApprovalStatusValidator,
+    approvedBy: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_vehicle", ["vehicleId"])
+    .index("by_driver", ["driverId"])
+    .index("by_job", ["jobId"])
+    .index("by_project", ["projectId"])
+    .index("by_org_category", ["orgId", "category"])
+    .index("by_org_approval", ["orgId", "approvalStatus"]),
+
+  reminders: defineTable({
+    orgId: v.id("organizations"),
+    type: fleetReminderTypeValidator,
+    entityType: v.string(),
+    entityId: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    dueAt: v.number(),
+    triggerAt: v.number(),
+    timingDays: v.number(),
+    status: fleetReminderStatusValidator,
+    severity: v.optional(v.string()),
+    assignedUserId: v.optional(v.id("users")),
+    assignedDriverId: v.optional(v.id("drivers")),
+    notificationId: v.optional(v.id("notifications")),
+    sourceKey: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_org_due", ["orgId", "dueAt"])
+    .index("by_org_source", ["orgId", "sourceKey"]),
+
+  notifications: defineTable({
+    orgId: v.id("organizations"),
+    channel: fleetNotificationChannelValidator,
+    status: fleetNotificationStatusValidator,
+    recipientUserId: v.optional(v.id("users")),
+    recipientDriverId: v.optional(v.id("drivers")),
+    title: v.string(),
+    body: v.string(),
+    entityType: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+    createdAt: v.number(),
+    deliveredAt: v.optional(v.number()),
+    readAt: v.optional(v.number()),
+    metadataJson: v.optional(v.string()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_recipient_user", ["recipientUserId"])
+    .index("by_recipient_driver", ["recipientDriverId"]),
+
+  auditLogs: defineTable({
+    orgId: v.id("organizations"),
+    actorId: v.optional(v.id("users")),
+    entityType: v.string(),
+    entityId: v.string(),
+    action: v.string(),
+    oldValue: v.optional(v.string()),
+    newValue: v.optional(v.string()),
+    timestamp: v.number(),
+    metadata: v.optional(v.string()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_entity", ["orgId", "entityType", "entityId"])
+    .index("by_org_action", ["orgId", "action"]),
+
+  customFields: defineTable({
+    orgId: v.id("organizations"),
+    ownerType: fleetCustomFieldOwnerValidator,
+    key: v.string(),
+    label: v.string(),
+    kind: assetFieldKindValidator,
+    options: v.optional(v.array(v.string())),
+    required: v.boolean(),
+    order: v.number(),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_owner", ["orgId", "ownerType"])
+    .index("by_org_key", ["orgId", "key"]),
+
+  customFieldValues: defineTable({
+    orgId: v.id("organizations"),
+    fieldId: v.id("customFields"),
+    ownerType: fleetCustomFieldOwnerValidator,
+    ownerId: v.string(),
+    value: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_field", ["fieldId"])
+    .index("by_owner", ["orgId", "ownerType", "ownerId"]),
 
   // Org-defined custom field definitions for assets, keyed to a category or a
   // fleet assetType. Rendered dynamically on asset/fleet detail screens.

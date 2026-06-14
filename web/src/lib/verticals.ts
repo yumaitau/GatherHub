@@ -82,6 +82,12 @@ export interface OrganizationModule {
   configJson?: string;
 }
 
+export interface FleetTemplateConfig {
+  features: string[];
+  labels: Record<string, string>;
+  reminderDays: number[];
+}
+
 export interface VerticalOrgConfig {
   soccerMode?: boolean;
   kind?: OrganizationKind;
@@ -89,6 +95,42 @@ export interface VerticalOrgConfig {
   sportKey?: SportKey;
   terminology?: OrganizationTerminology;
   modules?: OrganizationModule[];
+}
+
+export function fleetConfig(
+  org: VerticalOrgConfig | null | undefined,
+): FleetTemplateConfig {
+  const fleetModule = org?.modules?.find((module) => module.key === "fleet");
+  if (fleetModule?.configJson) {
+    try {
+      const parsed = JSON.parse(fleetModule.configJson) as FleetTemplateConfig;
+      return {
+        features: Array.isArray(parsed.features) ? parsed.features : [],
+        labels:
+          parsed.labels && typeof parsed.labels === "object"
+            ? parsed.labels
+            : {},
+        reminderDays: Array.isArray(parsed.reminderDays)
+          ? parsed.reminderDays
+          : [90, 60, 30, 14, 7, 0],
+      };
+    } catch {
+      // Fall through to defaults below.
+    }
+  }
+  return {
+    features: [],
+    labels: {},
+    reminderDays: [90, 60, 30, 14, 7, 0],
+  };
+}
+
+export function fleetLabel(
+  org: VerticalOrgConfig | null | undefined,
+  key: string,
+  fallback: string,
+): string {
+  return fleetConfig(org).labels[key] ?? fallback;
 }
 
 export const MODULE_LABELS: Record<OrganizationModuleKey, string> = {

@@ -97,7 +97,14 @@ function AuthedApp() {
               <Route path="/assets/qr-sheet" element={<QrSheetPage />} />
               <Route path="/assets/:assetId" element={<AssetDetailPage />} />
               <Route path="/fleet" element={<FleetPage />} />
-              <Route path="/fleet/:assetId" element={<FleetVehiclePage />} />
+              <Route
+                path="/fleet/vehicles/:vehicleId"
+                element={<FleetVehiclePage />}
+              />
+              <Route
+                path="/fleet/:assetId"
+                element={<Navigate to="/fleet" replace />}
+              />
               <Route path="/volunteers" element={<VolunteersPage />} />
               <Route
                 path="/training-certifications"

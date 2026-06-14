@@ -67,6 +67,13 @@ type TemplateDefinition = {
   description: string;
   modules: OrganizationModuleKey[];
   terminology: OrganizationTerminology;
+  fleetConfig?: FleetTemplateConfig;
+};
+
+export type FleetTemplateConfig = {
+  features: string[];
+  labels: Record<string, string>;
+  reminderDays: number[];
 };
 
 type EffectiveModuleRow = {
@@ -97,6 +104,19 @@ const COMMUNITY_MODULES: OrganizationModuleKey[] = [
 ];
 
 const SPORTS_MODULES: OrganizationModuleKey[] = [...COMMUNITY_MODULES, "sport"];
+
+const DEFAULT_FLEET_REMINDER_DAYS = [90, 60, 30, 14, 7, 0];
+
+function fleetConfig(
+  features: string[],
+  labels: Record<string, string>,
+): FleetTemplateConfig {
+  return {
+    features,
+    labels,
+    reminderDays: DEFAULT_FLEET_REMINDER_DAYS,
+  };
+}
 
 function sportTerminology(
   sportSingular: string,
@@ -272,39 +292,84 @@ const TEMPLATES: Record<string, TemplateDefinition> = {
   },
   community_org: {
     key: "community_org",
-    label: "Community organisation",
+    label: "Community group",
     kind: "community_org",
     description:
-      "Programs, volunteers, events, assets, tasks, public updates, and sponsors.",
-    modules: COMMUNITY_MODULES,
+      "Programs, volunteers, shared vehicles, bookings, maintenance reminders, costs, public updates, and sponsors.",
+    modules: [...COMMUNITY_MODULES, "fleet"],
     terminology: {
       ...DEFAULT_TERMINOLOGY,
       teamSingular: "group",
       teamPlural: "groups",
-      eventSingular: "activity",
-      eventPlural: "activities",
+      eventSingular: "trip",
+      eventPlural: "trips",
       sponsorSingular: "supporter",
       sponsorPlural: "supporters",
+      assetSingular: "vehicle",
+      assetPlural: "vehicles",
     },
+    fleetConfig: fleetConfig(
+      [
+        "shared_vehicles",
+        "volunteer_drivers",
+        "booking_calendar",
+        "maintenance_reminders",
+        "rego_reminders",
+        "basic_costs",
+        "defects",
+      ],
+      {
+        vehicles: "Vehicles",
+        drivers: "Volunteers",
+        jobs: "Trips",
+        depots: "Locations",
+        customers: "Groups",
+        bookings: "Bookings",
+        costs: "Expenses",
+        safetyChecks: "Safety Checks",
+      },
+    ),
   },
   field_service: {
     key: "field_service",
     label: "Field service",
     kind: "field_service",
     description:
-      "Crews, jobs, assets, safety, training, tasking, and field operations.",
+      "Technicians, vehicles, work orders, sites, projects, costs, safety, training, tasking, and field operations.",
     modules: [...BASE_MODULES, "field_service", "safety", "fleet"],
     terminology: {
       ...DEFAULT_TERMINOLOGY,
-      memberSingular: "worker",
-      memberPlural: "workers",
+      memberSingular: "technician",
+      memberPlural: "technicians",
       teamSingular: "crew",
       teamPlural: "crews",
-      eventSingular: "job",
-      eventPlural: "jobs",
-      assetSingular: "equipment",
-      assetPlural: "equipment",
+      eventSingular: "work order",
+      eventPlural: "work orders",
+      assetSingular: "vehicle",
+      assetPlural: "vehicles",
     },
+    fleetConfig: fleetConfig(
+      [
+        "vehicles",
+        "technicians",
+        "jobs",
+        "projects",
+        "tools_equipment_references",
+        "maintenance",
+        "cost_tracking",
+        "sites",
+      ],
+      {
+        vehicles: "Vehicles",
+        drivers: "Technicians",
+        jobs: "Work Orders",
+        customers: "Clients",
+        sites: "Sites",
+        depots: "Depots",
+        projects: "Projects",
+        costs: "Costs",
+      },
+    ),
   },
   waste_operator: {
     key: "waste_operator",
@@ -327,39 +392,128 @@ const TEMPLATES: Record<string, TemplateDefinition> = {
   },
   logistics: {
     key: "logistics",
-    label: "Logistics",
+    label: "Logistics company",
     kind: "logistics",
     description:
-      "Drivers, crews, routes, jobs, fleet assets, tasking, training, and safety.",
+      "Fleets, drivers, depots, jobs, projects, costs, rego, servicing, defects, reports, and compliance.",
     modules: [...BASE_MODULES, "logistics", "safety", "fleet"],
     terminology: {
       ...DEFAULT_TERMINOLOGY,
-      memberSingular: "worker",
-      memberPlural: "workers",
+      memberSingular: "driver",
+      memberPlural: "drivers",
       teamSingular: "crew",
       teamPlural: "crews",
-      eventSingular: "run",
-      eventPlural: "runs",
+      eventSingular: "job",
+      eventPlural: "jobs",
       assetSingular: "vehicle",
       assetPlural: "vehicles",
     },
+    fleetConfig: fleetConfig(
+      [
+        "fleet",
+        "drivers",
+        "jobs",
+        "projects",
+        "costs",
+        "maintenance",
+        "fuel_logs",
+        "defects",
+        "dashboards",
+        "reports",
+      ],
+      {
+        vehicles: "Vehicles",
+        drivers: "Drivers",
+        jobs: "Jobs",
+        depots: "Depots",
+        customers: "Customers",
+        runs: "Runs",
+        projects: "Projects",
+        costs: "Costs",
+      },
+    ),
   },
   school_group: {
     key: "school_group",
-    label: "School group",
+    label: "School transport",
     kind: "school_group",
     description:
-      "Students, groups, activities, assets, volunteers, training, and tasks.",
-    modules: [...COMMUNITY_MODULES],
+      "Buses, staff drivers, excursions, student transport, WWCC compliance, approvals, rego reminders, and maintenance.",
+    modules: [...COMMUNITY_MODULES, "fleet", "safety"],
     terminology: {
       ...DEFAULT_TERMINOLOGY,
-      memberSingular: "participant",
-      memberPlural: "participants",
-      teamSingular: "group",
-      teamPlural: "groups",
-      eventSingular: "activity",
-      eventPlural: "activities",
+      memberSingular: "student",
+      memberPlural: "students",
+      teamSingular: "route",
+      teamPlural: "routes",
+      eventSingular: "excursion",
+      eventPlural: "excursions",
+      assetSingular: "bus",
+      assetPlural: "buses",
     },
+    fleetConfig: fleetConfig(
+      [
+        "fleet",
+        "staff_drivers",
+        "buses",
+        "excursions",
+        "student_transport",
+        "rego_reminders",
+        "wwcc_compliance",
+        "maintenance",
+        "approval_workflows",
+      ],
+      {
+        vehicles: "Buses",
+        drivers: "Staff Drivers",
+        jobs: "Excursions",
+        routes: "Routes",
+        students: "Students",
+        bookings: "Transport Bookings",
+        depots: "Campuses",
+        costs: "Costs",
+      },
+    ),
+  },
+  volunteer_org: {
+    key: "volunteer_org",
+    label: "Volunteer organisation",
+    kind: "community_org",
+    description:
+      "Volunteer drivers, vehicles, compliance documents, bookings, safety checks, maintenance, reminders, and costs.",
+    modules: [...COMMUNITY_MODULES, "fleet", "safety"],
+    terminology: {
+      ...DEFAULT_TERMINOLOGY,
+      memberSingular: "volunteer",
+      memberPlural: "volunteers",
+      teamSingular: "roster",
+      teamPlural: "rosters",
+      eventSingular: "trip",
+      eventPlural: "trips",
+      assetSingular: "vehicle",
+      assetPlural: "vehicles",
+    },
+    fleetConfig: fleetConfig(
+      [
+        "vehicles",
+        "volunteer_drivers",
+        "compliance_documents",
+        "bookings",
+        "rego_reminders",
+        "safety_checks",
+        "maintenance",
+        "costs",
+      ],
+      {
+        vehicles: "Vehicles",
+        drivers: "Volunteers",
+        jobs: "Trips",
+        rosters: "Rosters",
+        safetyChecks: "Safety Checks",
+        depots: "Locations",
+        costs: "Costs",
+      },
+    ),
   },
   event_company: {
     key: "event_company",
@@ -395,7 +549,7 @@ const DEFAULT_TEMPLATE = TEMPLATES.sports_club!;
 
 export function listVerticalTemplates() {
   return Object.values(TEMPLATES).map(
-    ({ key, label, kind, sportKey, description, modules, terminology }) => ({
+    ({
       key,
       label,
       kind,
@@ -403,6 +557,16 @@ export function listVerticalTemplates() {
       description,
       modules,
       terminology,
+      fleetConfig,
+    }) => ({
+      key,
+      label,
+      kind,
+      sportKey,
+      description,
+      modules,
+      terminology,
+      fleetConfig,
     }),
   );
 }
@@ -464,7 +628,10 @@ function defaultModuleRowsForOrg(
     key,
     enabled: defaults.has(key),
     version: "1",
-    configJson: undefined as string | undefined,
+    configJson:
+      key === "fleet" && template.fleetConfig
+        ? JSON.stringify(template.fleetConfig)
+        : undefined,
   }));
 }
 
@@ -544,13 +711,14 @@ export async function seedOrganizationProfile(
     soccerMode: enabled.has("soccer"),
     profileUpdatedAt: Date.now(),
   });
-  await replaceOrganizationModules(ctx, orgId, enabled);
+  await replaceOrganizationModules(ctx, orgId, enabled, template);
 }
 
 export async function replaceOrganizationModules(
   ctx: MutationCtx,
   orgId: Id<"organizations">,
   enabled: Set<OrganizationModuleKey>,
+  template?: TemplateDefinition,
 ) {
   const existing = await explicitModuleRows(ctx, orgId);
   for (const row of existing) {
@@ -563,6 +731,10 @@ export async function replaceOrganizationModules(
       key,
       enabled: enabled.has(key),
       version: "1",
+      configJson:
+        key === "fleet" && template?.fleetConfig
+          ? JSON.stringify(template.fleetConfig)
+          : undefined,
       updatedAt: now,
     });
   }

@@ -26,6 +26,7 @@ import type * as invitationsAdmin from "../invitationsAdmin.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_capabilities from "../lib/capabilities.js";
+import type * as lib_fleetLogic from "../lib/fleetLogic.js";
 import type * as lib_idempotency from "../lib/idempotency.js";
 import type * as lib_ids from "../lib/ids.js";
 import type * as lib_orgConfig from "../lib/orgConfig.js";
@@ -78,6 +79,7 @@ declare const fullApi: ApiFromModules<{
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
   "lib/capabilities": typeof lib_capabilities;
+  "lib/fleetLogic": typeof lib_fleetLogic;
   "lib/idempotency": typeof lib_idempotency;
   "lib/ids": typeof lib_ids;
   "lib/orgConfig": typeof lib_orgConfig;
