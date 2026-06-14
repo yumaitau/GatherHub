@@ -42,6 +42,11 @@ struct AssetsView: View {
         context?.hasCapability("assets.operate") ?? false
     }
 
+    private var canInspectFleet: Bool {
+        (context?.hasCapability("fleet.inspect") ?? false)
+            && (context?.org.moduleEnabled("fleet") ?? false)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -80,7 +85,8 @@ struct AssetsView: View {
                         tagId: tagId,
                         canEdit: canManageAssets,
                         canDelete: canDeleteAssets,
-                        canOperate: canOperateAssets
+                        canOperate: canOperateAssets,
+                        canInspect: canInspectFleet
                     )
                 }
             }

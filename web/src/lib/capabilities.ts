@@ -31,6 +31,7 @@ export const CAPABILITIES = [
   "jobs.dispatch",
   "jobs.complete",
   "fleet.inspect",
+  "fleet.manage",
   "safety.manage",
 ] as const;
 
@@ -69,5 +70,6 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   "jobs.dispatch": "Dispatch jobs",
   "jobs.complete": "Complete jobs",
   "fleet.inspect": "Inspect fleet",
+  "fleet.manage": "Manage fleet & maintenance",
   "safety.manage": "Manage safety",
 };

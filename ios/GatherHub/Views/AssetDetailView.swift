@@ -9,6 +9,7 @@ struct AssetDetailView: View {
     let canEdit: Bool
     let canDelete: Bool
     let canOperate: Bool
+    let canInspect: Bool
 
     @EnvironmentObject private var convex: ConvexService
     @EnvironmentObject private var sync: SyncEnvironment
@@ -21,12 +22,20 @@ struct AssetDetailView: View {
     @State private var editingAsset: Asset?
     @State private var retiringAsset: Asset?
     @State private var deletingAsset: Asset?
+    @State private var showFleetPreStart = false
 
-    init(tagId: String, canEdit: Bool = false, canDelete: Bool = false, canOperate: Bool? = nil) {
+    init(
+        tagId: String,
+        canEdit: Bool = false,
+        canDelete: Bool = false,
+        canOperate: Bool? = nil,
+        canInspect: Bool = false
+    ) {
         self.tagId = tagId
         self.canEdit = canEdit
         self.canDelete = canDelete
         self.canOperate = canOperate ?? canEdit
+        self.canInspect = canInspect
     }
 
     var body: some View {
@@ -34,9 +43,19 @@ struct AssetDetailView: View {
             .navigationTitle("Asset")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if let asset = model.loadedAsset, canEdit || canDelete {
+                if let asset = model.loadedAsset, canEdit || canDelete || canInspect {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
+                            if canInspect && asset.status != .retired {
+                                Button {
+                                    showFleetPreStart = true
+                                } label: {
+                                    Label(
+                                        "Pre-start inspection",
+                                        systemImage: "checkmark.shield"
+                                    )
+                                }
+                            }
                             if canEdit {
                                 Button {
                                     editingAsset = asset
@@ -128,6 +147,11 @@ struct AssetDetailView: View {
             .sheet(item: $retiringAsset) { asset in
                 AssetRetireSheet(asset: asset) { notes in
                     await model.retire(asset: asset, notes: notes, convex: convex, sync: sync)
+                }
+            }
+            .sheet(isPresented: $showFleetPreStart) {
+                if let asset = model.loadedAsset {
+                    FleetPreStartView(assetId: asset.id, assetName: asset.name)
                 }
             }
             .confirmationDialog(

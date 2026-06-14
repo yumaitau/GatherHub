@@ -211,6 +211,62 @@ final class ConvexService: ObservableObject {
         )
     }
 
+    // MARK: - Fleet (GX-12)
+
+    /// `fleet:recordInspection` (mutation). Submits a pre-start / periodic
+    /// inspection. Defects are reported separately via `reportFleetDefect`.
+    func recordFleetInspection(
+        assetId: String,
+        type: String,
+        result: String,
+        odometer: Double? = nil,
+        engineHours: Double? = nil,
+        notes: String? = nil,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        accuracy: Double? = nil,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = [
+            "assetId": assetId,
+            "type": type,
+            "result": result,
+        ]
+        if let odometer { args["odometer"] = odometer }
+        if let engineHours { args["engineHours"] = engineHours }
+        if let notes { args["notes"] = notes }
+        if let latitude { args["geoLatitude"] = latitude }
+        if let longitude { args["geoLongitude"] = longitude }
+        if let accuracy { args["geoAccuracy"] = accuracy }
+        try await performMutation(
+            "fleet:recordInspection",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `fleet:reportDefect` (mutation). Severity defaults the blocks-assignment
+    /// flag server-side (major/critical block).
+    func reportFleetDefect(
+        assetId: String,
+        severity: String,
+        title: String,
+        description: String? = nil,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = [
+            "assetId": assetId,
+            "severity": severity,
+            "title": title,
+        ]
+        if let description { args["description"] = description }
+        try await performMutation(
+            "fleet:reportDefect",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
     // MARK: - Events
 
     /// `events:list` (query, `{ upcomingOnly?, teamId? }`).

@@ -10,6 +10,7 @@ import {
   Megaphone,
   MessagesSquare,
   Package,
+  Truck,
   HandHeart,
   Building2,
   Newspaper,
@@ -131,6 +132,13 @@ function buildNav(org: VerticalOrgConfig | null): NavGroup[] {
           icon: Package,
           shortcut: "K",
           module: "assets",
+          capability: "assets.read",
+        },
+        {
+          to: "/fleet",
+          label: "Fleet",
+          icon: Truck,
+          module: "fleet",
           capability: "assets.read",
         },
         {
