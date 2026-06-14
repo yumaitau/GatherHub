@@ -74,6 +74,9 @@ enum RichTextRenderer {
         th,td{border:1px solid #88888888;padding:4px 8px;text-align:left;}
         th{font-weight:600;}
         a{color:#3B6FD0;}
+        img{max-width:100%;height:auto;}
+        figure{margin:0 0 6px;}
+        figcaption{font-size:13px;color:#888888;}
         </style>
         \(html)
         """

@@ -40,6 +40,9 @@ const ALLOWED_TAGS = [
   "td",
   "colgroup",
   "col",
+  "img",
+  "figure",
+  "figcaption",
 ];
 
 const ALLOWED_ATTR = [
@@ -48,17 +51,35 @@ const ALLOWED_ATTR = [
   "rowspan",
   "colwidth",
   "data-colwidth",
+  "src",
+  "alt",
+  "title",
+  "width",
+  "height",
 ];
 
 let hookInstalled = false;
 
-/** Force every surviving link to open safely in a new tab. */
+/**
+ * Harden surviving links and images. Links open safely in a new tab. Images
+ * are restricted to `https:` sources (anything else — `http:`, `data:`,
+ * protocol-relative, or a stripped src — is dropped) and never leak a referrer.
+ */
 function ensureLinkHook() {
   if (hookInstalled) return;
   DOMPurify.addHook("afterSanitizeAttributes", (node) => {
     if (node.tagName === "A") {
       node.setAttribute("target", "_blank");
       node.setAttribute("rel", "noopener noreferrer nofollow");
+    }
+    if (node.tagName === "IMG") {
+      const src = node.getAttribute("src") ?? "";
+      if (!/^https:\/\//i.test(src)) {
+        node.remove();
+        return;
+      }
+      node.setAttribute("loading", "lazy");
+      node.setAttribute("referrerpolicy", "no-referrer");
     }
   });
   hookInstalled = true;
