@@ -393,6 +393,42 @@ final class SyncCoordinator {
                     clientMutationId: op.clientId
                 )
                 await refreshAssetListCaches()
+            case .wastePickup:
+                let args = try JSONDecoder().decode(WastePickupPayload.self, from: op.payload)
+                try await convex.recordWastePickup(
+                    loadId: args.loadId,
+                    pickupAmount: args.amount,
+                    pickupUnit: args.unit,
+                    manifestNumber: args.manifestNumber,
+                    notes: args.notes,
+                    latitude: args.latitude,
+                    longitude: args.longitude,
+                    accuracy: args.accuracy,
+                    clientMutationId: op.clientId
+                )
+            case .wasteArrival:
+                let args = try JSONDecoder().decode(WasteArrivalPayload.self, from: op.payload)
+                try await convex.recordWasteArrival(
+                    loadId: args.loadId,
+                    arrivalAmount: args.amount,
+                    arrivalUnit: args.unit,
+                    manifestNumber: args.manifestNumber,
+                    notes: args.notes,
+                    latitude: args.latitude,
+                    longitude: args.longitude,
+                    accuracy: args.accuracy,
+                    clientMutationId: op.clientId
+                )
+            case .wasteCustodyNote:
+                let args = try JSONDecoder().decode(WasteCustodyNotePayload.self, from: op.payload)
+                try await convex.addWasteCustodyNote(
+                    loadId: args.loadId,
+                    notes: args.notes ?? "",
+                    latitude: args.latitude,
+                    longitude: args.longitude,
+                    accuracy: args.accuracy,
+                    clientMutationId: op.clientId
+                )
             }
             op.transition(to: .applied)
             try? store.save()
@@ -617,6 +653,36 @@ struct FleetDefectPayload: Codable {
 struct AssetAttributesPayload: Codable {
     let assetId: String
     let attributesJson: String // JSON-encoded [{key,value}]
+}
+
+struct WastePickupPayload: Codable {
+    let loadId: String
+    let amount: Double?
+    let unit: String? // kg | tonne | litre | cubic_metre | bin | skip | each
+    let manifestNumber: String?
+    let notes: String?
+    let latitude: Double?
+    let longitude: Double?
+    let accuracy: Double?
+}
+
+struct WasteArrivalPayload: Codable {
+    let loadId: String
+    let amount: Double?
+    let unit: String? // kg | tonne | litre | cubic_metre | bin | skip | each
+    let manifestNumber: String?
+    let notes: String?
+    let latitude: Double?
+    let longitude: Double?
+    let accuracy: Double?
+}
+
+struct WasteCustodyNotePayload: Codable {
+    let loadId: String
+    let notes: String?
+    let latitude: Double?
+    let longitude: Double?
+    let accuracy: Double?
 }
 
 struct RegisterNfcPayload: Codable {

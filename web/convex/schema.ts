@@ -72,6 +72,10 @@ export const capabilityValidator = v.union(
   v.literal("fleet.templates.manage"),
   v.literal("fleet.driver_portal"),
   v.literal("safety.manage"),
+  v.literal("waste.view"),
+  v.literal("waste.operate"),
+  v.literal("waste.manage"),
+  v.literal("waste.export"),
 );
 
 // Fixed reaction set for community posts and comments (Spond-style feed,
@@ -394,6 +398,74 @@ export const fleetCustomFieldOwnerValidator = v.union(
   v.literal("maintenance"),
   v.literal("defect"),
   v.literal("cost"),
+);
+
+// --- Waste removal vertical (GX-11) -----------------------------------------
+// Loads of trackable waste move from a consignor, via a transporter, to a
+// receiving facility, recorded against a transport certificate / manifest with
+// an immutable chain-of-custody log. Bins/skips/containers are modelled as
+// fleet assets (assetType "bin"/"container") and reused here.
+
+// Broad classification of a waste stream. `code` on the stream carries the
+// region-specific classification code (e.g. an NSW EPA waste code).
+export const wasteStreamClassificationValidator = v.union(
+  v.literal("general"),
+  v.literal("recycling"),
+  v.literal("organic"),
+  v.literal("construction"),
+  v.literal("liquid"),
+  v.literal("hazardous"),
+  v.literal("clinical"),
+  v.literal("e_waste"),
+  v.literal("other"),
+);
+
+export const wasteUnitValidator = v.union(
+  v.literal("kg"),
+  v.literal("tonne"),
+  v.literal("litre"),
+  v.literal("cubic_metre"),
+  v.literal("bin"),
+  v.literal("skip"),
+  v.literal("each"),
+);
+
+// Load lifecycle: scheduled -> picked_up -> (in_transit) -> arrived ->
+// accepted -> processed, with rejected -> redirected and cancelled branches.
+export const wasteLoadStatusValidator = v.union(
+  v.literal("scheduled"),
+  v.literal("picked_up"),
+  v.literal("in_transit"),
+  v.literal("arrived"),
+  v.literal("accepted"),
+  v.literal("processed"),
+  v.literal("rejected"),
+  v.literal("redirected"),
+  v.literal("cancelled"),
+);
+
+export const wasteCustodyEventTypeValidator = v.union(
+  v.literal("scheduled"),
+  v.literal("picked_up"),
+  v.literal("in_transit"),
+  v.literal("arrived"),
+  v.literal("accepted"),
+  v.literal("processed"),
+  v.literal("rejected"),
+  v.literal("redirected"),
+  v.literal("cancelled"),
+  v.literal("discrepancy_flagged"),
+  v.literal("discrepancy_resolved"),
+  v.literal("updated"),
+  v.literal("note"),
+);
+
+export const wasteDiscrepancyValidator = v.union(
+  v.literal("quantity_mismatch"),
+  v.literal("missing_document"),
+  v.literal("late_delivery"),
+  v.literal("rejected_load"),
+  v.literal("wrong_party"),
 );
 
 // --- Custom asset fields (configurable per category / fleet type) -----------
@@ -2161,4 +2233,128 @@ export default defineSchema({
     updatedAt: v.number(),
     updatedBy: v.id("users"),
   }).index("by_org", ["orgId"]),
+
+  // --- Waste removal vertical (GX-11) ---------------------------------------
+
+  // A kind of trackable waste with its region classification code.
+  wasteStreams: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    // Region-specific classification code (e.g. NSW EPA waste code). Optional.
+    code: v.optional(v.string()),
+    classification: wasteStreamClassificationValidator,
+    hazardous: v.boolean(),
+    defaultUnit: wasteUnitValidator,
+    notes: v.optional(v.string()),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_active", ["orgId", "active"]),
+
+  // A consignor (waste generator/customer), transporter, and/or receiving
+  // facility. A single party may hold more than one role.
+  wasteParties: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    consignor: v.boolean(),
+    transporter: v.boolean(),
+    receiver: v.boolean(),
+    // EPA / facility licence number where applicable.
+    licenceNumber: v.optional(v.string()),
+    contactName: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    address: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_active", ["orgId", "active"]),
+
+  // A load of trackable waste — the transport-certificate / manifest record.
+  // Mutable state that the immutable wasteCustodyEvents log explains.
+  wasteLoads: defineTable({
+    orgId: v.id("organizations"),
+    // Internal load reference (human-facing); unique per org by convention.
+    reference: v.string(),
+    streamId: v.id("wasteStreams"),
+    // Bin/skip/container and vehicle (both fleet assets), optional.
+    containerAssetId: v.optional(v.id("assets")),
+    vehicleAssetId: v.optional(v.id("assets")),
+    consignorPartyId: v.id("wasteParties"),
+    transporterPartyId: v.optional(v.id("wasteParties")),
+    plannedReceiverPartyId: v.id("wasteParties"),
+    // Facility that actually accepted the load, captured at arrival. A
+    // mismatch with the planned receiver raises a `wrong_party` discrepancy.
+    actualReceiverPartyId: v.optional(v.id("wasteParties")),
+    driverMemberId: v.optional(v.id("members")),
+    status: wasteLoadStatusValidator,
+    scheduledFor: v.optional(v.string()), // ISO yyyy-mm-dd
+    // Expected arrival (epoch ms); arriving later than this + grace is "late".
+    scheduledArrivalAt: v.optional(v.number()),
+    // Transport certificate / manifest number on the physical paperwork. Its
+    // absence once arrived raises a `missing_document` discrepancy.
+    manifestNumber: v.optional(v.string()),
+    pickupAmount: v.optional(v.number()),
+    pickupUnit: v.optional(wasteUnitValidator),
+    pickupAt: v.optional(v.number()),
+    arrivalAmount: v.optional(v.number()),
+    arrivalUnit: v.optional(wasteUnitValidator),
+    arrivedAt: v.optional(v.number()),
+    // Per-load override of the org quantity-mismatch tolerance (percent).
+    quantityTolerancePct: v.optional(v.number()),
+    // Discrepancies detected on the load, recomputed on every transition.
+    discrepancyFlags: v.array(wasteDiscrepancyValidator),
+    hasDiscrepancy: v.boolean(),
+    discrepancyResolvedAt: v.optional(v.number()),
+    discrepancyResolvedBy: v.optional(v.id("users")),
+    discrepancyResolutionNotes: v.optional(v.string()),
+    rejectionReason: v.optional(v.string()),
+    redirectedToPartyId: v.optional(v.id("wasteParties")),
+    notes: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_status", ["orgId", "status"])
+    .index("by_org_and_discrepancy", ["orgId", "hasDiscrepancy"])
+    .index("by_stream", ["streamId"])
+    .index("by_container", ["containerAssetId"]),
+
+  // Immutable chain-of-custody log for a load. Append-only: there is no
+  // update/delete path for these rows anywhere in the codebase.
+  wasteCustodyEvents: defineTable({
+    orgId: v.id("organizations"),
+    loadId: v.id("wasteLoads"),
+    type: wasteCustodyEventTypeValidator,
+    // Custody hand-off, where applicable (consignor -> transporter -> receiver).
+    fromPartyId: v.optional(v.id("wasteParties")),
+    toPartyId: v.optional(v.id("wasteParties")),
+    amount: v.optional(v.number()),
+    unit: v.optional(wasteUnitValidator),
+    manifestNumber: v.optional(v.string()),
+    signatureFileId: v.optional(v.id("uploadedFiles")),
+    photoFileIds: v.optional(v.array(v.id("uploadedFiles"))),
+    geoLatitude: v.optional(v.number()),
+    geoLongitude: v.optional(v.number()),
+    geoAccuracy: v.optional(v.number()),
+    // Snapshot of discrepancies when type is discrepancy_flagged.
+    discrepancyFlags: v.optional(v.array(wasteDiscrepancyValidator)),
+    notes: v.optional(v.string()),
+    performedBy: v.id("users"),
+    performedByMemberId: v.optional(v.id("members")),
+    // The client mutation id that produced this event (idempotency audit).
+    clientMutationId: v.optional(v.string()),
+    occurredAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_load", ["loadId"])
+    .index("by_org_and_type", ["orgId", "type"]),
 });

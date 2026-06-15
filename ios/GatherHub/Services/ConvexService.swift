@@ -267,6 +267,101 @@ final class ConvexService: ObservableObject {
         )
     }
 
+    // MARK: - Waste removal (GX-11)
+
+    /// `waste:listLoads` (query). Driver's chain-of-custody loads. Optional
+    /// `status` filter and `hasDiscrepancy` flag narrow the list.
+    func listWasteLoads(
+        status: String? = nil,
+        hasDiscrepancy: Bool? = nil
+    ) async throws -> [WasteLoadSummary] {
+        var args: [String: ConvexEncodable?] = [:]
+        if let status { args["status"] = status }
+        if let hasDiscrepancy { args["hasDiscrepancy"] = hasDiscrepancy }
+        return try await once("waste:listLoads", with: args)
+    }
+
+    /// `waste:recordPickup` (mutation). Records the pickup leg of a load's
+    /// chain of custody. Scalar args only — signature/photo upload is handled
+    /// separately and never blocks this event.
+    func recordWastePickup(
+        loadId: String,
+        pickupAmount: Double? = nil,
+        pickupUnit: String? = nil,
+        manifestNumber: String? = nil,
+        notes: String? = nil,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        accuracy: Double? = nil,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = ["loadId": loadId]
+        if let pickupAmount { args["pickupAmount"] = pickupAmount }
+        putOptionalString("pickupUnit", pickupUnit, into: &args)
+        putOptionalString("manifestNumber", manifestNumber, into: &args)
+        putOptionalString("notes", notes, into: &args)
+        if let latitude { args["geoLatitude"] = latitude }
+        if let longitude { args["geoLongitude"] = longitude }
+        if let accuracy { args["geoAccuracy"] = accuracy }
+        try await performMutation(
+            "waste:recordPickup",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `waste:recordArrival` (mutation). Records the arrival leg at the
+    /// receiver. Scalar args only.
+    func recordWasteArrival(
+        loadId: String,
+        arrivalAmount: Double? = nil,
+        arrivalUnit: String? = nil,
+        manifestNumber: String? = nil,
+        notes: String? = nil,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        accuracy: Double? = nil,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = ["loadId": loadId]
+        if let arrivalAmount { args["arrivalAmount"] = arrivalAmount }
+        putOptionalString("arrivalUnit", arrivalUnit, into: &args)
+        putOptionalString("manifestNumber", manifestNumber, into: &args)
+        putOptionalString("notes", notes, into: &args)
+        if let latitude { args["geoLatitude"] = latitude }
+        if let longitude { args["geoLongitude"] = longitude }
+        if let accuracy { args["geoAccuracy"] = accuracy }
+        try await performMutation(
+            "waste:recordArrival",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
+    /// `waste:addCustodyNote` (mutation). Appends a free-text custody note to
+    /// a load with optional geo.
+    func addWasteCustodyNote(
+        loadId: String,
+        notes: String,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        accuracy: Double? = nil,
+        clientMutationId: String? = nil
+    ) async throws {
+        var args: [String: ConvexEncodable?] = [
+            "loadId": loadId,
+            "notes": notes,
+        ]
+        if let latitude { args["geoLatitude"] = latitude }
+        if let longitude { args["geoLongitude"] = longitude }
+        if let accuracy { args["geoAccuracy"] = accuracy }
+        try await performMutation(
+            "waste:addCustodyNote",
+            with: args,
+            clientMutationId: clientMutationId
+        )
+    }
+
     // MARK: - Asset custom fields
 
     /// `assetFields:forAsset` (query). Resolved field defs + current values.

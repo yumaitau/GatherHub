@@ -20,6 +20,8 @@ import AssetDetailPage from "@/pages/assets/AssetDetailPage";
 import QrSheetPage from "@/pages/assets/QrSheetPage";
 import FleetPage from "@/pages/fleet/FleetPage";
 import FleetVehiclePage from "@/pages/fleet/FleetVehiclePage";
+import WastePage from "@/pages/waste/WastePage";
+import WasteLoadPage from "@/pages/waste/WasteLoadPage";
 import VolunteersPage from "@/pages/VolunteersPage";
 import TrainingCertificationsPage from "@/pages/TrainingCertificationsPage";
 import TaskBoardPage from "@/pages/TaskBoardPage";
@@ -105,6 +107,8 @@ function AuthedApp() {
                 path="/fleet/:assetId"
                 element={<Navigate to="/fleet" replace />}
               />
+              <Route path="/waste" element={<WastePage />} />
+              <Route path="/waste/:loadId" element={<WasteLoadPage />} />
               <Route path="/volunteers" element={<VolunteersPage />} />
               <Route
                 path="/training-certifications"

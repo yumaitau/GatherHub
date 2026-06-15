@@ -41,6 +41,13 @@ struct MainTabView: View {
                         }
                 }
 
+                if context.org.moduleEnabled("waste") && context.hasCapability("waste.operate") {
+                    WasteLoadsView(context: context)
+                        .tabItem {
+                            Label("Waste", systemImage: "arrow.3.trianglepath")
+                        }
+                }
+
                 MoreView(context: context)
                     .tabItem { Label("More", systemImage: "ellipsis.circle") }
 

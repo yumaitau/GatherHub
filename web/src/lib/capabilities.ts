@@ -46,6 +46,10 @@ export const CAPABILITIES = [
   "fleet.export",
   "fleet.templates.manage",
   "fleet.driver_portal",
+  "waste.view",
+  "waste.operate",
+  "waste.manage",
+  "waste.export",
   "safety.manage",
 ] as const;
 
@@ -99,5 +103,9 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   "fleet.export": "Export fleet data",
   "fleet.templates.manage": "Manage fleet templates",
   "fleet.driver_portal": "Use driver portal",
+  "waste.view": "View waste operations",
+  "waste.operate": "Record waste pickups and arrivals",
+  "waste.manage": "Manage waste loads, streams and parties",
+  "waste.export": "Export waste data",
   "safety.manage": "Manage safety",
 };
