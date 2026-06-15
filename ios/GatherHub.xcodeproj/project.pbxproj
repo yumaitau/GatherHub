@@ -57,6 +57,11 @@
 		97306B54633D1F0DBB977E59 /* AssetLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F870B9222413EDFE6A22FC /* AssetLookupView.swift */; };
 		FE0003AA11BB22CC33DD44E3 /* AssetCustomFieldsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0004AA11BB22CC33DD44E4 /* AssetCustomFieldsView.swift */; };
 		FE0001AA11BB22CC33DD44E1 /* FleetPreStartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0002AA11BB22CC33DD44E2 /* FleetPreStartView.swift */; };
+		FE0011AA11BB22CC33DD44F1 /* WasteLoadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0012AA11BB22CC33DD44F2 /* WasteLoadsView.swift */; };
+		FE0013AA11BB22CC33DD44F3 /* WasteLoadDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0014AA11BB22CC33DD44F4 /* WasteLoadDetailView.swift */; };
+		FE0015AA11BB22CC33DD44F5 /* WasteCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0016AA11BB22CC33DD44F6 /* WasteCaptureView.swift */; };
+		FE0017AA11BB22CC33DD44F7 /* SignatureCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0018AA11BB22CC33DD44F8 /* SignatureCanvasView.swift */; };
+		FE0019AA11BB22CC33DD44F9 /* WasteModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE001AAA11BB22CC33DD44FA /* WasteModels.swift */; };
 		9C674C16B21C5D487EC23C57 /* EventCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B218E034FBFC4FD192134B1C /* EventCalendarView.swift */; };
 		A010F7329CAF648FAAD7B337 /* UserFacingError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C58A5919E788AEC3D6FAD22 /* UserFacingError.swift */; };
 		A1EE33250E0A05CC50EF3537 /* EventDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE2F0462C519B6C9EBB2B9E /* EventDetailSheet.swift */; };
@@ -167,6 +172,11 @@
 		D8F870B9222413EDFE6A22FC /* AssetLookupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetLookupView.swift; sourceTree = "<group>"; };
 		FE0004AA11BB22CC33DD44E4 /* AssetCustomFieldsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetCustomFieldsView.swift; sourceTree = "<group>"; };
 		FE0002AA11BB22CC33DD44E2 /* FleetPreStartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetPreStartView.swift; sourceTree = "<group>"; };
+		FE0012AA11BB22CC33DD44F2 /* WasteLoadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WasteLoadsView.swift; sourceTree = "<group>"; };
+		FE0014AA11BB22CC33DD44F4 /* WasteLoadDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WasteLoadDetailView.swift; sourceTree = "<group>"; };
+		FE0016AA11BB22CC33DD44F6 /* WasteCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WasteCaptureView.swift; sourceTree = "<group>"; };
+		FE0018AA11BB22CC33DD44F8 /* SignatureCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignatureCanvasView.swift; sourceTree = "<group>"; };
+		FE001AAA11BB22CC33DD44FA /* WasteModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WasteModels.swift; sourceTree = "<group>"; };
 		DE32626001E1CA40ADD0CE47 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		E22A29F7D200080F4B7FE97C /* BuildSettings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = BuildSettings.xcconfig; sourceTree = "<group>"; };
 		EA8B04ED405A9E59CD7E2CF2 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
@@ -266,6 +276,7 @@
 			children = (
 				03216C01838EB7D83545D41E /* Models.swift */,
 				11A22B33C44D55E66F77A882 /* OperationsModels.swift */,
+				FE001AAA11BB22CC33DD44FA /* WasteModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -389,6 +400,10 @@
 				D8F870B9222413EDFE6A22FC /* AssetLookupView.swift */,
 				FE0004AA11BB22CC33DD44E4 /* AssetCustomFieldsView.swift */,
 				FE0002AA11BB22CC33DD44E2 /* FleetPreStartView.swift */,
+				FE0012AA11BB22CC33DD44F2 /* WasteLoadsView.swift */,
+				FE0014AA11BB22CC33DD44F4 /* WasteLoadDetailView.swift */,
+				FE0016AA11BB22CC33DD44F6 /* WasteCaptureView.swift */,
+				FE0018AA11BB22CC33DD44F8 /* SignatureCanvasView.swift */,
 				AC0D7992BA19734D531A028B /* AssetPickerSheet.swift */,
 				065C5CB52CA5C492F85CBE3B /* AssetsView.swift */,
 				B218E034FBFC4FD192134B1C /* EventCalendarView.swift */,
@@ -498,6 +513,10 @@
 				97306B54633D1F0DBB977E59 /* AssetLookupView.swift in Sources */,
 				FE0003AA11BB22CC33DD44E3 /* AssetCustomFieldsView.swift in Sources */,
 				FE0001AA11BB22CC33DD44E1 /* FleetPreStartView.swift in Sources */,
+				FE0011AA11BB22CC33DD44F1 /* WasteLoadsView.swift in Sources */,
+				FE0013AA11BB22CC33DD44F3 /* WasteLoadDetailView.swift in Sources */,
+				FE0015AA11BB22CC33DD44F5 /* WasteCaptureView.swift in Sources */,
+				FE0017AA11BB22CC33DD44F7 /* SignatureCanvasView.swift in Sources */,
 				644088AC81A81D02DB0E6ED8 /* AssetPickerSheet.swift in Sources */,
 				D2325B06F25DBF19F409A690 /* AssetStatusBadge.swift in Sources */,
 				D6B00860A280D1058BB1022C /* AssetsView.swift in Sources */,
@@ -542,6 +561,7 @@
 				E7A89B30771EC4DD626D40AD /* OfflineBanner.swift in Sources */,
 				96A2CF8631EA66D5A5F05C22 /* OfflineStateView.swift in Sources */,
 				11A22B33C44D55E66F77A881 /* OperationsModels.swift in Sources */,
+				FE0019AA11BB22CC33DD44F9 /* WasteModels.swift in Sources */,
 				CAE31ABC63680BE3CDC2EAF4 /* OrgPickerView.swift in Sources */,
 				2BA1F96D4AD068E2CB48FB56 /* OrgSwitcherSheet.swift in Sources */,
 				FA44CCF14EC52A23DC8F18B4 /* OrganizationAddressView.swift in Sources */,

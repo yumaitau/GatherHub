@@ -99,6 +99,12 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
     case fleetDefect
     /// `assetFields:setAttributes` — set an asset's custom field values.
     case assetAttributes
+    /// `waste:recordPickup` — record a waste load pickup (chain of custody).
+    case wastePickup
+    /// `waste:recordArrival` — record a waste load arrival at the receiver.
+    case wasteArrival
+    /// `waste:addCustodyNote` — append a custody note to a waste load.
+    case wasteCustodyNote
 
     var label: String {
         switch self {
@@ -149,6 +155,9 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
         case .fleetInspection: return "Fleet inspection"
         case .fleetDefect: return "Fleet defect report"
         case .assetAttributes: return "Asset custom fields"
+        case .wastePickup: return "Waste pickup"
+        case .wasteArrival: return "Waste arrival"
+        case .wasteCustodyNote: return "Waste custody note"
         }
     }
 
@@ -194,6 +203,8 @@ enum SyncOperationKind: String, Codable, Sendable, CaseIterable {
             return "fleet.inspect"
         case .assetAttributes:
             return "assets.admin"
+        case .wastePickup, .wasteArrival, .wasteCustodyNote:
+            return "waste.operate"
         }
     }
 }

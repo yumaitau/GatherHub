@@ -52,6 +52,10 @@ export const CAPABILITIES = [
   "fleet.templates.manage",
   "fleet.driver_portal",
   "safety.manage",
+  "waste.view",
+  "waste.operate",
+  "waste.manage",
+  "waste.export",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -105,6 +109,9 @@ const COMMITTEE_CAPABILITIES: Capability[] = [
   "soccer.grade",
   "audit.read",
   "reports.export",
+  "waste.view",
+  "waste.manage",
+  "waste.export",
   "mobile.offline_sync",
 ];
 const COACH_CAPABILITIES: Capability[] = [
@@ -121,6 +128,8 @@ const COACH_CAPABILITIES: Capability[] = [
   "fleet.defects.submit",
   "fleet.driver_portal",
   "soccer.grade",
+  "waste.view",
+  "waste.operate",
   "mobile.offline_sync",
 ];
 const VOLUNTEER_CAPABILITIES: Capability[] = [
@@ -131,6 +140,8 @@ const VOLUNTEER_CAPABILITIES: Capability[] = [
   "fleet.inspect",
   "fleet.defects.submit",
   "fleet.driver_portal",
+  "waste.view",
+  "waste.operate",
   "mobile.offline_sync",
 ];
 const FAMILY_CAPABILITIES: Capability[] = [
@@ -255,6 +266,9 @@ const OPERATIONS_ROLE_TEMPLATES: RoleTemplate[] = [
       "fleet.reminders.manage",
       "fleet.dashboards.view",
       "fleet.export",
+      "waste.view",
+      "waste.manage",
+      "waste.export",
       "mobile.offline_sync",
     ],
   },
@@ -275,6 +289,8 @@ const OPERATIONS_ROLE_TEMPLATES: RoleTemplate[] = [
       "fleet.jobs.assign",
       "fleet.dashboards.view",
       "reports.export",
+      "waste.view",
+      "waste.manage",
       "mobile.offline_sync",
     ],
   },
@@ -295,6 +311,8 @@ const OPERATIONS_ROLE_TEMPLATES: RoleTemplate[] = [
       "fleet.inspect",
       "fleet.defects.submit",
       "fleet.driver_portal",
+      "waste.view",
+      "waste.operate",
       "mobile.offline_sync",
     ],
   },
@@ -312,6 +330,8 @@ const OPERATIONS_ROLE_TEMPLATES: RoleTemplate[] = [
       "fleet.inspect",
       "fleet.defects.submit",
       "fleet.driver_portal",
+      "waste.view",
+      "waste.operate",
       "mobile.offline_sync",
     ],
   },
@@ -362,6 +382,7 @@ const OPERATIONS_ROLE_TEMPLATES: RoleTemplate[] = [
       "fleet.view",
       "fleet.costs.view",
       "fleet.dashboards.view",
+      "waste.view",
     ],
   },
   {
@@ -377,6 +398,7 @@ const OPERATIONS_ROLE_TEMPLATES: RoleTemplate[] = [
       "tasks.manage",
       "safety.manage",
       "reports.export",
+      "waste.view",
       "mobile.offline_sync",
     ],
   },

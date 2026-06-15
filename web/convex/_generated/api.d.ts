@@ -36,6 +36,7 @@ import type * as lib_r2 from "../lib/r2.js";
 import type * as lib_sportRosterTemplates from "../lib/sportRosterTemplates.js";
 import type * as lib_unsubscribe from "../lib/unsubscribe.js";
 import type * as lib_uploads from "../lib/uploads.js";
+import type * as lib_wasteLogic from "../lib/wasteLogic.js";
 import type * as matchRosters from "../matchRosters.js";
 import type * as members from "../members.js";
 import type * as news from "../news.js";
@@ -57,6 +58,7 @@ import type * as tasks from "../tasks.js";
 import type * as taxonomies from "../taxonomies.js";
 import type * as teams from "../teams.js";
 import type * as volunteers from "../volunteers.js";
+import type * as waste from "../waste.js";
 
 import type {
   ApiFromModules,
@@ -93,6 +95,7 @@ declare const fullApi: ApiFromModules<{
   "lib/sportRosterTemplates": typeof lib_sportRosterTemplates;
   "lib/unsubscribe": typeof lib_unsubscribe;
   "lib/uploads": typeof lib_uploads;
+  "lib/wasteLogic": typeof lib_wasteLogic;
   matchRosters: typeof matchRosters;
   members: typeof members;
   news: typeof news;
@@ -114,6 +117,7 @@ declare const fullApi: ApiFromModules<{
   taxonomies: typeof taxonomies;
   teams: typeof teams;
   volunteers: typeof volunteers;
+  waste: typeof waste;
 }>;
 
 /**

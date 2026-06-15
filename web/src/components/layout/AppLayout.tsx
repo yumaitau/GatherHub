@@ -11,6 +11,7 @@ import {
   MessagesSquare,
   Package,
   Truck,
+  Recycle,
   HandHeart,
   Building2,
   Newspaper,
@@ -140,6 +141,13 @@ function buildNav(org: VerticalOrgConfig | null): NavGroup[] {
           icon: Truck,
           module: "fleet",
           capability: "assets.read",
+        },
+        {
+          to: "/waste",
+          label: "Waste",
+          icon: Recycle,
+          module: "waste",
+          capability: "waste.view",
         },
         {
           to: "/volunteers",
