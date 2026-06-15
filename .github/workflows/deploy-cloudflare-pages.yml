@@ -1,0 +1,68 @@
+name: Deploy — Cloudflare Pages
+
+# Builds the Vite web SPA (web/dist) and deploys it to Cloudflare Pages.
+# Pushes to main publish production; manual runs let you deploy on demand.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN       - token with "Cloudflare Pages: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID      - your Cloudflare account id
+#   VITE_CONVEX_URL            - production Convex deployment URL
+#   VITE_CLERK_PUBLISHABLE_KEY - production Clerk publishable key
+#   VITE_PUBLIC_APP_URL        - public URL the app is served from
+# Optional secrets (Google Maps features degrade gracefully without them):
+#   VITE_GOOGLE_MAPS_API_KEY
+#   VITE_GOOGLE_MAPS_KEY
+#
+# One-time: create the Pages project (matching PAGES_PROJECT below), e.g.
+#   npx wrangler pages project create gatherhub --production-branch main
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PAGES_PROJECT: gatherhub
+
+jobs:
+  deploy:
+    name: Build & deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_CONVEX_URL: ${{ secrets.VITE_CONVEX_URL }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_PUBLIC_APP_URL: ${{ secrets.VITE_PUBLIC_APP_URL }}
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+          VITE_GOOGLE_MAPS_KEY: ${{ secrets.VITE_GOOGLE_MAPS_KEY }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Pushes to main map to the production branch; other refs deploy as
+          # named previews under the same project.
+          command: >-
+            pages deploy web/dist
+            --project-name=${{ env.PAGES_PROJECT }}
+            --branch=${{ github.ref_name }}
