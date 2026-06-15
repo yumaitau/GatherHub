@@ -1,10 +1,17 @@
 export function MissingConfig({
   convexUrl,
+  convexUrlValid = Boolean(convexUrl),
   clerkKey,
 }: {
   convexUrl?: string;
+  convexUrlValid?: boolean;
   clerkKey?: string;
 }) {
+  const convexStatus = convexUrlValid
+    ? "✓"
+    : convexUrl
+      ? "✗ not an absolute URL (must start with https://)"
+      : "✗ missing";
   return (
     <div
       style={{
@@ -22,7 +29,7 @@ export function MissingConfig({
       </p>
       <ul>
         <li>
-          <code>VITE_CONVEX_URL</code> {convexUrl ? "✓" : "✗ missing"}
+          <code>VITE_CONVEX_URL</code> {convexStatus}
         </li>
         <li>
           <code>VITE_CLERK_PUBLISHABLE_KEY</code> {clerkKey ? "✓" : "✗ missing"}

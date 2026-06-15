@@ -14,15 +14,31 @@ const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as
   | string
   | undefined;
 
+/** Convex requires an absolute http(s) URL; a bare host crashes its client. */
+function isAbsoluteHttpUrl(value: string | undefined): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+const convexUrlValid = isAbsoluteHttpUrl(convexUrl);
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 
-if (!convexUrl || !clerkPublishableKey) {
+if (!convexUrlValid || !clerkPublishableKey) {
   // Fail loudly but gracefully if the environment isn't configured yet.
   root.render(
-    <MissingConfig convexUrl={convexUrl} clerkKey={clerkPublishableKey} />,
+    <MissingConfig
+      convexUrl={convexUrl}
+      convexUrlValid={convexUrlValid}
+      clerkKey={clerkPublishableKey}
+    />,
   );
 } else {
-  const convex = new ConvexReactClient(convexUrl);
+  const convex = new ConvexReactClient(convexUrl!);
   root.render(
     <React.StrictMode>
       <ClerkProvider publishableKey={clerkPublishableKey}>
